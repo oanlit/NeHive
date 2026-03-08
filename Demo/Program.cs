@@ -2,7 +2,7 @@
 
 var counter = Reactive.CreateRoot(dispose =>
 {
-    var count = Reactive.CreateSignal<object>(10);
+    var count = Reactive.CreateSignal(10);
     Reactive.CreateEffect<object?>(_ =>
     {
         Console.WriteLine($"count: {count.Value}");
@@ -16,6 +16,6 @@ var counter = Reactive.CreateRoot(dispose =>
     };
 });
 
-counter.count.SetValue(prev => (int)prev + 1);
-counter.count.SetValue(prev => (int)prev + 1);
+counter.count.SetValue(prev => prev + 1);
+counter.count.SetValue(prev => prev + 1);
 counter.dispose();

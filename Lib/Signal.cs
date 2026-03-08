@@ -1,10 +1,10 @@
 ﻿namespace Lib;
-//
-// using Transition = (Func<bool>, Func<Action, Task>);
 
 public delegate TNext EffectFunction<in TPrev, out TNext>(TPrev v) where TNext : TPrev;
 
 public delegate TPrev EffectFunction<TPrev>(TPrev v);
+
+public delegate void EffectFunction();
 
 public delegate T Accessor<out T>();
 
@@ -17,17 +17,21 @@ public enum ComputationState
     Pending
 }
 
-public interface ISignalState<T>
+public interface ISignalState
+{
+    List<IComputationNode>? Observers { get; set; }
+    List<int>? ObserverSlots { get; set; }
+}
+
+public interface ISignalState<T> : ISignalState
 {
     T Value { get; internal set; }
-    List<IComputationNode<object>>? Observers { get; set; }
-    List<int>? ObserverSlots { get; set; }
     Func<T, T, bool>? Comparator { get; set; }
 }
 
 public class SignalState<T>(T value) : ISignalState<T>
 {
-    public List<IComputationNode<object>>? Observers { get; set; }
+    public List<IComputationNode>? Observers { get; set; }
     public List<int>? ObserverSlots { get; set; }
     public Func<T, T, bool>? Comparator { get; set; }
 
@@ -37,36 +41,68 @@ public class SignalState<T>(T value) : ISignalState<T>
 public interface IOwner
 {
     IOwner? Parent { get; set; }
-    List<IComputationNode<object>>? Children { get; set; }
+    List<IComputationNode>? Children { get; set; }
     List<Action>? Cleanups { get; set; }
     Dictionary<string, object>? Context { get; set; }
 }
 
 public class Owner(
     IOwner? parent,
-    List<IComputationNode<object>>? children,
+    List<IComputationNode>? children,
     List<Action>? cleanups,
     Dictionary<string, object>? context
 ) : IOwner
 {
     public IOwner? Parent { get; set; } = parent;
-    public List<IComputationNode<object>>? Children { get; set; } = children;
+    public List<IComputationNode>? Children { get; set; } = children;
     public List<Action>? Cleanups { get; set; } = cleanups;
     public Dictionary<string, object>? Context { get; set; } = context;
 }
 
+public interface IComputationNode : IOwner
+{
+    EffectFunction Fn { get; }
+    ComputationState State { get; set; }
+    List<ISignalState>? Sources { get; set; }
+    List<int>? SourceSlots { get; set; }
+    long UpdatedAt { get; set; }
+    bool Pure { get; }
+    bool User { get; }
+}
+
 public interface IComputationNode<TInit> : IComputationNode<TInit, TInit>;
 
-public interface IComputationNode<TInit, TNext> : IOwner where TNext : TInit
+public interface IComputationNode<TInit, TNext> : IComputationNode where TNext : TInit
 {
     public EffectFunction<TInit, TNext> Fn { get; }
-    public ComputationState State { get; set; }
-    public List<ISignalState<TInit>>? Sources { get; set; }
-    public List<int>? SourceSlots { get; set; }
     public TInit Value { get; set; }
-    public long UpdatedAt { get; set; }
-    public bool Pure { get; }
-    public bool User { get; }
+}
+
+public class ComputationNode(
+    EffectFunction fn,
+    ComputationState state = ComputationState.Stale,
+    List<ISignalState>? sources = null,
+    List<int>? sourceSlots = null,
+    int updatedAt = 0,
+    bool pure = false,
+    bool user = false,
+    IOwner? parent = null,
+    List<IComputationNode>? children = null,
+    List<Action>? cleanups = null,
+    Dictionary<string, object>? context = null
+) : IComputationNode
+{
+    public EffectFunction Fn { get; } = fn;
+    public ComputationState State { get; set; } = state;
+    public List<ISignalState>? Sources { get; set; } = sources;
+    public List<int>? SourceSlots { get; set; } = sourceSlots;
+    public long UpdatedAt { get; set; } = updatedAt;
+    public bool Pure { get; } = pure;
+    public bool User { get; set; } = user;
+    public IOwner? Parent { get; set; } = parent;
+    public List<IComputationNode>? Children { get; set; } = children;
+    public List<Action>? Cleanups { get; set; } = cleanups;
+    public Dictionary<string, object>? Context { get; set; } = context;
 }
 
 public class ComputationNode<T>(
@@ -79,22 +115,14 @@ public class ComputationNode<T>(
     bool pure = false,
     bool user = false,
     IOwner? parent = null,
-    List<IComputationNode<object>>? children = null,
+    List<IComputationNode>? children = null,
     List<Action>? cleanups = null,
     Dictionary<string, object>? context = null
-) : IComputationNode<T>
+) : ComputationNode(Constant.EmptyEffectFunction, state, null, sourceSlots, updatedAt, pure, user, parent, null,
+        cleanups, context),
+    IComputationNode<T>
 {
     public EffectFunction<T, T> Fn { get; } = fn;
-    public ComputationState State { get; set; } = state;
-    public List<ISignalState<T>>? Sources { get; set; } = sources;
-    public List<int>? SourceSlots { get; set; } = sourceSlots;
-    public long UpdatedAt { get; set; } = updatedAt;
-    public bool Pure { get; } = pure;
-    public bool User { get; set; } = user;
-    public IOwner? Parent { get; set; } = parent;
-    public List<IComputationNode<object>>? Children { get; set; } = children;
-    public List<Action>? Cleanups { get; set; } = cleanups;
-    public Dictionary<string, object>? Context { get; set; } = context;
     public T Value { get; set; } = value;
 }
 
@@ -123,17 +151,18 @@ public class Computation<T> : ComputationNode<T>
 
 public delegate V UntrackFunc<V>();
 
-public interface IMemo<TPrev> : IMemo<TPrev, TPrev>;
+public interface IMemo : ISignalState, IComputationNode;
 
-public interface IMemo<TPrev, TNext> : ISignalState<TNext>, IComputationNode<TNext> where TNext : TPrev;
+public interface IMemo<TPrev, TNext> : IMemo, ISignalState<TNext>, IComputationNode<TNext> where TNext : TPrev;
+
+public interface IMemo<TPrev> : IMemo<TPrev, TPrev>;
 
 internal static class Context
 {
     public static IOwner? CurrentOwner; // 当前正在执行的所有者
-    public static IComputationNode<object>? CurrentComputation; // 当前计算节点
-    public static Action<List<IComputationNode<object>>> RunEffects = Reactive.RunQueue; // 副作用队列执行函数
-    public static List<IComputationNode<object>>? UpdateQueue; // 更新值的队列
-    public static List<IComputationNode<object>>? EffectQueue; // 执行副作用的队列
+    public static IComputationNode? CurrentComputation; // 当前计算节点
+    public static List<IComputationNode>? UpdateQueue; // 更新值的队列
+    public static List<IComputationNode>? EffectQueue; // 执行副作用的队列
     public static long ExecCount; // 执行计数器，和ComputationNode.updatedAt 配合使用
     public static string? Error = null;
 }
@@ -151,6 +180,8 @@ internal static class Constant
     {
         return EqualityComparer<T>.Default.Equals(a, b);
     }
+
+    public static readonly EffectFunction EmptyEffectFunction = () => { };
 }
 
 internal static class Extension
@@ -209,7 +240,6 @@ public static partial class Reactive
         T? value = default
     )
     {
-        Context.RunEffects = RunUserEffects; // 当用户第一次使用createEffect时切换
         var c = new Computation<T>(fn, value!);
 
         c.User = true;
@@ -251,12 +281,12 @@ public static partial class Reactive
         var oSlot = currentComp.Sources?.Count ?? 0;
         if (currentComp.Sources is not null)
         {
-            currentComp.Sources.Add((ISignalState<object>)signalState); // 当前计算节点自动收集依赖
+            currentComp.Sources.Add(signalState); // 当前计算节点自动收集依赖
             currentComp.SourceSlots!.Add(sSlot);
         }
         else
         {
-            currentComp.Sources = [(ISignalState<object>)signalState];
+            currentComp.Sources = [signalState];
             currentComp.SourceSlots = [sSlot];
         }
 
@@ -349,20 +379,20 @@ public static partial class Reactive
         if (e.Count != 0)
             RunUpdates<object>(() =>
             {
-                Context.RunEffects(e);
+                RunUserEffects(e);
                 return new { };
             }, false);
     }
 
-    internal static readonly Action<ICollection<IComputationNode<object>>> RunQueue = queues =>
+    private static void RunQueue(ICollection<IComputationNode> queues)
     {
         foreach (var queue in queues)
         {
             RunTop(queue);
         }
-    };
+    }
 
-    internal static readonly Action<List<IComputationNode<object>>> RunUserEffects = queue =>
+    private static void RunUserEffects(List<IComputationNode> queue)
     {
         var userLength = 0;
         for (var i = 0; i < queue.Count; i++)
@@ -373,9 +403,9 @@ public static partial class Reactive
         }
 
         for (var i = 0; i < userLength; i++) RunTop(queue[i]);
-    };
+    }
 
-    private static void RunTop(IComputationNode<object> node)
+    private static void RunTop(IComputationNode node)
     {
         if (node.State == ComputationState.Resolved) return;
         if (node.State == ComputationState.Pending)
@@ -384,10 +414,10 @@ public static partial class Reactive
             return;
         }
 
-        List<IComputationNode<object>> ancestors = [node];
+        List<IComputationNode> ancestors = [node];
         while (true)
         {
-            if (!(node.Parent is IComputationNode<object> parent && parent.UpdatedAt <= Context.ExecCount)) break;
+            if (!(node.Parent is IComputationNode parent && parent.UpdatedAt <= Context.ExecCount)) break;
             if (parent.State != ComputationState.Resolved) ancestors.Add(node);
             node = parent;
         }
@@ -415,22 +445,35 @@ public static partial class Reactive
         }
     }
 
-    internal static void UpdateComputation(IComputationNode<object> node)
+    private static void UpdateComputation(IComputationNode node)
     {
         CleanNode(node); // 动态依赖切换，先断开旧依赖
         var time = Context.ExecCount;
-        RunComputation(node, node.Value, time);
+        RunComputation(time, node);
     }
 
-    private static void RunComputation<T>(IComputationNode<T> node, T prevValue, long time)
+    private static void RunComputation(long time, IComputationNode node)
     {
-        T nextValue;
+        object? nextValue;
         var tempOwner = Context.CurrentOwner;
         var tempComputation = Context.CurrentComputation;
         Context.CurrentOwner = Context.CurrentComputation = (IComputationNode<object>)node;
         try
         {
-            nextValue = node.Fn(prevValue);
+            nextValue = node switch
+            {
+                IComputationNode<object> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<long> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<int> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<short> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<byte> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<char> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<string> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<double> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<float> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<decimal> nodeV => nodeV.Fn(nodeV.Value),
+                _ => null
+            };
         }
         catch (Exception err)
         {
@@ -453,11 +496,49 @@ public static partial class Reactive
         }
 
         if (node.UpdatedAt > time) return;
-        if (node is IMemo<object> memo)
+        switch (node)
         {
-            WriteSignal(memo, nextValue);
+            case IComputationNode<object> nodeV:
+                if (node is IMemo<object> memo1) WriteSignal(memo1, nextValue!);
+                else nodeV.Value = nextValue!;
+                break;
+            case IComputationNode<long> nodeV:
+                if (node is IMemo<long> memo2) WriteSignal(memo2, (long)nextValue!);
+                else nodeV.Value = (long)nextValue!;
+                break;
+            case IComputationNode<int> nodeV:
+                if (node is IMemo<int> memo3) WriteSignal(memo3, (int)nextValue!);
+                else nodeV.Value = (int)nextValue!;
+                break;
+            case IComputationNode<short> nodeV:
+                if (node is IMemo<short> memo4) WriteSignal(memo4, (short)nextValue!);
+                else nodeV.Value = (short)nextValue!;
+                break;
+            case IComputationNode<byte> nodeV:
+                if (node is IMemo<byte> memo5) WriteSignal(memo5, (byte)nextValue!);
+                else nodeV.Value = (byte)nextValue!;
+                break;
+            case IComputationNode<char> nodeV:
+                if (node is IMemo<char> memo6) WriteSignal(memo6, (char)nextValue!);
+                else nodeV.Value = (char)nextValue!;
+                break;
+            case IComputationNode<string> nodeV:
+                if (node is IMemo<string> memo7) WriteSignal(memo7, (string)nextValue!);
+                else nodeV.Value = (string)nextValue!;
+                break;
+            case IComputationNode<double> nodeV:
+                if (node is IMemo<double> memo8) WriteSignal(memo8, (double)nextValue!);
+                else nodeV.Value = (double)nextValue!;
+                break;
+            case IComputationNode<float> nodeV:
+                if (node is IMemo<float> memo9) WriteSignal(memo9, (float)nextValue!);
+                else nodeV.Value = (float)nextValue!;
+                break;
+            case IComputationNode<decimal> nodeV:
+                if (node is IMemo<decimal> memo10) WriteSignal(memo10, (decimal)nextValue!);
+                else nodeV.Value = (decimal)nextValue!;
+                break;
         }
-        else node.Value = nextValue;
 
         node.UpdatedAt = time;
     }
@@ -466,7 +547,7 @@ public static partial class Reactive
      * 递归向下传播脏状态
      * @param node
      */
-    internal static void MarkDownstream(IMemo<object> node)
+    private static void MarkDownstream(IMemo node)
     {
         foreach (var observer in node.Observers!)
         {
@@ -474,7 +555,7 @@ public static partial class Reactive
             observer.State = ComputationState.Pending;
             if (observer.Pure) Context.UpdateQueue!.Add(observer);
             else Context.EffectQueue!.Add(observer);
-            if (observer is not IMemo<object> memo) continue;
+            if (observer is not IMemo memo) continue;
             MarkDownstream(memo);
         }
     }
@@ -484,7 +565,7 @@ public static partial class Reactive
      * @param node
      * @param ignore
      */
-    private static void LookUpstream(IComputationNode<object> node, IComputationNode<object>? ignore = null)
+    private static void LookUpstream(IComputationNode node, IComputationNode? ignore = null)
     {
         node.State = ComputationState.Resolved;
         for (var i = 0; i < node.Sources!.Count; i += 1)
