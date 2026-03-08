@@ -2,7 +2,7 @@
 
 public delegate TNext EffectFunction<in TPrev, out TNext>(TPrev v) where TNext : TPrev;
 
-public delegate TPrev EffectFunction<TPrev>(TPrev v);
+public delegate T EffectFunction<T>(T v);
 
 public delegate void EffectFunction();
 
@@ -26,7 +26,7 @@ public interface ISignalState
 public interface ISignalState<T> : ISignalState
 {
     T Value { get; internal set; }
-    Func<T, T, bool>? Comparator { get; set; }
+    Func<T, T, bool>? Comparator { get; }
 }
 
 public class SignalState<T>(T value) : ISignalState<T>
@@ -74,7 +74,7 @@ public interface IComputationNode<TInit> : IComputationNode<TInit, TInit>;
 
 public interface IComputationNode<TInit, TNext> : IComputationNode where TNext : TInit
 {
-    public EffectFunction<TInit, TNext> Fn { get; }
+    public new EffectFunction<TInit, TNext> Fn { get; }
     public TInit Value { get; set; }
 }
 
@@ -118,12 +118,13 @@ public class ComputationNode<T>(
     List<IComputationNode>? children = null,
     List<Action>? cleanups = null,
     Dictionary<string, object>? context = null
-) : ComputationNode(Constant.EmptyEffectFunction, state, null, sourceSlots, updatedAt, pure, user, parent, null,
-        cleanups, context),
+) : ComputationNode(Constant.EmptyEffectFunction, state, null, sourceSlots, 
+        updatedAt, pure, user, parent, children, cleanups, context),
     IComputationNode<T>
 {
-    public EffectFunction<T, T> Fn { get; } = fn;
+    public new EffectFunction<T, T> Fn { get; } = fn;
     public T Value { get; set; } = value;
+    public new List<ISignalState<T>>? Sources { get; set; } = sources;
 }
 
 public class Computation<T> : ComputationNode<T>
@@ -143,8 +144,8 @@ public class Computation<T> : ComputationNode<T>
         else if (Lib.Context.CurrentOwner != Constant.UnOwned)
         {
             if (Lib.Context.CurrentOwner.Children is null)
-                Lib.Context.CurrentOwner.Children = [(IComputationNode<object>)this];
-            else Lib.Context.CurrentOwner.Children.Add((IComputationNode<object>)this);
+                Lib.Context.CurrentOwner.Children = [this];
+            else Lib.Context.CurrentOwner.Children.Add(this);
         }
     }
 }
@@ -156,6 +157,30 @@ public interface IMemo : ISignalState, IComputationNode;
 public interface IMemo<TPrev, TNext> : IMemo, ISignalState<TNext>, IComputationNode<TNext> where TNext : TPrev;
 
 public interface IMemo<TPrev> : IMemo<TPrev, TPrev>;
+
+public class Memo<T>(
+    EffectFunction<T, T> fn,
+    ComputationState state = ComputationState.Resolved,
+    T? value = default,
+    Func<T, T, bool>? comparator = null,
+    List<IComputationNode>? observers = null,
+    List<int>? observerSlots = null,
+    List<ISignalState>? sources = null,
+    List<int>? sourceSlots = null,
+    long updatedAt = 0,
+    bool pure = false,
+    bool user = false,
+    IOwner? parent = null,
+    List<IComputationNode>? children = null,
+    List<Action>? cleanups = null,
+    Dictionary<string, object>? context = null
+) : Computation<T>(fn, value!, pure, state), IMemo<T>
+{
+    EffectFunction IComputationNode.Fn { get; } = Constant.EmptyEffectFunction;
+    public Func<T, T, bool>? Comparator { get; } = comparator;
+    public List<IComputationNode>? Observers { get; set; } = observers;
+    public List<int>? ObserverSlots { get; set; } = observerSlots;
+}
 
 internal static class Context
 {
@@ -181,31 +206,39 @@ internal static class Constant
         return EqualityComparer<T>.Default.Equals(a, b);
     }
 
+    public static readonly object EmptyObj = new { };
     public static readonly EffectFunction EmptyEffectFunction = () => { };
 }
 
-internal static class Extension
+internal static class Util
 {
-    extension(List<object>)
+    public static T RemoveLast<T>(List<T> list)
     {
-        public static T RemoveLast<T>(List<T> list)
-        {
-            var count = list.Count;
-            var value = list[count - 1];
-            list.RemoveAt(count - 1);
-            return value;
-        }
+        var count = list.Count;
+        var value = list[count - 1];
+        list.RemoveAt(count - 1);
+        return value;
     }
 }
 
-public class Signal<T>(T value)
+public interface IReadOnlySignal<T>
 {
-    private readonly ISignalState<T> _state = new SignalState<T>(value);
+    public T Value { get; }
+}
+
+public interface ISignal<T> : IReadOnlySignal<T>
+{
+    public new T Value { get; set; }
+}
+
+public class Signal<T>(T value) : ISignal<T>
+{
+    private readonly SignalState<T> _state = new(value);
 
     public T Value
     {
         get => Reactive.ReadSignal(_state);
-        set { Reactive.WriteSignal(_state, value); }
+        set => Reactive.WriteSignal(_state, value);
     }
 
     public void SetValue(T value)
@@ -219,11 +252,45 @@ public class Signal<T>(T value)
     }
 }
 
+public class ReadOnlySignal<T> : IReadOnlySignal<T>
+{
+    private readonly Memo<T> _state;
+
+    public T Value => Reactive.ReadSignal(_state);
+
+    public ReadOnlySignal(EffectFunction<T, T> fn)
+    {
+        _state = new Memo<T>(
+            fn,
+            ComputationState.Resolved,
+            comparator: Constant.EqualFn
+        )
+        {
+            Observers = null,
+            ObserverSlots = null,
+        };
+        Reactive.UpdateComputation(_state);
+    }
+}
+
 public static partial class Reactive
 {
     public static Signal<T> CreateSignal<T>(T value)
     {
         return new Signal<T>(value);
+    }
+
+
+    public static IComputationNode<object> CreateComputation(
+        Action fn,
+        bool pure = false,
+        ComputationState state = ComputationState.Stale)
+    {
+        return new Computation<object>(_ =>
+        {
+            fn();
+            return Constant.EmptyObj;
+        }, Constant.EmptyObj, pure, state);
     }
 
     public static IComputationNode<T> CreateComputation<T>(
@@ -233,6 +300,15 @@ public static partial class Reactive
         ComputationState state = ComputationState.Stale)
     {
         return new Computation<T>(fn, init, pure, state);
+    }
+
+    public static void CreateEffect(EffectFunction fn)
+    {
+        CreateEffect(_ =>
+        {
+            fn();
+            return Constant.EmptyObj;
+        }, Constant.EmptyObj);
     }
 
     public static void CreateEffect<T>(
@@ -245,12 +321,17 @@ public static partial class Reactive
         c.User = true;
         if (Context.EffectQueue is null)
         {
-            UpdateComputation((IComputationNode<object>)c);
+            UpdateComputation(c);
         }
         else
         {
-            Context.EffectQueue.Add((IComputationNode<object>)c);
+            Context.EffectQueue.Add(c);
         }
+    }
+
+    public static ReadOnlySignal<T> CreateMemo<T>(EffectFunction<T, T> fn)
+    {
+        return new ReadOnlySignal<T>(fn);
     }
 
     internal static T ReadSignal<T>(ISignalState<T> signalState)
@@ -259,15 +340,15 @@ public static partial class Reactive
         {
             if (memo.State == ComputationState.Stale)
             {
-                UpdateComputation((IMemo<object>)memo);
+                UpdateComputation(memo);
             }
             else
             {
                 var updates = Context.UpdateQueue;
                 Context.UpdateQueue = null;
-                RunUpdates<object>(() =>
+                RunUpdates(() =>
                 {
-                    LookUpstream((IMemo<object>)memo);
+                    LookUpstream(memo);
                     return new { };
                 }, false);
                 Context.UpdateQueue = updates;
@@ -308,10 +389,10 @@ public static partial class Reactive
     {
         var current = node.Value;
 
-        if (node.Comparator?.Invoke(current, value) ?? false) return default;
+        if (node.Comparator?.Invoke(current, value) ?? false) return default!;
         node.Value = value;
 
-        if (node.Observers is null) return default;
+        if (node.Observers is null) return default!;
         RunUpdates(() =>
         {
             foreach (var observer in node.Observers)
@@ -320,7 +401,7 @@ public static partial class Reactive
                 {
                     if (observer.Pure) Context.UpdateQueue!.Add(observer);
                     else Context.EffectQueue!.Add(observer);
-                    if (observer is IMemo<object> memo) MarkDownstream(memo);
+                    if (observer is IMemo memo) MarkDownstream(memo);
                 }
 
                 observer.State = ComputationState.Stale;
@@ -342,7 +423,16 @@ public static partial class Reactive
         return RunUpdates(fn, false);
     }
 
-    internal static T RunUpdates<T>(Accessor<T> fn, bool init)
+    private static void RunUpdates(Action fn, bool init)
+    {
+        RunUpdates(() =>
+        {
+            fn();
+            return Constant.EmptyObj;
+        }, init);
+    }
+
+    private static T RunUpdates<T>(Accessor<T> fn, bool init)
     {
         if (Context.UpdateQueue is not null) return fn();
         var wait = false;
@@ -361,7 +451,7 @@ public static partial class Reactive
             if (!wait) Context.EffectQueue = null;
             Context.UpdateQueue = null;
             HandleError(err);
-            return default;
+            return default!;
         }
     }
 
@@ -377,7 +467,7 @@ public static partial class Reactive
         var e = Context.EffectQueue!;
         Context.EffectQueue = null;
         if (e.Count != 0)
-            RunUpdates<object>(() =>
+            RunUpdates(() =>
             {
                 RunUserEffects(e);
                 return new { };
@@ -435,17 +525,13 @@ public static partial class Reactive
             {
                 var updates = Context.UpdateQueue;
                 Context.UpdateQueue = null;
-                RunUpdates<object>(() =>
-                {
-                    LookUpstream(node, ancestors[0]);
-                    return new { };
-                }, false);
+                RunUpdates(() => LookUpstream(node, ancestors[0]), false);
                 Context.UpdateQueue = updates;
             }
         }
     }
 
-    private static void UpdateComputation(IComputationNode node)
+    internal static void UpdateComputation(IComputationNode node)
     {
         CleanNode(node); // 动态依赖切换，先断开旧依赖
         var time = Context.ExecCount;
@@ -457,7 +543,7 @@ public static partial class Reactive
         object? nextValue;
         var tempOwner = Context.CurrentOwner;
         var tempComputation = Context.CurrentComputation;
-        Context.CurrentOwner = Context.CurrentComputation = (IComputationNode<object>)node;
+        Context.CurrentOwner = Context.CurrentComputation = node;
         try
         {
             nextValue = node switch
@@ -472,6 +558,7 @@ public static partial class Reactive
                 IComputationNode<double> nodeV => nodeV.Fn(nodeV.Value),
                 IComputationNode<float> nodeV => nodeV.Fn(nodeV.Value),
                 IComputationNode<decimal> nodeV => nodeV.Fn(nodeV.Value),
+                IComputationNode<bool> nodeV => nodeV.Fn(nodeV.Value),
                 _ => null
             };
         }
@@ -538,6 +625,10 @@ public static partial class Reactive
                 if (node is IMemo<decimal> memo10) WriteSignal(memo10, (decimal)nextValue!);
                 else nodeV.Value = (decimal)nextValue!;
                 break;
+            case IComputationNode<bool> nodeV:
+                if (node is IMemo<bool> memo11) WriteSignal(memo11, (bool)nextValue!);
+                else nodeV.Value = (bool)nextValue!;
+                break;
         }
 
         node.UpdatedAt = time;
@@ -570,7 +661,7 @@ public static partial class Reactive
         node.State = ComputationState.Resolved;
         for (var i = 0; i < node.Sources!.Count; i += 1)
         {
-            if (!(node.Sources![i] is IMemo<object> source)) continue;
+            if (node.Sources![i] is not IMemo source) continue;
             var state = source.State;
             switch (state)
             {
@@ -601,10 +692,19 @@ public static partial class Reactive
         }
     }
 
+    public static void Untrack(Action fn)
+    {
+        Untrack(() =>
+        {
+            fn();
+            return Constant.EmptyObj;
+        });
+    }
+
     private static void CleanNode(IOwner node)
     {
         int i;
-        if (node is IComputationNode<object> computationNode)
+        if (node is IComputationNode computationNode)
         {
             CleanComputationNode(computationNode);
             CommonCode();
@@ -630,17 +730,17 @@ public static partial class Reactive
         }
     }
 
-    private static void CleanComputationNode(IComputationNode<object> node)
+    private static void CleanComputationNode(IComputationNode node)
     {
         while ((node.Sources?.Count ?? 0) != 0)
         {
-            var source = List<object>.RemoveLast(node.Sources!);
-            var index = List<object>.RemoveLast(node.SourceSlots!);
+            var source = Util.RemoveLast(node.Sources!);
+            var index = Util.RemoveLast(node.SourceSlots!);
             var obs = source.Observers;
 
             if (obs is null) continue;
-            var n = List<object>.RemoveLast(obs);
-            var s = List<object>.RemoveLast(source.ObserverSlots!);
+            var n = Util.RemoveLast(obs);
+            var s = Util.RemoveLast(source.ObserverSlots!);
 
             if (index >= obs.Count) continue;
             n.SourceSlots![s] = index;
@@ -662,14 +762,11 @@ public static partial class Reactive
         if (fns is null) throw error;
 
         if (Context.EffectQueue is not null)
-            Context.EffectQueue.Add(new ComputationNode<object>(o =>
-                {
-                    RunErrors(error, fns, owner);
-                    return o;
-                },
-                new { }
-            ));
-
+        {
+            var handler = CreateComputation(() => RunErrors(error, fns, owner));
+            handler.State = ComputationState.Stale;
+            Context.EffectQueue.Add(handler);
+        }
         else RunErrors(error, fns, owner);
     }
 
@@ -719,11 +816,7 @@ public static partial class Reactive
         }
         else
         {
-            updateFn = () => fn(() => Untrack<object>(() =>
-            {
-                CleanNode(root);
-                return new { };
-            }));
+            updateFn = () => fn(() => Untrack(() => CleanNode(root)));
         }
 
         Context.CurrentOwner = root;
@@ -742,15 +835,7 @@ public static partial class Reactive
 
     public static void OnMount(Action fn)
     {
-        CreateEffect<object>(_ =>
-        {
-            Untrack(() =>
-            {
-                fn();
-                return new { };
-            });
-            return new { };
-        });
+        CreateEffect(() => Untrack(fn));
     }
 
     public static Action OnCleanup(Action fn)
