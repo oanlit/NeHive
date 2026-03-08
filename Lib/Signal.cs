@@ -83,7 +83,7 @@ public class ComputationNode(
     ComputationState state = ComputationState.Stale,
     List<ISignalState>? sources = null,
     List<int>? sourceSlots = null,
-    int updatedAt = 0,
+    long updatedAt = 0,
     bool pure = false,
     bool user = false,
     IOwner? parent = null,
@@ -109,33 +109,40 @@ public class ComputationNode<T>(
     EffectFunction<T, T> fn,
     T value,
     ComputationState state = ComputationState.Stale,
-    List<ISignalState<T>>? sources = null,
+    List<ISignalState>? sources = null,
     List<int>? sourceSlots = null,
-    int updatedAt = 0,
+    long updatedAt = 0,
     bool pure = false,
     bool user = false,
     IOwner? parent = null,
     List<IComputationNode>? children = null,
     List<Action>? cleanups = null,
     Dictionary<string, object>? context = null
-) : ComputationNode(Constant.EmptyEffectFunction, state, null, sourceSlots, 
+) : ComputationNode(Constant.EmptyEffectFunction, state, null, sourceSlots,
         updatedAt, pure, user, parent, children, cleanups, context),
     IComputationNode<T>
 {
     public new EffectFunction<T, T> Fn { get; } = fn;
     public T Value { get; set; } = value;
-    public new List<ISignalState<T>>? Sources { get; set; } = sources;
+    public new List<ISignalState>? Sources { get; set; } = sources;
 }
 
 public class Computation<T> : ComputationNode<T>
 {
     public Computation(
         EffectFunction<T, T> fn,
-        T init,
+        T value,
+        ComputationState state = ComputationState.Stale,
+        List<ISignalState>? sources = null,
+        List<int>? sourceSlots = null,
+        long updatedAt = 0,
         bool pure = false,
-        ComputationState state = ComputationState.Stale
-    ) : base(fn: fn, value: init, state: state, pure: pure, parent: Lib.Context.CurrentOwner,
-        context: Lib.Context.CurrentOwner?.Context)
+        bool user = false,
+        IOwner? parent = null,
+        List<IComputationNode>? children = null,
+        List<Action>? cleanups = null,
+        Dictionary<string, object>? context = null
+    ) : base(fn, value, state, sources, sourceSlots, updatedAt, pure, user, parent, children, cleanups, context)
     {
         if (Lib.Context.CurrentOwner is null)
             Console.WriteLine(
@@ -150,7 +157,7 @@ public class Computation<T> : ComputationNode<T>
     }
 }
 
-public delegate V UntrackFunc<V>();
+// public delegate V UntrackFunc<V>();
 
 public interface IMemo : ISignalState, IComputationNode;
 
@@ -174,7 +181,8 @@ public class Memo<T>(
     List<IComputationNode>? children = null,
     List<Action>? cleanups = null,
     Dictionary<string, object>? context = null
-) : Computation<T>(fn, value!, pure, state), IMemo<T>
+) : Computation<T>(fn, value!, state, sources, sourceSlots, updatedAt, pure, user, parent, children, cleanups, context),
+    IMemo<T>
 {
     EffectFunction IComputationNode.Fn { get; } = Constant.EmptyEffectFunction;
     public Func<T, T, bool>? Comparator { get; } = comparator;
@@ -262,7 +270,6 @@ public class ReadOnlySignal<T> : IReadOnlySignal<T>
     {
         _state = new Memo<T>(
             fn,
-            ComputationState.Resolved,
             comparator: Constant.EqualFn
         )
         {
@@ -290,7 +297,7 @@ public static partial class Reactive
         {
             fn();
             return Constant.EmptyObj;
-        }, Constant.EmptyObj, pure, state);
+        }, Constant.EmptyObj, pure: pure, state: state);
     }
 
     public static IComputationNode<T> CreateComputation<T>(
@@ -299,7 +306,7 @@ public static partial class Reactive
         bool pure = false,
         ComputationState state = ComputationState.Stale)
     {
-        return new Computation<T>(fn, init, pure, state);
+        return new Computation<T>(fn, init, pure: pure, state: state);
     }
 
     public static void CreateEffect(EffectFunction fn)
@@ -349,7 +356,7 @@ public static partial class Reactive
                 RunUpdates(() =>
                 {
                     LookUpstream(memo);
-                    return new { };
+                    return Constant.EmptyObj;
                 }, false);
                 Context.UpdateQueue = updates;
             }
@@ -413,7 +420,7 @@ public static partial class Reactive
                 throw new Exception("Potential Infinite Loop Detected.");
             }
 
-            return new { };
+            return Constant.EmptyObj;
         }, false);
         return value;
     }
@@ -421,6 +428,62 @@ public static partial class Reactive
     public static T Batch<T>(Accessor<T> fn)
     {
         return RunUpdates(fn, false);
+    }
+
+    public static T CreateRoot<T>(RootFunction<T> fn, Owner? detachedOwner = null)
+    {
+        var currentComputation = Context.CurrentComputation;
+        var currentOwner = Context.CurrentOwner;
+        var unDispose = fn.Method.GetParameters().Length == 0;
+        var current = detachedOwner ?? currentOwner;
+        var root = unDispose
+            ? Constant.UnOwned
+            : new Owner(
+                parent: current,
+                children: null,
+                context: current?.Context,
+                cleanups: null
+            );
+        Accessor<T> updateFn;
+        if (unDispose)
+        {
+            updateFn = () =>
+                fn(() =>
+                {
+                    throw new Exception("Dispose method must be an explicit argument to createRoot function");
+                });
+        }
+        else
+        {
+            updateFn = () => fn(() => Untrack(() => CleanNode(root)));
+        }
+
+        Context.CurrentOwner = root;
+        Context.CurrentComputation = null;
+
+        try
+        {
+            return RunUpdates(updateFn, true)!;
+        }
+        finally
+        {
+            Context.CurrentComputation = currentComputation;
+            Context.CurrentOwner = currentOwner;
+        }
+    }
+
+    public static void OnMount(Action fn)
+    {
+        CreateEffect(() => Untrack(fn));
+    }
+
+    public static Action OnCleanup(Action fn)
+    {
+        if (Context.CurrentOwner is null)
+            Console.WriteLine("cleanups created outside a `createRoot` or `render` will never be run");
+        else if (Context.CurrentOwner.Cleanups is null) Context.CurrentOwner.Cleanups = [fn];
+        else Context.CurrentOwner.Cleanups.Add(fn);
+        return fn;
     }
 
     private static void RunUpdates(Action fn, bool init)
@@ -470,7 +533,7 @@ public static partial class Reactive
             RunUpdates(() =>
             {
                 RunUserEffects(e);
-                return new { };
+                return Constant.EmptyObj;
             }, false);
     }
 
@@ -789,61 +852,5 @@ public static partial class Reactive
         {
             HandleError(e, owner?.Parent);
         }
-    }
-
-    public static T CreateRoot<T>(RootFunction<T> fn, Owner? detachedOwner = null)
-    {
-        var currentComputation = Context.CurrentComputation;
-        var currentOwner = Context.CurrentOwner;
-        var unDispose = fn.Method.GetParameters().Length == 0;
-        var current = detachedOwner ?? currentOwner;
-        var root = unDispose
-            ? Constant.UnOwned
-            : new Owner(
-                parent: current,
-                children: null,
-                context: current?.Context,
-                cleanups: null
-            );
-        Accessor<T> updateFn;
-        if (unDispose)
-        {
-            updateFn = () =>
-                fn(() =>
-                {
-                    throw new Exception("Dispose method must be an explicit argument to createRoot function");
-                });
-        }
-        else
-        {
-            updateFn = () => fn(() => Untrack(() => CleanNode(root)));
-        }
-
-        Context.CurrentOwner = root;
-        Context.CurrentComputation = null;
-
-        try
-        {
-            return RunUpdates(updateFn, true)!;
-        }
-        finally
-        {
-            Context.CurrentComputation = currentComputation;
-            Context.CurrentOwner = currentOwner;
-        }
-    }
-
-    public static void OnMount(Action fn)
-    {
-        CreateEffect(() => Untrack(fn));
-    }
-
-    public static Action OnCleanup(Action fn)
-    {
-        if (Context.CurrentOwner is null)
-            Console.WriteLine("cleanups created outside a `createRoot` or `render` will never be run");
-        else if (Context.CurrentOwner.Cleanups is null) Context.CurrentOwner.Cleanups = [fn];
-        else Context.CurrentOwner.Cleanups.Add(fn);
-        return fn;
     }
 }
