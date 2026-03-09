@@ -1,14 +1,161 @@
 ﻿namespace Lib;
 
-public delegate TNext EffectFunction<in TPrev, out TNext>(TPrev v) where TNext : TPrev;
+public static partial class Reactive
+{
+    public static Signal<T> CreateSignal<T>(T value)
+    {
+        return new Signal<T>(value);
+    }
 
-public delegate T EffectFunction<T>(T v);
+    public static IComputationNode<object> CreateComputation(
+        Action fn,
+        bool pure = false,
+        ComputationState state = ComputationState.Stale)
+    {
+        return new Computation<object>(_ =>
+        {
+            fn();
+            return Constant.EmptyObj;
+        }, Constant.EmptyObj, pure: pure, state: state);
+    }
 
-public delegate void EffectFunction();
+    public static IComputationNode<T> CreateComputation<T>(
+        Func<T, T> fn,
+        T init,
+        bool pure = false,
+        ComputationState state = ComputationState.Stale)
+    {
+        return new Computation<T>(fn, init, pure: pure, state: state);
+    }
 
-public delegate T Accessor<out T>();
+    public static void CreateEffect(Action fn)
+    {
+        CreateEffect(_ =>
+        {
+            fn();
+            return Constant.EmptyObj;
+        }, Constant.EmptyObj);
+    }
 
-public delegate T RootFunction<out T>(Action dispose);
+    public static void CreateEffect<T>(
+        Func<T, T> fn,
+        T? value = default
+    )
+    {
+        var c = new Computation<T>(fn, value!);
+
+        c.User = true;
+        if (Context.EffectQueue is null)
+        {
+            c.UpdateComputation();
+        }
+        else
+        {
+            Context.EffectQueue.Add(c);
+        }
+    }
+
+    public static ReadOnlySignal<T> CreateMemo<T>(Func<T, T> fn)
+    {
+        return new ReadOnlySignal<T>(fn);
+    }
+
+    public static T Batch<T>(Func<T> fn)
+    {
+        return Common.RunUpdates(fn, false);
+    }
+
+    public static T CreateRoot<T>(Func<Action, T> fn, Owner? detachedOwner = null)
+    {
+        var currentComputation = Context.CurrentComputation;
+        var currentOwner = Context.CurrentOwner;
+        var unDispose = fn.Method.GetParameters().Length == 0;
+        var current = detachedOwner ?? currentOwner;
+        var root = unDispose
+            ? Constant.UnOwned
+            : new Owner(
+                parent: current,
+                children: null,
+                context: current?.Context,
+                cleanups: null
+            );
+        Func<T> updateFn;
+        if (unDispose)
+        {
+            updateFn = () =>
+                fn(() =>
+                {
+                    throw new Exception("Dispose method must be an explicit argument to createRoot function");
+                });
+        }
+        else
+        {
+            updateFn = () => fn(() => Untrack(() => root.CleanNode()));
+        }
+
+        Context.CurrentOwner = root;
+        Context.CurrentComputation = null;
+
+        try
+        {
+            return Common.RunUpdates(updateFn, true)!;
+        }
+        finally
+        {
+            Context.CurrentComputation = currentComputation;
+            Context.CurrentOwner = currentOwner;
+        }
+    }
+
+    public static void OnMount(Action fn)
+    {
+        CreateEffect(() => Untrack(fn));
+    }
+
+    public static Action OnCleanup(Action fn)
+    {
+        if (Context.CurrentOwner is null)
+            Console.WriteLine("cleanups created outside a `createRoot` or `render` will never be run");
+        else if (Context.CurrentOwner.Cleanups is null) Context.CurrentOwner.Cleanups = [fn];
+        else Context.CurrentOwner.Cleanups.Add(fn);
+        return fn;
+    }
+
+    public static T Untrack<T>(Func<T> fn)
+    {
+        if (Context.CurrentComputation is null) return fn();
+
+        var currentComputation = Context.CurrentComputation;
+        Context.CurrentComputation = null;
+        try
+        {
+            return fn();
+        }
+        finally
+        {
+            Context.CurrentComputation = currentComputation;
+        }
+    }
+
+    public static void Untrack(Action fn)
+    {
+        Untrack(() =>
+        {
+            fn();
+            return Constant.EmptyObj;
+        });
+    }
+}
+
+// public delegate TNext EffectFunction<in TPrev, out TNext>(TPrev v) where TNext : TPrev;
+//
+// public delegate T EffectFunction<T>(T v);
+//
+// public delegate void EffectFunction();
+
+// public delegate T Accessor<out T>();
+//
+// public delegate T RootFunction<out T>(Action dispose);
 
 public enum ComputationState
 {
@@ -27,6 +174,8 @@ public interface ISignalState<T> : ISignalState
 {
     T Value { get; internal set; }
     Func<T, T, bool>? Comparator { get; }
+    T WriteSignal(T value);
+    T ReadSignal();
 }
 
 public class SignalState<T>(T value) : ISignalState<T>
@@ -36,6 +185,64 @@ public class SignalState<T>(T value) : ISignalState<T>
     public Func<T, T, bool>? Comparator { get; set; }
 
     public virtual T Value { get; set; } = value;
+
+    public T ReadSignal()
+    {
+        var currentComp = Context.CurrentComputation;
+        if (currentComp is null) return Value;
+        // 建立Computation与Signal的双向引用
+        var sSlot = Observers?.Count ?? 0;
+        var oSlot = currentComp.Sources?.Count ?? 0;
+        if (currentComp.Sources is not null)
+        {
+            currentComp.Sources.Add(this); // 当前计算节点自动收集依赖
+            currentComp.SourceSlots!.Add(sSlot);
+        }
+        else
+        {
+            currentComp.Sources = [this];
+            currentComp.SourceSlots = [sSlot];
+        }
+
+        if (Observers is not null)
+        {
+            Observers.Add(currentComp);
+            ObserverSlots!.Add(oSlot);
+        }
+        else
+        {
+            Observers = [currentComp];
+            ObserverSlots = [oSlot];
+        }
+
+        return Value;
+    }
+
+    public T WriteSignal(T value)
+    {
+        var current = Value;
+
+        if (Comparator?.Invoke(current, value) ?? false) return default!;
+        Value = value;
+
+        if (Observers is null) return default!;
+        Common.RunUpdates(() =>
+        {
+            foreach (var observer in Observers)
+            {
+                observer.AddQueue();
+            }
+
+            if (Context.UpdateQueue!.Count > 10e5)
+            {
+                Context.UpdateQueue = [];
+                throw new Exception("Potential Infinite Loop Detected.");
+            }
+
+            return Constant.EmptyObj;
+        }, false);
+        return value;
+    }
 }
 
 public interface IOwner
@@ -44,6 +251,7 @@ public interface IOwner
     List<IComputationNode>? Children { get; set; }
     List<Action>? Cleanups { get; set; }
     Dictionary<string, object>? Context { get; set; }
+    void CleanNode();
 }
 
 public class Owner(
@@ -57,29 +265,49 @@ public class Owner(
     public List<IComputationNode>? Children { get; set; } = children;
     public List<Action>? Cleanups { get; set; } = cleanups;
     public Dictionary<string, object>? Context { get; set; } = context;
+
+    public void CleanNode()
+    {
+        int i;
+        if (Children is not null)
+        {
+            for (i = Children.Count - 1; i >= 0; i--) Children[i].CleanNode();
+            Children = null;
+        }
+
+        if ((Cleanups?.Count ?? 0) == 0) return;
+
+        for (i = Cleanups!.Count - 1; i >= 0; i--) Cleanups[i]();
+        Cleanups = null;
+    }
 }
 
 public interface IComputationNode : IOwner
 {
-    EffectFunction Fn { get; }
+    Action Fn { get; }
     ComputationState State { get; set; }
     List<ISignalState>? Sources { get; set; }
     List<int>? SourceSlots { get; set; }
     long UpdatedAt { get; set; }
     bool Pure { get; }
     bool User { get; }
+    void RunComputation(long time);
+    internal void AddQueue();
+    internal void RunTop();
+    internal void UpdateComputation();
+    internal void LookUpstream(IComputationNode? ignore = null);
 }
 
 public interface IComputationNode<TInit> : IComputationNode<TInit, TInit>;
 
 public interface IComputationNode<TInit, TNext> : IComputationNode where TNext : TInit
 {
-    public new EffectFunction<TInit, TNext> Fn { get; }
+    public new Func<TInit, TNext> Fn { get; }
     public TInit Value { get; set; }
 }
 
 public class ComputationNode(
-    EffectFunction fn,
+    Action fn,
     ComputationState state = ComputationState.Stale,
     List<ISignalState>? sources = null,
     List<int>? sourceSlots = null,
@@ -92,7 +320,7 @@ public class ComputationNode(
     Dictionary<string, object>? context = null
 ) : IComputationNode
 {
-    public EffectFunction Fn { get; } = fn;
+    public Action Fn { get; } = fn;
     public ComputationState State { get; set; } = state;
     public List<ISignalState>? Sources { get; set; } = sources;
     public List<int>? SourceSlots { get; set; } = sourceSlots;
@@ -103,10 +331,160 @@ public class ComputationNode(
     public List<IComputationNode>? Children { get; set; } = children;
     public List<Action>? Cleanups { get; set; } = cleanups;
     public Dictionary<string, object>? Context { get; set; } = context;
+
+    public void AddQueue()
+    {
+        if (State == ComputationState.Resolved)
+        {
+            if (Pure) Lib.Context.UpdateQueue!.Add(this);
+            else Lib.Context.EffectQueue!.Add(this);
+            MarkDownstream();
+        }
+
+        State = ComputationState.Stale;
+    }
+
+    protected virtual void MarkDownstream() { }
+
+    public void UpdateComputation()
+    {
+        CleanNode(); // 动态依赖切换，先断开旧依赖
+        var time = Lib.Context.ExecCount;
+        RunComputation(time);
+    }
+
+    public virtual void RunComputation(long time)
+    {
+        var tempOwner = Lib.Context.CurrentOwner;
+        var tempComputation = Lib.Context.CurrentComputation;
+        Lib.Context.CurrentOwner = Lib.Context.CurrentComputation = this;
+        try
+        {
+            Fn();
+        }
+        catch (Exception err)
+        {
+            if (Pure)
+            {
+                State = ComputationState.Stale;
+                Children?.ForEach(node => node.CleanNode());
+                Children = null;
+            }
+
+            // won't be picked up until next update
+            UpdatedAt = time + 1;
+            Common.HandleError(err);
+            return;
+        }
+        finally
+        {
+            Lib.Context.CurrentComputation = tempComputation;
+            Lib.Context.CurrentOwner = tempOwner;
+        }
+
+        if (UpdatedAt > time) return;
+        UpdatedAt = time;
+    }
+
+    public void RunTop()
+    {
+        if (State == ComputationState.Resolved) return;
+        if (State == ComputationState.Pending)
+        {
+            LookUpstream();
+            return;
+        }
+
+        List<IComputationNode> ancestors = [this];
+        IComputationNode node = this;
+        while (true)
+        {
+            if (!(Parent is IComputationNode parent && parent.UpdatedAt <= Lib.Context.ExecCount)) break;
+            if (parent.State != ComputationState.Resolved) ancestors.Add(node);
+            node = parent;
+        }
+
+        // 从根owner开始执行
+        for (var i = ancestors.Count - 1; i >= 0; i--)
+        {
+            node = ancestors[i];
+
+            if (node.State == ComputationState.Stale)
+            {
+                node.UpdateComputation();
+            }
+            else if (node.State == ComputationState.Pending)
+            {
+                var updates = Lib.Context.UpdateQueue;
+                Lib.Context.UpdateQueue = null;
+                Common.RunUpdates(() => LookUpstream(ancestors[0]), false);
+                Lib.Context.UpdateQueue = updates;
+            }
+        }
+    }
+
+    /**
+     * 在真正执行前，向上修复所有脏依赖，保证拓扑顺序正确
+     * @param node
+     * @param ignore
+     */
+    public void LookUpstream(IComputationNode? ignore = null)
+    {
+        State = ComputationState.Resolved;
+        for (var i = 0; i < Sources!.Count; i += 1)
+        {
+            if (Sources![i] is not IMemo source) continue;
+            var state = source.State;
+            switch (state)
+            {
+                case ComputationState.Stale:
+                    if (source != ignore && (source.UpdatedAt < Lib.Context.ExecCount))
+                        source.RunTop();
+                    break;
+                case ComputationState.Pending:
+                    LookUpstream(ignore);
+                    break;
+            }
+        }
+    }
+
+    public void CleanNode()
+    {
+        int i;
+        while ((Sources?.Count ?? 0) != 0)
+        {
+            var source = Util.RemoveLast(Sources!);
+            var index = Util.RemoveLast(SourceSlots!);
+            var obs = source.Observers;
+
+            if (obs is null) continue;
+            var n = Util.RemoveLast(obs);
+            var s = Util.RemoveLast(source.ObserverSlots!);
+
+            if (index >= obs.Count) continue;
+            n.SourceSlots![s] = index;
+            obs[index] = n;
+            source.ObserverSlots![index] = s;
+        }
+
+        if (Children is not null)
+        {
+            for (i = Children.Count - 1; i >= 0; i--) Children[i].CleanNode();
+            Children = null;
+        }
+
+        if ((Cleanups?.Count ?? 0) != 0)
+        {
+            for (i = Cleanups!.Count - 1; i >= 0; i--) Cleanups[i]();
+            Cleanups = null;
+        }
+
+        State = ComputationState.Resolved; // 当前及旧的子Computation已解决，旧的子Computation不再执行
+    }
 }
 
 public class ComputationNode<T>(
-    EffectFunction<T, T> fn,
+    Func<T, T> fn,
     T value,
     ComputationState state = ComputationState.Stale,
     List<ISignalState>? sources = null,
@@ -118,19 +496,58 @@ public class ComputationNode<T>(
     List<IComputationNode>? children = null,
     List<Action>? cleanups = null,
     Dictionary<string, object>? context = null
-) : ComputationNode(Constant.EmptyEffectFunction, state, null, sourceSlots,
+) : ComputationNode(Constant.EmptyEffectFunction, state, sources, sourceSlots,
         updatedAt, pure, user, parent, children, cleanups, context),
     IComputationNode<T>
 {
-    public new EffectFunction<T, T> Fn { get; } = fn;
+    public Func<T, T> Fn { get; } = fn;
     public T Value { get; set; } = value;
-    public new List<ISignalState>? Sources { get; set; } = sources;
+
+    protected virtual void UpdateValue(T value)
+    {
+        Value = value;
+    }
+
+    public override void RunComputation(long time)
+    {
+        T nextValue;
+        var tempOwner = Lib.Context.CurrentOwner;
+        var tempComputation = Lib.Context.CurrentComputation;
+        Lib.Context.CurrentOwner = Lib.Context.CurrentComputation = this;
+        try
+        {
+            nextValue = Fn(Value);
+        }
+        catch (Exception err)
+        {
+            if (Pure)
+            {
+                State = ComputationState.Stale;
+                Children?.ForEach(node => node.CleanNode());
+                Children = null;
+            }
+
+            // won't be picked up until next update
+            UpdatedAt = time + 1;
+            Common.HandleError(err);
+            return;
+        }
+        finally
+        {
+            Lib.Context.CurrentComputation = tempComputation;
+            Lib.Context.CurrentOwner = tempOwner;
+        }
+
+        if (UpdatedAt > time) return;
+        UpdateValue(nextValue);
+        UpdatedAt = time;
+    }
 }
 
 public class Computation<T> : ComputationNode<T>
 {
     public Computation(
-        EffectFunction<T, T> fn,
+        Func<T, T> fn,
         T value,
         ComputationState state = ComputationState.Stale,
         List<ISignalState>? sources = null,
@@ -166,7 +583,7 @@ public interface IMemo<TPrev, TNext> : IMemo, ISignalState<TNext>, IComputationN
 public interface IMemo<TPrev> : IMemo<TPrev, TPrev>;
 
 public class Memo<T>(
-    EffectFunction<T, T> fn,
+    Func<T, T> fn,
     ComputationState state = ComputationState.Resolved,
     T? value = default,
     Func<T, T, bool>? comparator = null,
@@ -184,10 +601,105 @@ public class Memo<T>(
 ) : Computation<T>(fn, value!, state, sources, sourceSlots, updatedAt, pure, user, parent, children, cleanups, context),
     IMemo<T>
 {
-    EffectFunction IComputationNode.Fn { get; } = Constant.EmptyEffectFunction;
+    Action IComputationNode.Fn { get; } = Constant.EmptyEffectFunction;
     public Func<T, T, bool>? Comparator { get; } = comparator;
     public List<IComputationNode>? Observers { get; set; } = observers;
     public List<int>? ObserverSlots { get; set; } = observerSlots;
+
+    protected override void UpdateValue(T value)
+    {
+        WriteSignal(value);
+    }
+
+    /**
+     * 递归向下传播脏状态
+     */
+    protected override void MarkDownstream()
+    {
+        foreach (var observer in Observers!)
+        {
+            if (observer.State != ComputationState.Resolved) continue;
+            observer.State = ComputationState.Pending;
+            if (observer.Pure) Lib.Context.UpdateQueue!.Add(observer);
+            else Lib.Context.EffectQueue!.Add(observer);
+            if (observer is not IMemo memo) continue;
+            MarkDownstream();
+        }
+    }
+
+    public T ReadSignal()
+    {
+        if (State == ComputationState.Stale)
+        {
+            UpdateComputation();
+        }
+        else
+        {
+            var updates = Lib.Context.UpdateQueue;
+            Lib.Context.UpdateQueue = null;
+            Common.RunUpdates(() =>
+            {
+                LookUpstream();
+                return Constant.EmptyObj;
+            }, false);
+            Lib.Context.UpdateQueue = updates;
+        }
+
+        var currentComp = Lib.Context.CurrentComputation;
+        if (currentComp is null) return Value;
+        // 建立Computation与Signal的双向引用
+        var sSlot = Observers?.Count ?? 0;
+        var oSlot = currentComp.Sources?.Count ?? 0;
+        if (currentComp.Sources is not null)
+        {
+            currentComp.Sources.Add(this); // 当前计算节点自动收集依赖
+            currentComp.SourceSlots!.Add(sSlot);
+        }
+        else
+        {
+            currentComp.Sources = [this];
+            currentComp.SourceSlots = [sSlot];
+        }
+
+        if (Observers is not null)
+        {
+            Observers.Add(currentComp);
+            ObserverSlots!.Add(oSlot);
+        }
+        else
+        {
+            Observers = [currentComp];
+            ObserverSlots = [oSlot];
+        }
+
+        return Value;
+    }
+
+    public T WriteSignal(T value)
+    {
+        var current = Value;
+
+        if (Comparator?.Invoke(current, value) ?? false) return default!;
+        Value = value;
+
+        if (Observers is null) return default!;
+        Common.RunUpdates(() =>
+        {
+            foreach (var observer in Observers)
+            {
+                observer.AddQueue();
+            }
+
+            if (Lib.Context.UpdateQueue!.Count > 10e5)
+            {
+                Lib.Context.UpdateQueue = [];
+                throw new Exception("Potential Infinite Loop Detected.");
+            }
+
+            return Constant.EmptyObj;
+        }, false);
+        return value;
+    }
 }
 
 internal static class Context
@@ -215,7 +727,7 @@ internal static class Constant
     }
 
     public static readonly object EmptyObj = new { };
-    public static readonly EffectFunction EmptyEffectFunction = () => { };
+    public static readonly Action EmptyEffectFunction = () => { };
 }
 
 internal static class Util
@@ -229,264 +741,9 @@ internal static class Util
     }
 }
 
-public interface IReadOnlySignal<T>
+internal static class Common
 {
-    public T Value { get; }
-}
-
-public interface ISignal<T> : IReadOnlySignal<T>
-{
-    public new T Value { get; set; }
-}
-
-public class Signal<T>(T value) : ISignal<T>
-{
-    private readonly SignalState<T> _state = new(value);
-
-    public T Value
-    {
-        get => Reactive.ReadSignal(_state);
-        set => Reactive.WriteSignal(_state, value);
-    }
-
-    public void SetValue(T value)
-    {
-        Reactive.WriteSignal(_state, value);
-    }
-
-    public void SetValue(Func<T, T> value)
-    {
-        Reactive.WriteSignal(_state, value(_state.Value));
-    }
-}
-
-public class ReadOnlySignal<T> : IReadOnlySignal<T>
-{
-    private readonly Memo<T> _state;
-
-    public T Value => Reactive.ReadSignal(_state);
-
-    public ReadOnlySignal(EffectFunction<T, T> fn)
-    {
-        _state = new Memo<T>(
-            fn,
-            comparator: Constant.EqualFn
-        )
-        {
-            Observers = null,
-            ObserverSlots = null,
-        };
-        Reactive.UpdateComputation(_state);
-    }
-}
-
-public static partial class Reactive
-{
-    public static Signal<T> CreateSignal<T>(T value)
-    {
-        return new Signal<T>(value);
-    }
-
-
-    public static IComputationNode<object> CreateComputation(
-        Action fn,
-        bool pure = false,
-        ComputationState state = ComputationState.Stale)
-    {
-        return new Computation<object>(_ =>
-        {
-            fn();
-            return Constant.EmptyObj;
-        }, Constant.EmptyObj, pure: pure, state: state);
-    }
-
-    public static IComputationNode<T> CreateComputation<T>(
-        EffectFunction<T, T> fn,
-        T init,
-        bool pure = false,
-        ComputationState state = ComputationState.Stale)
-    {
-        return new Computation<T>(fn, init, pure: pure, state: state);
-    }
-
-    public static void CreateEffect(EffectFunction fn)
-    {
-        CreateEffect(_ =>
-        {
-            fn();
-            return Constant.EmptyObj;
-        }, Constant.EmptyObj);
-    }
-
-    public static void CreateEffect<T>(
-        EffectFunction<T, T> fn,
-        T? value = default
-    )
-    {
-        var c = new Computation<T>(fn, value!);
-
-        c.User = true;
-        if (Context.EffectQueue is null)
-        {
-            UpdateComputation(c);
-        }
-        else
-        {
-            Context.EffectQueue.Add(c);
-        }
-    }
-
-    public static ReadOnlySignal<T> CreateMemo<T>(EffectFunction<T, T> fn)
-    {
-        return new ReadOnlySignal<T>(fn);
-    }
-
-    internal static T ReadSignal<T>(ISignalState<T> signalState)
-    {
-        if (signalState is IMemo<T> memo)
-        {
-            if (memo.State == ComputationState.Stale)
-            {
-                UpdateComputation(memo);
-            }
-            else
-            {
-                var updates = Context.UpdateQueue;
-                Context.UpdateQueue = null;
-                RunUpdates(() =>
-                {
-                    LookUpstream(memo);
-                    return Constant.EmptyObj;
-                }, false);
-                Context.UpdateQueue = updates;
-            }
-        }
-
-        var currentComp = Context.CurrentComputation;
-        if (currentComp is null) return signalState.Value;
-        // 建立Computation与Signal的双向引用
-        var sSlot = signalState.Observers?.Count ?? 0;
-        var oSlot = currentComp.Sources?.Count ?? 0;
-        if (currentComp.Sources is not null)
-        {
-            currentComp.Sources.Add(signalState); // 当前计算节点自动收集依赖
-            currentComp.SourceSlots!.Add(sSlot);
-        }
-        else
-        {
-            currentComp.Sources = [signalState];
-            currentComp.SourceSlots = [sSlot];
-        }
-
-        if (signalState.Observers is not null)
-        {
-            signalState.Observers.Add(currentComp);
-            signalState.ObserverSlots!.Add(oSlot);
-        }
-        else
-        {
-            signalState.Observers = [currentComp];
-            signalState.ObserverSlots = [oSlot];
-        }
-
-        return signalState.Value;
-    }
-
-    internal static T WriteSignal<T>(ISignalState<T> node, T value)
-    {
-        var current = node.Value;
-
-        if (node.Comparator?.Invoke(current, value) ?? false) return default!;
-        node.Value = value;
-
-        if (node.Observers is null) return default!;
-        RunUpdates(() =>
-        {
-            foreach (var observer in node.Observers)
-            {
-                if (observer.State == ComputationState.Resolved)
-                {
-                    if (observer.Pure) Context.UpdateQueue!.Add(observer);
-                    else Context.EffectQueue!.Add(observer);
-                    if (observer is IMemo memo) MarkDownstream(memo);
-                }
-
-                observer.State = ComputationState.Stale;
-            }
-
-            if (Context.UpdateQueue!.Count > 10e5)
-            {
-                Context.UpdateQueue = [];
-                throw new Exception("Potential Infinite Loop Detected.");
-            }
-
-            return Constant.EmptyObj;
-        }, false);
-        return value;
-    }
-
-    public static T Batch<T>(Accessor<T> fn)
-    {
-        return RunUpdates(fn, false);
-    }
-
-    public static T CreateRoot<T>(RootFunction<T> fn, Owner? detachedOwner = null)
-    {
-        var currentComputation = Context.CurrentComputation;
-        var currentOwner = Context.CurrentOwner;
-        var unDispose = fn.Method.GetParameters().Length == 0;
-        var current = detachedOwner ?? currentOwner;
-        var root = unDispose
-            ? Constant.UnOwned
-            : new Owner(
-                parent: current,
-                children: null,
-                context: current?.Context,
-                cleanups: null
-            );
-        Accessor<T> updateFn;
-        if (unDispose)
-        {
-            updateFn = () =>
-                fn(() =>
-                {
-                    throw new Exception("Dispose method must be an explicit argument to createRoot function");
-                });
-        }
-        else
-        {
-            updateFn = () => fn(() => Untrack(() => CleanNode(root)));
-        }
-
-        Context.CurrentOwner = root;
-        Context.CurrentComputation = null;
-
-        try
-        {
-            return RunUpdates(updateFn, true)!;
-        }
-        finally
-        {
-            Context.CurrentComputation = currentComputation;
-            Context.CurrentOwner = currentOwner;
-        }
-    }
-
-    public static void OnMount(Action fn)
-    {
-        CreateEffect(() => Untrack(fn));
-    }
-
-    public static Action OnCleanup(Action fn)
-    {
-        if (Context.CurrentOwner is null)
-            Console.WriteLine("cleanups created outside a `createRoot` or `render` will never be run");
-        else if (Context.CurrentOwner.Cleanups is null) Context.CurrentOwner.Cleanups = [fn];
-        else Context.CurrentOwner.Cleanups.Add(fn);
-        return fn;
-    }
-
-    private static void RunUpdates(Action fn, bool init)
+    internal static void RunUpdates(Action fn, bool init)
     {
         RunUpdates(() =>
         {
@@ -495,7 +752,7 @@ public static partial class Reactive
         }, init);
     }
 
-    private static T RunUpdates<T>(Accessor<T> fn, bool init)
+    internal static T RunUpdates<T>(Func<T> fn, bool init)
     {
         if (Context.UpdateQueue is not null) return fn();
         var wait = false;
@@ -541,7 +798,7 @@ public static partial class Reactive
     {
         foreach (var queue in queues)
         {
-            RunTop(queue);
+            queue.RunTop();
         }
     }
 
@@ -551,268 +808,14 @@ public static partial class Reactive
         for (var i = 0; i < queue.Count; i++)
         {
             var e = queue[i];
-            if (!e.User) RunTop(e);
+            if (!e.User) e.RunTop();
             else queue[userLength++] = e;
         }
 
-        for (var i = 0; i < userLength; i++) RunTop(queue[i]);
+        for (var i = 0; i < userLength; i++) queue[i].RunTop();
     }
 
-    private static void RunTop(IComputationNode node)
-    {
-        if (node.State == ComputationState.Resolved) return;
-        if (node.State == ComputationState.Pending)
-        {
-            LookUpstream(node);
-            return;
-        }
-
-        List<IComputationNode> ancestors = [node];
-        while (true)
-        {
-            if (!(node.Parent is IComputationNode parent && parent.UpdatedAt <= Context.ExecCount)) break;
-            if (parent.State != ComputationState.Resolved) ancestors.Add(node);
-            node = parent;
-        }
-
-        // 从根owner开始执行
-        for (var i = ancestors.Count - 1; i >= 0; i--)
-        {
-            node = ancestors[i];
-
-            if (node.State == ComputationState.Stale)
-            {
-                UpdateComputation(node);
-            }
-            else if (node.State == ComputationState.Pending)
-            {
-                var updates = Context.UpdateQueue;
-                Context.UpdateQueue = null;
-                RunUpdates(() => LookUpstream(node, ancestors[0]), false);
-                Context.UpdateQueue = updates;
-            }
-        }
-    }
-
-    internal static void UpdateComputation(IComputationNode node)
-    {
-        CleanNode(node); // 动态依赖切换，先断开旧依赖
-        var time = Context.ExecCount;
-        RunComputation(time, node);
-    }
-
-    private static void RunComputation(long time, IComputationNode node)
-    {
-        object? nextValue;
-        var tempOwner = Context.CurrentOwner;
-        var tempComputation = Context.CurrentComputation;
-        Context.CurrentOwner = Context.CurrentComputation = node;
-        try
-        {
-            nextValue = node switch
-            {
-                IComputationNode<object> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<long> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<int> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<short> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<byte> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<char> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<string> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<double> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<float> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<decimal> nodeV => nodeV.Fn(nodeV.Value),
-                IComputationNode<bool> nodeV => nodeV.Fn(nodeV.Value),
-                _ => null
-            };
-        }
-        catch (Exception err)
-        {
-            if (node.Pure)
-            {
-                node.State = ComputationState.Stale;
-                node.Children?.ForEach(CleanNode);
-                node.Children = null;
-            }
-
-            // won't be picked up until next update
-            node.UpdatedAt = time + 1;
-            HandleError(err);
-            return;
-        }
-        finally
-        {
-            Context.CurrentComputation = tempComputation;
-            Context.CurrentOwner = tempOwner;
-        }
-
-        if (node.UpdatedAt > time) return;
-        switch (node)
-        {
-            case IComputationNode<object> nodeV:
-                if (node is IMemo<object> memo1) WriteSignal(memo1, nextValue!);
-                else nodeV.Value = nextValue!;
-                break;
-            case IComputationNode<long> nodeV:
-                if (node is IMemo<long> memo2) WriteSignal(memo2, (long)nextValue!);
-                else nodeV.Value = (long)nextValue!;
-                break;
-            case IComputationNode<int> nodeV:
-                if (node is IMemo<int> memo3) WriteSignal(memo3, (int)nextValue!);
-                else nodeV.Value = (int)nextValue!;
-                break;
-            case IComputationNode<short> nodeV:
-                if (node is IMemo<short> memo4) WriteSignal(memo4, (short)nextValue!);
-                else nodeV.Value = (short)nextValue!;
-                break;
-            case IComputationNode<byte> nodeV:
-                if (node is IMemo<byte> memo5) WriteSignal(memo5, (byte)nextValue!);
-                else nodeV.Value = (byte)nextValue!;
-                break;
-            case IComputationNode<char> nodeV:
-                if (node is IMemo<char> memo6) WriteSignal(memo6, (char)nextValue!);
-                else nodeV.Value = (char)nextValue!;
-                break;
-            case IComputationNode<string> nodeV:
-                if (node is IMemo<string> memo7) WriteSignal(memo7, (string)nextValue!);
-                else nodeV.Value = (string)nextValue!;
-                break;
-            case IComputationNode<double> nodeV:
-                if (node is IMemo<double> memo8) WriteSignal(memo8, (double)nextValue!);
-                else nodeV.Value = (double)nextValue!;
-                break;
-            case IComputationNode<float> nodeV:
-                if (node is IMemo<float> memo9) WriteSignal(memo9, (float)nextValue!);
-                else nodeV.Value = (float)nextValue!;
-                break;
-            case IComputationNode<decimal> nodeV:
-                if (node is IMemo<decimal> memo10) WriteSignal(memo10, (decimal)nextValue!);
-                else nodeV.Value = (decimal)nextValue!;
-                break;
-            case IComputationNode<bool> nodeV:
-                if (node is IMemo<bool> memo11) WriteSignal(memo11, (bool)nextValue!);
-                else nodeV.Value = (bool)nextValue!;
-                break;
-        }
-
-        node.UpdatedAt = time;
-    }
-
-    /**
-     * 递归向下传播脏状态
-     * @param node
-     */
-    private static void MarkDownstream(IMemo node)
-    {
-        foreach (var observer in node.Observers!)
-        {
-            if (observer.State != ComputationState.Resolved) continue;
-            observer.State = ComputationState.Pending;
-            if (observer.Pure) Context.UpdateQueue!.Add(observer);
-            else Context.EffectQueue!.Add(observer);
-            if (observer is not IMemo memo) continue;
-            MarkDownstream(memo);
-        }
-    }
-
-    /**
-     * 在真正执行前，向上修复所有脏依赖，保证拓扑顺序正确
-     * @param node
-     * @param ignore
-     */
-    private static void LookUpstream(IComputationNode node, IComputationNode? ignore = null)
-    {
-        node.State = ComputationState.Resolved;
-        for (var i = 0; i < node.Sources!.Count; i += 1)
-        {
-            if (node.Sources![i] is not IMemo source) continue;
-            var state = source.State;
-            switch (state)
-            {
-                case ComputationState.Stale:
-                    if (source != ignore && (source.UpdatedAt < Context.ExecCount))
-                        RunTop(source);
-                    break;
-                case ComputationState.Pending:
-                    LookUpstream(source, ignore);
-                    break;
-            }
-        }
-    }
-
-    public static T Untrack<T>(Accessor<T> fn)
-    {
-        if (Context.CurrentComputation is null) return fn();
-
-        var currentComputation = Context.CurrentComputation;
-        Context.CurrentComputation = null;
-        try
-        {
-            return fn();
-        }
-        finally
-        {
-            Context.CurrentComputation = currentComputation;
-        }
-    }
-
-    public static void Untrack(Action fn)
-    {
-        Untrack(() =>
-        {
-            fn();
-            return Constant.EmptyObj;
-        });
-    }
-
-    private static void CleanNode(IOwner node)
-    {
-        int i;
-        if (node is IComputationNode computationNode)
-        {
-            CleanComputationNode(computationNode);
-            CommonCode();
-            computationNode.State = ComputationState.Resolved; // 当前及旧的子Computation已解决，旧的子Computation不再执行
-            return;
-        }
-
-        CommonCode();
-        return;
-
-        void CommonCode()
-        {
-            if (node.Children is not null)
-            {
-                for (i = node.Children.Count - 1; i >= 0; i--) CleanNode(node.Children[i]);
-                node.Children = null;
-            }
-
-            if ((node.Cleanups?.Count ?? 0) == 0) return;
-
-            for (i = node.Cleanups!.Count - 1; i >= 0; i--) node.Cleanups[i]();
-            node.Cleanups = null;
-        }
-    }
-
-    private static void CleanComputationNode(IComputationNode node)
-    {
-        while ((node.Sources?.Count ?? 0) != 0)
-        {
-            var source = Util.RemoveLast(node.Sources!);
-            var index = Util.RemoveLast(node.SourceSlots!);
-            var obs = source.Observers;
-
-            if (obs is null) continue;
-            var n = Util.RemoveLast(obs);
-            var s = Util.RemoveLast(source.ObserverSlots!);
-
-            if (index >= obs.Count) continue;
-            n.SourceSlots![s] = index;
-            obs[index] = n;
-            source.ObserverSlots![index] = s;
-        }
-    }
-
-    private static void HandleError(Exception err, IOwner? owner = null)
+    internal static void HandleError(Exception err, IOwner? owner = null)
     {
         owner ??= Context.CurrentOwner;
         ICollection<Action<object>>? fns = null;
@@ -826,7 +829,7 @@ public static partial class Reactive
 
         if (Context.EffectQueue is not null)
         {
-            var handler = CreateComputation(() => RunErrors(error, fns, owner));
+            var handler = Reactive.CreateComputation(() => RunErrors(error, fns, owner));
             handler.State = ComputationState.Stale;
             Context.EffectQueue.Add(handler);
         }
@@ -852,5 +855,58 @@ public static partial class Reactive
         {
             HandleError(e, owner?.Parent);
         }
+    }
+}
+
+public interface IReadOnlySignal<T>
+{
+    public T Value { get; }
+}
+
+public interface ISignal<T> : IReadOnlySignal<T>
+{
+    public new T Value { get; set; }
+}
+
+public class Signal<T>(T value) : ISignal<T>
+{
+    private readonly SignalState<T> _state = new(value);
+
+    public T Value
+    {
+        get => _state.ReadSignal();
+        set => _state.WriteSignal(value);
+    }
+
+    public void SetValue(T value)
+    {
+        _state.WriteSignal(value);
+    }
+
+    public void SetValue(Func<T, T> value)
+    {
+        _state.WriteSignal(value(_state.Value));
+    }
+}
+
+public class ReadOnlySignal<T> : IReadOnlySignal<T>
+{
+    private readonly Memo<T> _state;
+
+    public T Value => _state.ReadSignal();
+
+    public ReadOnlySignal(Func<T, T> fn)
+    {
+        _state = new Memo<T>(
+            fn,
+            comparator: Constant.EqualFn,
+            pure: true
+        )
+        {
+            Observers = null,
+            ObserverSlots = null,
+            State = ComputationState.Resolved
+        };
+        _state.UpdateComputation();
     }
 }
