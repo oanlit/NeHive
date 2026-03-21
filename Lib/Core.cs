@@ -66,14 +66,51 @@ public static partial class Reactive
         }
     }
 
-    public static ReadOnlySignal<T> CreateMemo<T>(Func<T, T> fn)
+    public static Memo<T> CreateMemo<T>(Func<T, T> fn)
     {
-        return new ReadOnlySignal<T>(fn);
+        return new Memo<T>(fn);
+    }
+
+    public static void Batch(Action fn)
+    {
+        Common.RunUpdates(fn, false);
     }
 
     public static T Batch<T>(Func<T> fn)
     {
         return Common.RunUpdates(fn, false);
+    }
+
+    public static void CreateRoot(Action fn, Owner? detachedOwner = null)
+    {
+        var currentComputation = CurrentState.CurrentComputation;
+        var currentOwner = CurrentState.CurrentOwner;
+        var current = detachedOwner ?? currentOwner;
+        var root = new Owner(
+            parent: current,
+            children: null,
+            context: current?.Context,
+            cleanups: null
+        );
+
+        var updateFn = () =>
+        {
+            fn();
+            Untrack(() => root.CleanNode());
+        };
+
+        CurrentState.CurrentOwner = root;
+        CurrentState.CurrentComputation = null;
+
+        try
+        {
+            Common.RunUpdates(updateFn, true);
+        }
+        finally
+        {
+            CurrentState.CurrentComputation = currentComputation;
+            CurrentState.CurrentOwner = currentOwner;
+        }
     }
 
     public static T CreateRoot<T>(Func<Action, T> fn, Owner? detachedOwner = null)
@@ -183,7 +220,7 @@ public static partial class Reactive
 
             return nextValue;
         };
-        var node = new Memo<T>(fn: computationFn, pure: true, phase: ComputationPhase.Stale);
+        var node = new MemoState<T>(fn: computationFn, pure: true, phase: ComputationPhase.Stale);
         node.UpdateComputation();
         return key =>
         {
@@ -208,12 +245,17 @@ public static partial class Reactive
     }
 }
 
-public interface IReadOnlySignal<T>
+public interface IReadOnlySignal<out T>
 {
     public T Value { get; }
 }
 
-public interface ISignal<T> : IReadOnlySignal<T>
+public interface ISetOnlySignal<in T>
+{
+    public T Value { set; }
+}
+
+public interface ISignal<T> : IReadOnlySignal<T>, ISetOnlySignal<T>
 {
     public new T Value { get; set; }
 }
@@ -239,15 +281,15 @@ public class Signal<T>(T value) : ISignal<T>
     }
 }
 
-public class ReadOnlySignal<T> : IReadOnlySignal<T>
+public class Memo<T> : IReadOnlySignal<T>
 {
-    private readonly Memo<T> _state;
+    private readonly MemoState<T> _state;
 
     public T Value => _state.ReadSignal();
 
-    public ReadOnlySignal(Func<T, T> fn)
+    public Memo(Func<T, T> fn, T? value = default)
     {
-        _state = new Memo<T>(
+        _state = new MemoState<T>(
             fn,
             comparator: Constant.EqualFn,
             pure: true
@@ -255,7 +297,8 @@ public class ReadOnlySignal<T> : IReadOnlySignal<T>
         {
             Observers = null,
             ObserverSlots = null,
-            Phase = ComputationPhase.Resolved
+            Phase = ComputationPhase.Resolved,
+            Value = value!
         };
         _state.UpdateComputation();
     }
@@ -375,8 +418,9 @@ internal static class Common
         if (signal.Observers is null) return default!;
         RunUpdates(() =>
         {
-            foreach (var observer in signal.Observers)
+            for (var i = 0; i < signal.Observers.Count; i++)
             {
+                var observer = signal.Observers[i];
                 observer.AddQueue();
             }
 
@@ -438,10 +482,11 @@ internal static class Common
             }, false);
     }
 
-    private static void RunQueue(ICollection<ComputationNode> queues)
+    private static void RunQueue(List<ComputationNode> queues)
     {
-        foreach (var queue in queues)
+        for (var i = 0; i < queues.Count; i++)
         {
+            var queue = queues[i];
             queue.RunTop();
         }
     }
@@ -511,10 +556,10 @@ internal static class Common
     internal static void HandleError(Exception err, Owner? owner = null)
     {
         owner ??= CurrentState.CurrentOwner;
-        ICollection<Action<object>>? fns = null;
+        List<Action<object>>? fns = null;
         if (CurrentState.Error is not null)
         {
-            fns = owner?.Context?[CurrentState.Error] as ICollection<Action<object>>;
+            fns = owner?.Context?[CurrentState.Error] as List<Action<object>>;
         }
 
         var error = CastError(err);
@@ -533,15 +578,16 @@ internal static class Common
     internal static Exception CastError(object err)
     {
         if (err is Exception exception) return exception;
-        return new Exception(err is string errorStr ? errorStr : "Unknown error");
+        return new Exception(err as string ?? "Unknown error");
     }
 
-    private static void RunErrors(object err, ICollection<Action<object>> fns, Owner? owner)
+    private static void RunErrors(object err, List<Action<object>> fns, Owner? owner)
     {
         try
         {
-            foreach (var f in fns)
+            for (var i = 0; i < fns.Count; i++)
             {
+                var f = fns[i];
                 f(err);
             }
         }
@@ -728,7 +774,7 @@ public class ComputationNode : Owner
     internal void LookUpstream(ComputationNode? ignore = null)
     {
         Phase = ComputationPhase.Resolved;
-        for (var i = 0; i < Sources!.Count; i += 1)
+        for (var i = 0; i < Sources?.Count; i += 1)
         {
             Sources![i].UpdateIfNeeded();
         }
@@ -775,7 +821,7 @@ public class ComputationNode<T>(
     updatedAt, pure, user, parent, children, cleanups, context)
 {
     public readonly Func<T, T> Fn = fn;
-    public T Value = value;
+    public virtual T Value { get; set; } = value;
 
     protected virtual void UpdateValue(T value)
     {
@@ -834,7 +880,7 @@ public class Computation<T>(
 ) : ComputationNode<T>(fn, value, phase, sources, sourceSlots, updatedAt, pure, user,
     parent, children, cleanups, context);
 
-public class Memo<T>(
+public class MemoState<T>(
     Func<T, T> fn,
     ComputationPhase phase = ComputationPhase.Resolved,
     T? value = default,
@@ -844,7 +890,7 @@ public class Memo<T>(
     List<ISignalState>? sources = null,
     List<int>? sourceSlots = null,
     long updatedAt = 0,
-    bool pure = false,
+    bool pure = true,
     bool user = false,
     Owner? parent = null,
     List<ComputationNode>? children = null,
@@ -857,7 +903,7 @@ public class Memo<T>(
     public List<ComputationNode>? Observers { get; set; } = observers;
     public List<int>? ObserverSlots { get; set; } = observerSlots;
 
-    public new T Value { get; set; } = value!;
+    public override T Value { get; set; } = value!;
 
     protected override void UpdateValue(T value)
     {
@@ -869,8 +915,9 @@ public class Memo<T>(
      */
     internal override void MarkDownstream()
     {
-        foreach (var observer in Observers!)
+        for (var i = 0; i < Observers?.Count; i++)
         {
+            var observer = Observers![i];
             if (observer.Phase != ComputationPhase.Resolved) continue;
             observer.Phase = ComputationPhase.Pending;
             if (observer.Pure) CurrentState.UpdateQueue!.Add(observer);
