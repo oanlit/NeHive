@@ -3,24 +3,29 @@ using Lib;
 namespace Demo.Store;
 
 [Store]
-public partial class Student
+public class Student
 {
-    public partial int Id { get; private set; }
-    public partial string Name { get; set; }
-    public partial int Age { get; set; }
-
-    public void SetId(int id)
+    public int Id { get; private set; }
+    public int Age
     {
-        Reactive.Batch(() =>
-        {
-            Id = id;
-        });
+        get => field;
+        set => field = value + 1;
     }
-}
+    public int DoubleAge => Age * 2;
 
-[Store]
-public partial class ClassRoom
-{
-    public partial string Name { get; set; }
-    public partial Student Leader { get; set; }
+    [NoSignal]
+    public string Tag { get; set; }
+
+    public void Update(int id, int age)
+    {
+        Id = id;
+        Age = age;
+    }
+
+    public Student(int id, int age)
+    {
+        Id = id;
+        Age = age;
+        Tag = "default";
+    }
 }

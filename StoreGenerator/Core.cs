@@ -9,156 +9,436 @@ using System.Text;
 namespace StoreGenerator
 {
     [Generator(LanguageNames.CSharp)]
-    public class SignalPropertyGenerator : IIncrementalGenerator
+    public class StoreIncrementalGenerator : IIncrementalGenerator
     {
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            // 查找带有 GenerateSignalPropertiesAttribute 的类声明
+            // 1. 获取所有标记了 [Store] 的类声明
             var classDeclarations = context.SyntaxProvider
                 .CreateSyntaxProvider(
                     predicate: (node, _) =>
                         node is ClassDeclarationSyntax classDecl && classDecl.AttributeLists.Count > 0,
-                    transform: (ctx, _) => GetClassSymbol(ctx))
+                    transform: (ctx, _) => GetClassWithStoreAttribute(ctx))
                 .Where(c => c != null);
 
-            // 收集所有需要生成的类
+            // 2. 结合编译信息
             var compilationAndClasses = context.CompilationProvider.Combine(classDeclarations.Collect());
 
+            // 3. 生成代码
             context.RegisterSourceOutput(compilationAndClasses, (spc, source) =>
             {
                 var (compilation, classes) = source;
-                foreach (var classSymbol in classes)
+                foreach (var classDecl in classes)
                 {
-                    GenerateCode(spc, classSymbol);
+                    var semanticModel = compilation.GetSemanticModel(classDecl.SyntaxTree);
+                    if (semanticModel == null) continue;
+
+                    var classSymbol = semanticModel.GetDeclaredSymbol(classDecl) as INamedTypeSymbol;
+                    if (classSymbol == null) continue;
+
+                    // 检查是否有 [Store] 特性（已由 predicate 过滤，但保留双重保险）
+                    if (!HasStoreAttribute(classSymbol)) continue;
+
+                    // 生成新类代码
+                    var generatedCode = GenerateStoreClass(classDecl, semanticModel, classSymbol);
+                    spc.AddSource($"{classDecl.Identifier.Text}Store.g.cs",
+                        SourceText.From(generatedCode, Encoding.UTF8));
                 }
             });
         }
 
-        private INamedTypeSymbol GetClassSymbol(GeneratorSyntaxContext context)
+        private static ClassDeclarationSyntax GetClassWithStoreAttribute(GeneratorSyntaxContext context)
         {
             var classDecl = (ClassDeclarationSyntax)context.Node;
-            // 检查是否有 GenerateSignalPropertiesAttribute
-            foreach (var attributeList in classDecl.AttributeLists)
-            {
-                foreach (var attribute in attributeList.Attributes)
-                {
-                    var symbol = context.SemanticModel.GetSymbolInfo(attribute).Symbol;
-                    if (symbol is IMethodSymbol methodSymbol &&
-                        methodSymbol.ContainingType.ToDisplayString() == "Lib.StoreAttribute")
-                    {
-                        return context.SemanticModel.GetDeclaredSymbol(classDecl) as INamedTypeSymbol;
-                    }
-                }
-            }
-
+            var symbol = context.SemanticModel.GetDeclaredSymbol(classDecl);
+            if (symbol != null && HasStoreAttribute(symbol))
+                return classDecl;
             return null;
         }
 
-        private void GenerateCode(SourceProductionContext context, INamedTypeSymbol classSymbol)
+        private static bool HasStoreAttribute(ISymbol symbol)
         {
-            // 获取命名空间
-            var namespaceName = classSymbol.ContainingNamespace.ToDisplayString();
-
-            // 获取类名
-            var className = classSymbol.Name;
-
-            // 只获取 public partial 属性
-            var properties = classSymbol.GetMembers()
-                .OfType<IPropertySymbol>()
-                .Where(p => p.DeclaredAccessibility == Accessibility.Public &&
-                            p.SetMethod != null && p.GetMethod != null &&
-                            p.IsPartial()); // 需要自己实现 IsPartial 扩展方法
-
-            if (!properties.Any())
-                return;
-
-            // 构建主构造函数的参数列表和 Signal 字段初始化
-            var paramList = new List<string>();
-            var fieldInitializers = new List<string>();
-
-            foreach (var prop in properties)
-            {
-                var propType = prop.Type.ToDisplayString();
-                var propName = prop.Name;
-                var paramName = propName.ToLowerInvariant(); // 约定：参数名小写
-
-                paramList.Add($"{propType} {paramName}");
-                fieldInitializers.Add($"private readonly Signal<{propType}> _{paramName} = new({paramName});");
-            }
-            
-            // 构建属性实现
-            var propertyImpls = new List<string>();
-            foreach (var prop in properties)
-            {
-                var propType = prop.Type.ToDisplayString();
-                var propName = prop.Name;
-                var paramName = propName.ToLowerInvariant();
-                var getAccessibility = prop.GetMethod?.DeclaredAccessibility ?? Accessibility.NotApplicable;
-                var setAccessibility = prop.SetMethod?.DeclaredAccessibility ?? Accessibility.NotApplicable;
-                var isInitOnly = prop.SetMethod?.IsInitOnly ?? false;
-                var propAccessibility = prop.DeclaredAccessibility;
-                var getModifier = GetAccessibilityKeyword(getAccessibility, propAccessibility);
-                var setModifier = GetAccessibilityKeyword(setAccessibility, propAccessibility);
-                var setKeyword = isInitOnly ? "init" : "set";
-
-                propertyImpls.Add($@"
-    public partial {propType} {propName}
-    {{
-        {getModifier}get => _{paramName}.Value;
-        {setModifier}{setKeyword} => _{paramName}.Value = value;
-    }}");
-            }
-
-            // 生成完整的类代码
-            var code = $@"using Lib;
-
-namespace {namespaceName};
-
-public partial class {className}({string.Join(", ", paramList)})
-{{{string.Join("", propertyImpls)}
-
-    {string.Join("\n    ", fieldInitializers)}
-}}";
-
-            // 输出源文件
-            context.AddSource($"{className}_Store.g.cs", SourceText.From(code, Encoding.UTF8));
+            return symbol.GetAttributes().Any(attr => attr.AttributeClass?.Name == "StoreAttribute");
         }
 
-        private string GetAccessibilityKeyword(Accessibility accessibility, Accessibility propertyAccessibility)
+        // ======================================================
+        // 主要代码生成逻辑
+        // ======================================================
+        private string GenerateStoreClass(ClassDeclarationSyntax originalClass, SemanticModel semanticModel,
+            INamedTypeSymbol classSymbol)
         {
-            if (accessibility == propertyAccessibility) return ""; // 默认省略
-            switch (accessibility)
-            {
-                case Accessibility.Public:
-                    return "public ";
-                case Accessibility.Private:
-                    return "private ";
-                case Accessibility.Protected:
-                    return "protected ";
-                case Accessibility.Internal:
-                    return "internal ";
-                case Accessibility.ProtectedOrInternal:
-                    return "protected internal ";
-                case Accessibility.ProtectedAndInternal:
-                    return "protected internal ";
-                default:
-                    return "";
-            }
-        }
-    }
+            // 准备命名空间和新类名
+            var namespaceName = originalClass.Parent is BaseNamespaceDeclarationSyntax ns ? ns.Name.ToString() : null;
+            var className = originalClass.Identifier.Text;
+            var newClassName = className + "Store";
 
-    // 辅助扩展方法：判断属性是否为自动属性（通过检查是否有访问器体）
-    public static class SymbolExtensions
-    {
-        public static bool IsPartial(this IPropertySymbol property)
-        {
-            var syntaxRef = property.DeclaringSyntaxReferences.FirstOrDefault();
-            if (syntaxRef?.GetSyntax() is PropertyDeclarationSyntax propDecl)
+            // 收集需要处理的成员信息
+            var properties = CollectProperties(classSymbol, originalClass, semanticModel);
+            var fields = CollectFields(classSymbol);
+            var methods = CollectMethods(classSymbol, originalClass);
+            var constructors = classSymbol.Constructors.Where(c => !c.IsStatic).ToList();
+
+            // 使用 SyntaxFactory 构建新类
+            var newClass = SyntaxFactory.ClassDeclaration(newClassName)
+                .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)));
+
+            // 收集所有要添加到类中的成员
+            var members = new List<MemberDeclarationSyntax>();
+
+            // 1. 信号字段
+            var signalProps = properties.Where(p => !p.NoSignal && !p.IsDerived).ToList();
+            foreach (var prop in signalProps)
             {
-                return propDecl.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+                var field = SyntaxFactory.FieldDeclaration(
+                        SyntaxFactory.VariableDeclaration(
+                                SyntaxFactory.GenericName("Signal")
+                                    .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
+                                        SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
+                                            SyntaxFactory.ParseTypeName(prop.Type)))))
+                            .WithVariables(SyntaxFactory.SingletonSeparatedList(
+                                SyntaxFactory.VariableDeclarator(prop.FieldName))))
+                    .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword),
+                        SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword)));
+                members.Add(field);
+            }
+
+            // 2. 原有字段（直接复制）
+            foreach (var field in fields)
+            {
+                var fieldSyntax = originalClass.Members.OfType<FieldDeclarationSyntax>()
+                    .FirstOrDefault(f => f.Declaration.Variables.First().Identifier.Text == field.Name);
+                if (fieldSyntax != null)
+                    members.Add(fieldSyntax);
+            }
+
+            // 3. 构造函数（转换后的）
+            foreach (var ctor in constructors)
+            {
+                var ctorSyntax = originalClass.Members.OfType<ConstructorDeclarationSyntax>()
+                    .FirstOrDefault(c => c.Identifier.Text == className);
+                if (ctorSyntax is null) continue;
+                var newCtor = GenerateConstructor(ctorSyntax, signalProps, newClassName);
+                members.Add(newCtor);
+            }
+
+            // 4. 信号属性（转换后的）
+            foreach (var prop in signalProps)
+            {
+                var propSyntax = originalClass.Members.OfType<PropertyDeclarationSyntax>()
+                    .FirstOrDefault(p => p.Identifier.Text == prop.Name);
+                if (propSyntax != null)
+                {
+                    var newProp = GenerateSignalProperty(propSyntax, prop.FieldName);
+                    members.Add(newProp);
+                }
+            }
+
+            // 5. 非信号属性（直接复制）
+            var nonSignalProps = properties.Where(p => p.NoSignal).ToList();
+            foreach (var prop in nonSignalProps)
+            {
+                var propSyntax = originalClass.Members.OfType<PropertyDeclarationSyntax>()
+                    .FirstOrDefault(p => p.Identifier.Text == prop.Name);
+                if (propSyntax != null)
+                    members.Add(propSyntax);
+            }
+
+            // 6. 派生属性（直接复制）
+            var derivedProps = properties.Where(p => p.IsDerived).ToList();
+            foreach (var prop in derivedProps)
+            {
+                var propSyntax = originalClass.Members.OfType<PropertyDeclarationSyntax>()
+                    .FirstOrDefault(p => p.Identifier.Text == prop.Name);
+                if (propSyntax != null)
+                    members.Add(propSyntax);
+            }
+
+            // 7. 方法（包裹或直接复制）
+            foreach (var method in methods)
+            {
+                var methodSyntax = originalClass.Members.OfType<MethodDeclarationSyntax>()
+                    .FirstOrDefault(m => m.Identifier.Text == method.Name);
+                if (methodSyntax == null) continue;
+                var newMethod = method.ShouldWrap
+                    ? GenerateWrappedMethod(methodSyntax)
+                    : methodSyntax;
+                members.Add(newMethod);
+            }
+
+            // 8. 其他成员（事件、索引器等）直接复制
+            var otherMembers = originalClass.Members
+                .Where(m => !(m is ConstructorDeclarationSyntax
+                              || m is FieldDeclarationSyntax
+                              || m is PropertyDeclarationSyntax
+                              || m is MethodDeclarationSyntax));
+            members.AddRange(otherMembers);
+
+            // 组装类
+            newClass = newClass.WithMembers(SyntaxFactory.List(members));
+
+            // 包装到命名空间
+            CompilationUnitSyntax compilationUnit;
+            if (namespaceName != null)
+            {
+                var namespaceDecl = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(namespaceName))
+                    .AddMembers(newClass);
+                compilationUnit = SyntaxFactory.CompilationUnit()
+                    .AddMembers(namespaceDecl);
+            }
+            else
+            {
+                compilationUnit = SyntaxFactory.CompilationUnit()
+                    .AddMembers(newClass);
+            }
+
+            // 添加 using 语句
+            compilationUnit = compilationUnit.AddUsings(
+                SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("Lib")));
+
+            // 格式化并返回
+            return compilationUnit.NormalizeWhitespace().ToFullString();
+        }
+
+        // ======================================================
+        // 辅助类和方法
+        // ======================================================
+
+        private class PropertyInfo
+        {
+            public string Name;
+            public string Type;
+            public bool NoSignal;
+            public bool IsDerived;
+            public bool IsAutoProp; // 是否为自动属性
+            public bool HasFieldKeyword; // 是否使用了field关键字
+            public string FieldName => $"_{Name.ToLowerInvariant()}Signal";
+        }
+
+        private List<PropertyInfo> CollectProperties(INamedTypeSymbol classSymbol, ClassDeclarationSyntax originalClass,
+            SemanticModel semanticModel)
+        {
+            var result = new List<PropertyInfo>();
+            foreach (var member in classSymbol.GetMembers())
+            {
+                if (!(member is IPropertySymbol prop) || prop.DeclaredAccessibility != Accessibility.Public) continue;
+                // 检查特性
+                var noSignal = prop.GetAttributes().Any(attr => attr.AttributeClass?.Name == "NoSignalAttribute");
+                // 是否是派生属性（只有 get，且没有使用 field 关键字）
+                var isDerived = prop.SetMethod == null && !UsesFieldKeyword(prop, originalClass, semanticModel);
+                result.Add(new PropertyInfo
+                {
+                    Name = prop.Name,
+                    Type = prop.Type.ToDisplayString(),
+                    NoSignal = noSignal,
+                    IsDerived = isDerived
+                });
+            }
+
+            return result;
+        }
+
+        private List<IFieldSymbol> CollectFields(INamedTypeSymbol classSymbol)
+        {
+            return classSymbol.GetMembers().OfType<IFieldSymbol>()
+                .Where(f => !f.IsImplicitlyDeclared && f.DeclaredAccessibility == Accessibility.Public)
+                .ToList();
+        }
+
+        private class MethodInfo
+        {
+            public string Name { get; set; }
+            public bool ShouldWrap { get; set; }
+        }
+
+        private List<MethodInfo> CollectMethods(INamedTypeSymbol classSymbol, ClassDeclarationSyntax originalClass)
+        {
+            var result = new List<MethodInfo>();
+            foreach (var member in classSymbol.GetMembers())
+            {
+                if (!(member is IMethodSymbol method)
+                    || method.DeclaredAccessibility != Accessibility.Public) continue;
+                var noBatch = method.GetAttributes().Any(attr => attr.AttributeClass?.Name == "NoBatchAttribute");
+                // 默认包裹，除非标记了 NoBatch 或是抽象方法（没有方法体）
+                var shouldWrap = !noBatch && !method.IsAbstract;
+                result.Add(new MethodInfo
+                {
+                    Name = method.Name,
+                    ShouldWrap = shouldWrap
+                });
+            }
+
+            return result;
+        }
+
+        private bool UsesFieldKeyword(IPropertySymbol prop, ClassDeclarationSyntax classDecl,
+            SemanticModel semanticModel)
+        {
+            var propSyntax = classDecl.Members.OfType<PropertyDeclarationSyntax>()
+                .FirstOrDefault(p => p.Identifier.Text == prop.Name);
+            if (propSyntax?.AccessorList == null) return false;
+
+            var fieldIdentifiers = propSyntax.AccessorList.DescendantNodes().OfType<IdentifierNameSyntax>()
+                .Where(id => id.Identifier.Text == "field");
+            foreach (var id in fieldIdentifiers)
+            {
+                var symbol = semanticModel.GetSymbolInfo(id).Symbol;
+                // 检查是否是隐式后备字段，并且属于当前属性
+                if (symbol is IFieldSymbol field && field.IsImplicitlyDeclared && field.ContainingSymbol.Equals(prop))
+                    return true;
             }
 
             return false;
+        }
+
+        // ======================================================
+        // 代码生成辅助方法（使用 SyntaxFactory）
+        // ======================================================
+
+        private ConstructorDeclarationSyntax GenerateConstructor(ConstructorDeclarationSyntax originalCtor,
+            List<PropertyInfo> signalProps, string newClassName)
+        {
+            // 保留原构造函数的修饰符、参数、基类调用
+            var modifiers = originalCtor.Modifiers;
+            var parameters = originalCtor.ParameterList;
+            var initializer = originalCtor.Initializer;
+
+            // 构建信号字段初始化语句
+            var initStatements = new List<StatementSyntax>();
+            foreach (var prop in signalProps)
+            {
+                string paramName = char.ToLowerInvariant(prop.Name[0]) + prop.Name.Substring(1);
+                initStatements.Add(
+                    SyntaxFactory.ExpressionStatement(
+                        SyntaxFactory.AssignmentExpression(
+                            SyntaxKind.SimpleAssignmentExpression,
+                            SyntaxFactory.IdentifierName(prop.FieldName),
+                            SyntaxFactory.ObjectCreationExpression(
+                                SyntaxFactory.GenericName("Signal")
+                                    .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
+                                        SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
+                                            SyntaxFactory.ParseTypeName(prop.Type)))),
+                                SyntaxFactory.ArgumentList(
+                                    SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(
+                                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(paramName)))),
+                                null))));
+            }
+
+            // 复制原构造函数体
+            var originalBodyStatements = originalCtor.Body?.Statements ?? new SyntaxList<StatementSyntax>();
+            var newBody = SyntaxFactory.Block(initStatements.Concat(originalBodyStatements));
+
+            // 使用新类名创建标识符
+            var newIdentifier = SyntaxFactory.Identifier(newClassName);
+
+            // 构建新构造函数，替换标识符
+            return SyntaxFactory.ConstructorDeclaration(
+                originalCtor.AttributeLists,
+                modifiers,
+                newIdentifier, // 关键修改：使用新类名
+                parameters,
+                initializer,
+                newBody,
+                originalCtor.SemicolonToken);
+        }
+
+        private PropertyDeclarationSyntax GenerateSignalProperty(PropertyDeclarationSyntax originalProp,
+            string fieldName)
+        {
+            // 获取原属性的访问器
+            var getter =
+                originalProp.AccessorList?.Accessors.FirstOrDefault(a => a.Kind() == SyntaxKind.GetAccessorDeclaration);
+            var setter =
+                originalProp.AccessorList?.Accessors.FirstOrDefault(a => a.Kind() == SyntaxKind.SetAccessorDeclaration);
+
+            // 构建新的 getter
+            AccessorDeclarationSyntax newGetter = null;
+            if (getter != null)
+            {
+                newGetter = SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithModifiers(getter.Modifiers)
+                    .WithBody(SyntaxFactory.Block(
+                        SyntaxFactory.ReturnStatement(
+                            SyntaxFactory.MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                SyntaxFactory.IdentifierName(fieldName),
+                                SyntaxFactory.IdentifierName("Value")))));
+            }
+
+            // 构建新的 setter
+            AccessorDeclarationSyntax newSetter = null;
+            if (setter != null)
+            {
+                newSetter = SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                    .WithModifiers(setter.Modifiers)
+                    .WithBody(SyntaxFactory.Block(
+                        SyntaxFactory.ExpressionStatement(
+                            SyntaxFactory.AssignmentExpression(
+                                SyntaxKind.SimpleAssignmentExpression,
+                                SyntaxFactory.MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    SyntaxFactory.IdentifierName(fieldName),
+                                    SyntaxFactory.IdentifierName("Value")),
+                                SyntaxFactory.IdentifierName("value")))));
+            }
+
+            // 组装新属性
+            var newProperty = SyntaxFactory.PropertyDeclaration(
+                originalProp.AttributeLists,
+                originalProp.Modifiers,
+                originalProp.Type,
+                originalProp.ExplicitInterfaceSpecifier,
+                originalProp.Identifier,
+                SyntaxFactory.AccessorList(SyntaxFactory.List(new[] { newGetter, newSetter }.Where(a => a != null))));
+
+            return newProperty;
+        }
+
+        private MethodDeclarationSyntax GenerateWrappedMethod(MethodDeclarationSyntax originalMethod)
+        {
+            // 保留原方法的所有修饰符、返回类型、参数、约束等
+            var modifiers = originalMethod.Modifiers;
+            var returnType = originalMethod.ReturnType;
+            var identifier = originalMethod.Identifier;
+            var typeParams = originalMethod.TypeParameterList;
+            var parameters = originalMethod.ParameterList;
+            var constraints = originalMethod.ConstraintClauses;
+
+            // 获取原方法体语句（如果方法体为空，则不包裹）
+            var bodyStatements = originalMethod.Body?.Statements ?? new SyntaxList<StatementSyntax>();
+            if (bodyStatements.Count == 0 && originalMethod.ExpressionBody == null)
+            {
+                // 无方法体（抽象、extern 等），直接返回原方法
+                return originalMethod;
+            }
+
+            // 构建 lambda 体
+            var lambdaBody = SyntaxFactory.Block(bodyStatements);
+            var batchInvocation = SyntaxFactory.InvocationExpression(
+                    SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.IdentifierName("Reactive"),
+                        SyntaxFactory.IdentifierName("Batch")))
+                .WithArgumentList(SyntaxFactory.ArgumentList(
+                    SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(
+                        SyntaxFactory.Argument(SyntaxFactory.ParenthesizedLambdaExpression(lambdaBody)))));
+
+            var newBody = SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(batchInvocation));
+
+            // 构建新方法
+            var newMethod = SyntaxFactory.MethodDeclaration(
+                originalMethod.AttributeLists,
+                modifiers,
+                returnType,
+                originalMethod.ExplicitInterfaceSpecifier,
+                identifier,
+                typeParams,
+                parameters,
+                constraints,
+                newBody,
+                null,
+                originalMethod.SemicolonToken);
+
+            return newMethod;
         }
     }
 }
