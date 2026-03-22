@@ -227,8 +227,8 @@ public static partial class Reactive
             var currentComputation = CurrentState.CurrentComputation;
             if (currentComputation is null) return fn(key, node.Value);
 
-            var computations = subs[key];
-            if (computations is not null) computations.Add(currentComputation);
+            if (subs.TryGetValue(key, out var computations))
+                computations.Add(currentComputation);
             else
             {
                 computations = [currentComputation];
@@ -412,10 +412,10 @@ internal static class Common
     {
         var current = signal.Value;
 
-        if (signal.Comparator?.Invoke(current, value) ?? false) return default!;
+        if (signal.Comparator?.Invoke(current, value) ?? false) return current;
         signal.Value = value;
 
-        if (signal.Observers is null) return default!;
+        if (signal.Observers is null) return value;
         RunUpdates(() =>
         {
             for (var i = 0; i < signal.Observers.Count; i++)

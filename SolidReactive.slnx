@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="Demo/Demo.csproj" />
   <Project Path="Lib/Lib.csproj" />
+  <Project Path="StoreGenerator/StoreGenerator.csproj" />
   <Project Path="Test/Test.csproj" />
 </Solution>
