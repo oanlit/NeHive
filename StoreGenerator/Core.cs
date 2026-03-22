@@ -73,7 +73,7 @@ namespace StoreGenerator
             var newClassName = className + "Store";
 
             // 收集需要处理的成员信息
-            var properties = CollectProperties(classSymbol, originalClass, semanticModel);
+            var properties = CollectProperties(classSymbol, originalClass);
             var fields = CollectFields(classSymbol);
             var methods = CollectMethods(classSymbol, originalClass);
             var constructors = classSymbol.Constructors.Where(c => !c.IsStatic).ToList();
@@ -124,13 +124,29 @@ namespace StoreGenerator
             // 4. 信号属性（转换后的）
             foreach (var prop in signalProps)
             {
-                var propSyntax = originalClass.Members.OfType<PropertyDeclarationSyntax>()
-                    .FirstOrDefault(p => p.Identifier.Text == prop.Name);
-                if (propSyntax != null)
+                var propSyntax = originalClass.Members
+                    .OfType<PropertyDeclarationSyntax>()
+                    .First(p => p.Identifier.Text == prop.Name);
+
+                PropertyDeclarationSyntax newProp;
+
+                if (prop.IsAutoProp)
                 {
-                    var newProp = GenerateSignalProperty(propSyntax, prop.FieldName);
-                    members.Add(newProp);
+                    // ✅ 自动属性 → 生成标准 signal 属性
+                    newProp = GenerateSignalProperty(propSyntax, prop.FieldName);
                 }
+                else if (prop.HasFieldKeyword)
+                {
+                    // 🔥 field 属性 → 保留原逻辑 + 替换 field
+                    newProp = RewriteFieldProperty(propSyntax, prop.FieldName);
+                }
+                else
+                {
+                    // 理论不会走到（保险）
+                    continue;
+                }
+
+                members.Add(newProp);
             }
 
             // 5. 非信号属性（直接复制）
@@ -207,29 +223,73 @@ namespace StoreGenerator
         {
             public string Name;
             public string Type;
+
             public bool NoSignal;
-            public bool IsDerived;
-            public bool IsAutoProp; // 是否为自动属性
-            public bool HasFieldKeyword; // 是否使用了field关键字
+
+            public bool HasBackingField; // ⭐ 核心语义
+            public bool IsAutoProp; // ⭐ 语法
+            public bool HasFieldKeyword; // ⭐ 语法（FieldExpression）
+
+            public bool IsDerived; // ⭐ 业务
+
             public string FieldName => $"_{Name.ToLowerInvariant()}Signal";
         }
 
-        private List<PropertyInfo> CollectProperties(INamedTypeSymbol classSymbol, ClassDeclarationSyntax originalClass,
-            SemanticModel semanticModel)
+        private static List<PropertyInfo> CollectProperties(
+            INamedTypeSymbol classSymbol,
+            ClassDeclarationSyntax classSyntax)
         {
             var result = new List<PropertyInfo>();
+
+            // 👉 预先拿 backing field（高性能）
+            var backingFields = classSymbol
+                .GetMembers()
+                .OfType<IFieldSymbol>()
+                .Where(f => f.AssociatedSymbol is IPropertySymbol)
+                .ToList();
+
+            // 👉 建立 syntax 索引（避免重复查）
+            var propSyntaxMap = classSyntax.Members
+                .OfType<PropertyDeclarationSyntax>()
+                .ToDictionary(p => p.Identifier.ValueText);
+
             foreach (var member in classSymbol.GetMembers())
             {
-                if (!(member is IPropertySymbol prop) || prop.DeclaredAccessibility != Accessibility.Public) continue;
-                // 检查特性
-                var noSignal = prop.GetAttributes().Any(attr => attr.AttributeClass?.Name == "NoSignalAttribute");
-                // 是否是派生属性（只有 get，且没有使用 field 关键字）
-                var isDerived = prop.SetMethod == null && !UsesFieldKeyword(prop, originalClass, semanticModel);
+                if (!(member is IPropertySymbol prop) ||
+                    prop.DeclaredAccessibility != Accessibility.Public)
+                    continue;
+
+                var propSyntax = propSyntaxMap[prop.Name];
+
+                // ✅ 特性
+                var noSignal = prop.GetAttributes()
+                    .Any(a => a.AttributeClass?.Name == "NoSignalAttribute");
+
+                // ✅ backing field
+                var hasBackingField = backingFields
+                    .Any(f => SymbolEqualityComparer.Default.Equals(f.AssociatedSymbol, prop));
+
+                // ✅ 自动属性（语法）
+                var isAutoProp = propSyntax.AccessorList?.Accessors
+                    .All(a => a.Body == null && a.ExpressionBody == null) == true;
+
+                // ✅ field 关键字（新版核心）
+                var hasFieldKeyword = propSyntax.AccessorList?.Accessors
+                    .SelectMany(a => a.DescendantNodes())
+                    .OfType<FieldExpressionSyntax>()
+                    .Any() == true;
+
+                // ✅ 派生属性
+                var isDerived = !hasBackingField;
+
                 result.Add(new PropertyInfo
                 {
                     Name = prop.Name,
                     Type = prop.Type.ToDisplayString(),
                     NoSignal = noSignal,
+                    HasBackingField = hasBackingField,
+                    IsAutoProp = isAutoProp,
+                    HasFieldKeyword = hasFieldKeyword,
                     IsDerived = isDerived
                 });
             }
@@ -270,29 +330,37 @@ namespace StoreGenerator
             return result;
         }
 
-        private bool UsesFieldKeyword(IPropertySymbol prop, ClassDeclarationSyntax classDecl,
-            SemanticModel semanticModel)
-        {
-            var propSyntax = classDecl.Members.OfType<PropertyDeclarationSyntax>()
-                .FirstOrDefault(p => p.Identifier.Text == prop.Name);
-            if (propSyntax?.AccessorList == null) return false;
-
-            var fieldIdentifiers = propSyntax.AccessorList.DescendantNodes().OfType<IdentifierNameSyntax>()
-                .Where(id => id.Identifier.Text == "field");
-            foreach (var id in fieldIdentifiers)
-            {
-                var symbol = semanticModel.GetSymbolInfo(id).Symbol;
-                // 检查是否是隐式后备字段，并且属于当前属性
-                if (symbol is IFieldSymbol field && field.IsImplicitlyDeclared && field.ContainingSymbol.Equals(prop))
-                    return true;
-            }
-
-            return false;
-        }
-
         // ======================================================
         // 代码生成辅助方法（使用 SyntaxFactory）
         // ======================================================
+        private PropertyDeclarationSyntax RewriteFieldProperty(
+            PropertyDeclarationSyntax propSyntax,
+            string fieldName)
+        {
+            var rewriter = new FieldRewriter(fieldName);
+
+            return (PropertyDeclarationSyntax)rewriter.Visit(propSyntax);
+        }
+
+        private class FieldRewriter : CSharpSyntaxRewriter
+        {
+            private readonly string _fieldName;
+
+            public FieldRewriter(string fieldName)
+            {
+                _fieldName = fieldName;
+            }
+
+            public override SyntaxNode Visit(SyntaxNode node)
+            {
+                if (node is FieldExpressionSyntax)
+                {
+                    return SyntaxFactory.ParseExpression($"{_fieldName}.Value");
+                }
+
+                return base.Visit(node);
+            }
+        }
 
         private ConstructorDeclarationSyntax GenerateConstructor(ConstructorDeclarationSyntax originalCtor,
             List<PropertyInfo> signalProps, string newClassName)
