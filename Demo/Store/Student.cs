@@ -8,7 +8,7 @@ public class Student
     public int Id { get; private set; }
     public int Age
     {
-        get => field;
+        get;
         set => field = value + 1;
     }
     public int DoubleAge => Age * 2;

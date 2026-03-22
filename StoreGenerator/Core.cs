@@ -130,21 +130,41 @@ namespace StoreGenerator
 
                 PropertyDeclarationSyntax newProp;
 
-                if (prop.IsAutoProp)
+                // 获取原属性的访问器
+                AccessorDeclarationSyntax getter = null;
+                AccessorDeclarationSyntax setter = null;
+
+                if (prop.IsAutoGetter)
                 {
-                    // ✅ 自动属性 → 生成标准 signal 属性
-                    newProp = GenerateSignalProperty(propSyntax, prop.FieldName);
+                    getter = GenerateSignalAccessor(propSyntax, prop.FieldName, SyntaxKind.GetAccessorDeclaration);
                 }
-                else if (prop.HasFieldKeyword)
+                else if (prop.GetterHasField)
                 {
-                    // 🔥 field 属性 → 保留原逻辑 + 替换 field
-                    newProp = RewriteFieldProperty(propSyntax, prop.FieldName);
+                    getter = RewriteFieldProperty(propSyntax, prop.FieldName, SyntaxKind.GetAccessorDeclaration);
                 }
-                else
+
+                if (prop.IsAutoSetter)
                 {
-                    // 理论不会走到（保险）
-                    continue;
+                    setter = GenerateSignalAccessor(propSyntax, prop.FieldName, SyntaxKind.SetAccessorDeclaration);
                 }
+                else if (prop.SetterHasField)
+                {
+                    setter = RewriteFieldProperty(propSyntax, prop.FieldName, SyntaxKind.SetAccessorDeclaration);
+                }
+
+                // 组装新属性
+                newProp = SyntaxFactory.PropertyDeclaration(
+                    propSyntax.AttributeLists,
+                    propSyntax.Modifiers,
+                    propSyntax.Type,
+                    propSyntax.ExplicitInterfaceSpecifier,
+                    propSyntax.Identifier,
+                    SyntaxFactory.AccessorList(
+                        SyntaxFactory.List(new[] { getter, setter }
+                            .Where(a => a != null)
+                        )
+                    )
+                );
 
                 members.Add(newProp);
             }
@@ -224,12 +244,12 @@ namespace StoreGenerator
             public string Name;
             public string Type;
 
+            public bool IsAutoGetter;
+            public bool GetterHasField;
+            public bool IsAutoSetter;
+            public bool SetterHasField;
+
             public bool NoSignal;
-
-            public bool HasBackingField; // ⭐ 核心语义
-            public bool IsAutoProp; // ⭐ 语法
-            public bool HasFieldKeyword; // ⭐ 语法（FieldExpression）
-
             public bool IsDerived; // ⭐ 业务
 
             public string FieldName => $"_{Name.ToLowerInvariant()}Signal";
@@ -269,27 +289,33 @@ namespace StoreGenerator
                 var hasBackingField = backingFields
                     .Any(f => SymbolEqualityComparer.Default.Equals(f.AssociatedSymbol, prop));
 
-                // ✅ 自动属性（语法）
-                var isAutoProp = propSyntax.AccessorList?.Accessors
-                    .All(a => a.Body == null && a.ExpressionBody == null) == true;
-
-                // ✅ field 关键字（新版核心）
-                var hasFieldKeyword = propSyntax.AccessorList?.Accessors
-                    .SelectMany(a => a.DescendantNodes())
-                    .OfType<FieldExpressionSyntax>()
-                    .Any() == true;
-
                 // ✅ 派生属性
                 var isDerived = !hasBackingField;
+
+                var getter =
+                    propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
+                        a.Kind() == SyntaxKind.GetAccessorDeclaration);
+                var setter =
+                    propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
+                        a.Kind() == SyntaxKind.SetAccessorDeclaration);
+
+                var isAutoGet = !(getter is null) && getter.Body is null && getter.ExpressionBody is null;
+                var getterHasField = getter?.DescendantNodes()
+                    .OfType<FieldExpressionSyntax>().Any() ?? false;
+
+                var isAutoSet = !(setter is null) && setter.Body is null && setter.ExpressionBody is null;
+                var setterHasField = setter?.DescendantNodes()
+                    .OfType<FieldExpressionSyntax>().Any() ?? false;
 
                 result.Add(new PropertyInfo
                 {
                     Name = prop.Name,
                     Type = prop.Type.ToDisplayString(),
                     NoSignal = noSignal,
-                    HasBackingField = hasBackingField,
-                    IsAutoProp = isAutoProp,
-                    HasFieldKeyword = hasFieldKeyword,
+                    IsAutoGetter = isAutoGet,
+                    GetterHasField = getterHasField,
+                    IsAutoSetter = isAutoSet,
+                    SetterHasField = setterHasField,
                     IsDerived = isDerived
                 });
             }
@@ -333,13 +359,16 @@ namespace StoreGenerator
         // ======================================================
         // 代码生成辅助方法（使用 SyntaxFactory）
         // ======================================================
-        private PropertyDeclarationSyntax RewriteFieldProperty(
+        private AccessorDeclarationSyntax RewriteFieldProperty(
             PropertyDeclarationSyntax propSyntax,
-            string fieldName)
+            string fieldName, SyntaxKind kind)
         {
             var rewriter = new FieldRewriter(fieldName);
+            var accessor = propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
+                a.Kind() == kind);
+            if (accessor is null) return null;
 
-            return (PropertyDeclarationSyntax)rewriter.Visit(propSyntax);
+            return (AccessorDeclarationSyntax)rewriter.Visit(accessor);
         }
 
         private class FieldRewriter : CSharpSyntaxRewriter
@@ -362,7 +391,7 @@ namespace StoreGenerator
             }
         }
 
-        private ConstructorDeclarationSyntax GenerateConstructor(ConstructorDeclarationSyntax originalCtor,
+        private static ConstructorDeclarationSyntax GenerateConstructor(ConstructorDeclarationSyntax originalCtor,
             List<PropertyInfo> signalProps, string newClassName)
         {
             // 保留原构造函数的修饰符、参数、基类调用
@@ -384,11 +413,18 @@ namespace StoreGenerator
                                 SyntaxFactory.GenericName("Signal")
                                     .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
                                         SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
-                                            SyntaxFactory.ParseTypeName(prop.Type)))),
+                                            SyntaxFactory.ParseTypeName(prop.Type)
+                                        )
+                                    )),
                                 SyntaxFactory.ArgumentList(
                                     SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(
-                                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(paramName)))),
-                                null))));
+                                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(paramName)
+                                        )
+                                    )
+                                ), null)
+                        )
+                    )
+                );
             }
 
             // 复制原构造函数体
@@ -409,35 +445,31 @@ namespace StoreGenerator
                 originalCtor.SemicolonToken);
         }
 
-        private PropertyDeclarationSyntax GenerateSignalProperty(PropertyDeclarationSyntax originalProp,
-            string fieldName)
+        private static AccessorDeclarationSyntax GenerateSignalAccessor(PropertyDeclarationSyntax originalProp,
+            string fieldName, SyntaxKind kind)
         {
-            // 获取原属性的访问器
-            var getter =
-                originalProp.AccessorList?.Accessors.FirstOrDefault(a => a.Kind() == SyntaxKind.GetAccessorDeclaration);
-            var setter =
-                originalProp.AccessorList?.Accessors.FirstOrDefault(a => a.Kind() == SyntaxKind.SetAccessorDeclaration);
-
-            // 构建新的 getter
-            AccessorDeclarationSyntax newGetter = null;
-            if (getter != null)
+            var accessor = originalProp.AccessorList?.Accessors.FirstOrDefault(a =>
+                a.Kind() == kind);
+            if (accessor is null) return null;
+            if (kind == SyntaxKind.GetAccessorDeclaration)
             {
-                newGetter = SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                    .WithModifiers(getter.Modifiers)
+                return SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                    .WithModifiers(accessor.Modifiers)
                     .WithBody(SyntaxFactory.Block(
                         SyntaxFactory.ReturnStatement(
                             SyntaxFactory.MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 SyntaxFactory.IdentifierName(fieldName),
-                                SyntaxFactory.IdentifierName("Value")))));
+                                SyntaxFactory.IdentifierName("Value")
+                            )
+                        )
+                    ));
             }
 
-            // 构建新的 setter
-            AccessorDeclarationSyntax newSetter = null;
-            if (setter != null)
+            if (kind == SyntaxKind.SetAccessorDeclaration)
             {
-                newSetter = SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                    .WithModifiers(setter.Modifiers)
+                return SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                    .WithModifiers(accessor.Modifiers)
                     .WithBody(SyntaxFactory.Block(
                         SyntaxFactory.ExpressionStatement(
                             SyntaxFactory.AssignmentExpression(
@@ -445,23 +477,18 @@ namespace StoreGenerator
                                 SyntaxFactory.MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
                                     SyntaxFactory.IdentifierName(fieldName),
-                                    SyntaxFactory.IdentifierName("Value")),
-                                SyntaxFactory.IdentifierName("value")))));
+                                    SyntaxFactory.IdentifierName("Value")
+                                ),
+                                SyntaxFactory.IdentifierName("value")
+                            )
+                        )
+                    ));
             }
 
-            // 组装新属性
-            var newProperty = SyntaxFactory.PropertyDeclaration(
-                originalProp.AttributeLists,
-                originalProp.Modifiers,
-                originalProp.Type,
-                originalProp.ExplicitInterfaceSpecifier,
-                originalProp.Identifier,
-                SyntaxFactory.AccessorList(SyntaxFactory.List(new[] { newGetter, newSetter }.Where(a => a != null))));
-
-            return newProperty;
+            return null;
         }
 
-        private MethodDeclarationSyntax GenerateWrappedMethod(MethodDeclarationSyntax originalMethod)
+        private static MethodDeclarationSyntax GenerateWrappedMethod(MethodDeclarationSyntax originalMethod)
         {
             // 保留原方法的所有修饰符、返回类型、参数、约束等
             var modifiers = originalMethod.Modifiers;
