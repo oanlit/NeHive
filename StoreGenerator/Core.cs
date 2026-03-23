@@ -131,7 +131,7 @@ namespace StoreGenerator
                 PropertyDeclarationSyntax newProp;
 
                 // 获取原属性的访问器
-                AccessorDeclarationSyntax getter = null;
+                AccessorDeclarationSyntax getter;
                 AccessorDeclarationSyntax setter = null;
 
                 if (prop.IsAutoGetter)
@@ -142,6 +142,11 @@ namespace StoreGenerator
                 {
                     getter = RewriteFieldProperty(propSyntax, prop.FieldName, SyntaxKind.GetAccessorDeclaration);
                 }
+                else
+                {
+                    getter = propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
+                        a.Kind() == SyntaxKind.GetAccessorDeclaration);
+                }
 
                 if (prop.IsAutoSetter)
                 {
@@ -150,6 +155,11 @@ namespace StoreGenerator
                 else if (prop.SetterHasField)
                 {
                     setter = RewriteFieldProperty(propSyntax, prop.FieldName, SyntaxKind.SetAccessorDeclaration);
+                }
+                else
+                {
+                    setter = propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
+                        a.Kind() == SyntaxKind.SetAccessorDeclaration);
                 }
 
                 // 组装新属性
@@ -323,7 +333,7 @@ namespace StoreGenerator
             return result;
         }
 
-        private List<IFieldSymbol> CollectFields(INamedTypeSymbol classSymbol)
+        private static List<IFieldSymbol> CollectFields(INamedTypeSymbol classSymbol)
         {
             return classSymbol.GetMembers().OfType<IFieldSymbol>()
                 .Where(f => !f.IsImplicitlyDeclared && f.DeclaredAccessibility == Accessibility.Public)
