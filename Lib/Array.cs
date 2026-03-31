@@ -321,6 +321,8 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
     where TItem : notnull where TKey : notnull
 {
     public IReadOnlyList<TMap> Value => _mapCache.Value;
+    public IReadOnlyList<TMap> UntrackValue => _mapCache.UntrackValue;
+
     private readonly Memo<DenseBuffer<TMap>> _mapCache;
     private readonly IReadOnlySignal<IReadOnlyList<TItem>> _sourceListSignal;
     private IReadOnlyList<TItem> _oldList = [];

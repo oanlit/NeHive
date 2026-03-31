@@ -76,30 +76,106 @@ namespace StoreGenerator
             var properties = CollectProperties(classSymbol, originalClass);
             var fields = CollectFields(classSymbol);
             var methods = CollectMethods(classSymbol, originalClass);
-            var constructors = classSymbol.Constructors.Where(c => !c.IsStatic).ToList();
+            var ctors = originalClass.Members
+                .OfType<ConstructorDeclarationSyntax>();
 
             // 使用 SyntaxFactory 构建新类
             var newClass = SyntaxFactory.ClassDeclaration(newClassName)
-                .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)));
+                .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)))
+                .WithParameterList(originalClass.ParameterList);
 
             // 收集所有要添加到类中的成员
             var members = new List<MemberDeclarationSyntax>();
 
             // 1. 信号字段
             var signalProps = properties.Where(p => !p.NoSignal && !p.IsDerived).ToList();
+
             foreach (var prop in signalProps)
             {
-                var field = SyntaxFactory.FieldDeclaration(
-                        SyntaxFactory.VariableDeclaration(
-                                SyntaxFactory.GenericName("Signal")
-                                    .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
-                                        SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
-                                            SyntaxFactory.ParseTypeName(prop.Type)))))
-                            .WithVariables(SyntaxFactory.SingletonSeparatedList(
-                                SyntaxFactory.VariableDeclarator(prop.FieldName))))
-                    .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword),
-                        SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword)));
-                members.Add(field);
+                var propSyntax = originalClass.Members
+                    .OfType<PropertyDeclarationSyntax>()
+                    .First(p => p.Identifier.Text == prop.Name);
+
+                var signalType =
+                    SyntaxFactory.GenericName("Signal")
+                        .WithTypeArgumentList(
+                            SyntaxFactory.TypeArgumentList(
+                                SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
+                                    SyntaxFactory.ParseTypeName(prop.Type)
+                                )
+                            )
+                        );
+
+                var variable = SyntaxFactory.VariableDeclarator(prop.FieldName);
+
+                ExpressionSyntax initExpr;
+
+                // 处理 initializer
+                // 优先使用属性 initializer
+                if (propSyntax.Initializer != null)
+                {
+                    initExpr = propSyntax.Initializer.Value;
+                }
+                else
+                {
+                    // fallback → default
+                    initExpr = SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
+                }
+
+                variable = variable.WithInitializer(
+                    SyntaxFactory.EqualsValueClause(
+                        SyntaxFactory.ObjectCreationExpression(signalType)
+                            .WithArgumentList(
+                                SyntaxFactory.ArgumentList(
+                                    SyntaxFactory.SingletonSeparatedList(
+                                        SyntaxFactory.Argument(initExpr)
+                                    )
+                                )
+                            )
+                    )
+                );
+
+                var signalField =
+                    SyntaxFactory.FieldDeclaration(
+                            SyntaxFactory.VariableDeclaration(signalType)
+                                .WithVariables(
+                                    SyntaxFactory.SingletonSeparatedList(variable)
+                                )
+                        )
+                        // private readonly
+                        .WithModifiers(SyntaxFactory.TokenList(
+                            SyntaxFactory.Token(SyntaxKind.PrivateKeyword),
+                            SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword)
+                        ));
+
+                members.Add(signalField);
+            }
+
+            // Memo字段
+            var memoProps = properties.Where(p => p.IsMemoDerived).ToList();
+            foreach (var prop in memoProps)
+            {
+                var memoType = SyntaxFactory.GenericName("Memo")
+                    .WithTypeArgumentList(
+                        SyntaxFactory.TypeArgumentList(
+                            SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
+                                SyntaxFactory.ParseTypeName(prop.Type)
+                            )
+                        )
+                    );
+                var nullableMemoType = SyntaxFactory.NullableType(memoType);
+
+                var variable = SyntaxFactory.VariableDeclarator(prop.FieldName);
+                var memoField = SyntaxFactory.FieldDeclaration(
+                        SyntaxFactory.VariableDeclaration(nullableMemoType)
+                            .WithVariables(SyntaxFactory.SingletonSeparatedList(variable))
+                    )
+                    // private
+                    .WithModifiers(SyntaxFactory.TokenList(
+                        SyntaxFactory.Token(SyntaxKind.PrivateKeyword)
+                    ));
+
+                members.Add(memoField);
             }
 
             // 2. 原有字段（直接复制）
@@ -111,17 +187,7 @@ namespace StoreGenerator
                     members.Add(fieldSyntax);
             }
 
-            // 3. 构造函数（转换后的）
-            foreach (var ctor in constructors)
-            {
-                var ctorSyntax = originalClass.Members.OfType<ConstructorDeclarationSyntax>()
-                    .FirstOrDefault(c => c.Identifier.Text == className);
-                if (ctorSyntax is null) continue;
-                var newCtor = GenerateConstructor(ctorSyntax, signalProps, newClassName);
-                members.Add(newCtor);
-            }
-
-            // 4. 信号属性（转换后的）
+            // 3. 信号属性（转换后的）
             foreach (var prop in signalProps)
             {
                 var propSyntax = originalClass.Members
@@ -179,7 +245,81 @@ namespace StoreGenerator
                 members.Add(newProp);
             }
 
-            // 5. 非信号属性（直接复制）
+            // Memo属性
+            foreach (var prop in memoProps)
+            {
+                var propSyntax = originalClass.Members
+                    .OfType<PropertyDeclarationSyntax>()
+                    .First(p => p.Identifier.Text == prop.Name);
+
+                var memoType = SyntaxFactory.GenericName("Memo")
+                    .WithTypeArgumentList(
+                        SyntaxFactory.TypeArgumentList(
+                            SyntaxFactory.SingletonSeparatedList(
+                                SyntaxFactory.ParseTypeName(prop.Type)
+                            )
+                        )
+                    );
+
+                var getter = propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
+                    a.Kind() == SyntaxKind.GetAccessorDeclaration);
+                var getterBlock = getter?.Body;
+                
+                if (getterBlock == null)
+                {
+                    var exp = getter is null
+                        ? propSyntax.ExpressionBody?.Expression // 处理像：public int ScoreAndLevel => Score + Level; 这种情况
+                        : getter.ExpressionBody?.Expression; // 处理像：public int ScoreAndLevel { get => Score + Level; } 这种情况
+                    getterBlock = SyntaxFactory.Block
+                    (
+                        SyntaxFactory.ReturnStatement(exp)
+                    );
+                }
+
+                var assignment =
+                    SyntaxFactory.AssignmentExpression(
+                        SyntaxKind.CoalesceAssignmentExpression, // ??=
+                        SyntaxFactory.IdentifierName(prop.FieldName), // _scoreandlevelSignal
+                        SyntaxFactory.ObjectCreationExpression(memoType) // new Memo<int>(...)
+                            .WithArgumentList(
+                                SyntaxFactory.ArgumentList(
+                                    SyntaxFactory.SingletonSeparatedList(
+                                        SyntaxFactory.Argument(
+                                            SyntaxFactory.ParenthesizedLambdaExpression(
+                                                SyntaxFactory.ParameterList(),
+                                                getterBlock
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                    );
+
+                var propertyGetter =
+                    SyntaxFactory.ArrowExpressionClause(
+                        SyntaxFactory.MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            SyntaxFactory.ParenthesizedExpression(assignment),
+                            SyntaxFactory.IdentifierName("Value")
+                        )
+                    );
+
+                var newProp =
+                    SyntaxFactory.PropertyDeclaration(
+                            propSyntax.Type,
+                            propSyntax.Identifier
+                        )
+                        .WithAttributeLists(propSyntax.AttributeLists)
+                        .WithModifiers(propSyntax.Modifiers)
+                        .WithExplicitInterfaceSpecifier(propSyntax.ExplicitInterfaceSpecifier)
+                        .WithExpressionBody(propertyGetter).WithSemicolonToken(
+                            SyntaxFactory.Token(SyntaxKind.SemicolonToken)
+                        );
+
+                members.Add(newProp);
+            }
+
+            // 4. 非信号属性（直接复制）
             var nonSignalProps = properties.Where(p => p.NoSignal).ToList();
             foreach (var prop in nonSignalProps)
             {
@@ -189,14 +329,24 @@ namespace StoreGenerator
                     members.Add(propSyntax);
             }
 
-            // 6. 派生属性（直接复制）
-            var derivedProps = properties.Where(p => p.IsDerived).ToList();
+            // 5. 非Memo派生属性（直接复制）
+            var derivedProps = properties.Where(p => p.IsDerived && !p.IsMemoDerived).ToList();
             foreach (var prop in derivedProps)
             {
                 var propSyntax = originalClass.Members.OfType<PropertyDeclarationSyntax>()
                     .FirstOrDefault(p => p.Identifier.Text == prop.Name);
                 if (propSyntax != null)
                     members.Add(propSyntax);
+            }
+
+            // 6. 构造函数（转换后的）
+            foreach (var ctor in ctors)
+            {
+                var newCtor = ctor
+                    // 🔥 改类名
+                    .WithIdentifier(SyntaxFactory.Identifier(newClassName));
+
+                members.Add(newCtor);
             }
 
             // 7. 方法（包裹或直接复制）
@@ -261,6 +411,7 @@ namespace StoreGenerator
 
             public bool NoSignal;
             public bool IsDerived; // ⭐ 业务
+            public bool IsMemoDerived; // ⭐ 业务
 
             public string FieldName => $"_{Name.ToLowerInvariant()}Signal";
         }
@@ -301,6 +452,10 @@ namespace StoreGenerator
 
                 // ✅ 派生属性
                 var isDerived = !hasBackingField;
+                var isMemo = false;
+                if (isDerived)
+                    isMemo = prop.GetAttributes()
+                        .Any(a => a.AttributeClass?.Name == "MemoAttribute");
 
                 var getter =
                     propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
@@ -326,7 +481,8 @@ namespace StoreGenerator
                     GetterHasField = getterHasField,
                     IsAutoSetter = isAutoSet,
                     SetterHasField = setterHasField,
-                    IsDerived = isDerived
+                    IsDerived = isDerived,
+                    IsMemoDerived = isMemo
                 });
             }
 
@@ -401,60 +557,6 @@ namespace StoreGenerator
             }
         }
 
-        private static ConstructorDeclarationSyntax GenerateConstructor(ConstructorDeclarationSyntax originalCtor,
-            List<PropertyInfo> signalProps, string newClassName)
-        {
-            // 保留原构造函数的修饰符、参数、基类调用
-            var modifiers = originalCtor.Modifiers;
-            var parameters = originalCtor.ParameterList;
-            var initializer = originalCtor.Initializer;
-
-            // 构建信号字段初始化语句
-            var initStatements = new List<StatementSyntax>();
-            foreach (var prop in signalProps)
-            {
-                string paramName = char.ToLowerInvariant(prop.Name[0]) + prop.Name.Substring(1);
-                initStatements.Add(
-                    SyntaxFactory.ExpressionStatement(
-                        SyntaxFactory.AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            SyntaxFactory.IdentifierName(prop.FieldName),
-                            SyntaxFactory.ObjectCreationExpression(
-                                SyntaxFactory.GenericName("Signal")
-                                    .WithTypeArgumentList(SyntaxFactory.TypeArgumentList(
-                                        SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
-                                            SyntaxFactory.ParseTypeName(prop.Type)
-                                        )
-                                    )),
-                                SyntaxFactory.ArgumentList(
-                                    SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(
-                                        SyntaxFactory.Argument(SyntaxFactory.IdentifierName(paramName)
-                                        )
-                                    )
-                                ), null)
-                        )
-                    )
-                );
-            }
-
-            // 复制原构造函数体
-            var originalBodyStatements = originalCtor.Body?.Statements ?? new SyntaxList<StatementSyntax>();
-            var newBody = SyntaxFactory.Block(initStatements.Concat(originalBodyStatements));
-
-            // 使用新类名创建标识符
-            var newIdentifier = SyntaxFactory.Identifier(newClassName);
-
-            // 构建新构造函数，替换标识符
-            return SyntaxFactory.ConstructorDeclaration(
-                originalCtor.AttributeLists,
-                modifiers,
-                newIdentifier, // 关键修改：使用新类名
-                parameters,
-                initializer,
-                newBody,
-                originalCtor.SemicolonToken);
-        }
-
         private static AccessorDeclarationSyntax GenerateSignalAccessor(PropertyDeclarationSyntax originalProp,
             string fieldName, SyntaxKind kind)
         {
@@ -522,10 +624,14 @@ namespace StoreGenerator
                     SyntaxFactory.MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         SyntaxFactory.IdentifierName("Reactive"),
-                        SyntaxFactory.IdentifierName("Batch")))
+                        SyntaxFactory.IdentifierName("Batch")
+                    )
+                )
                 .WithArgumentList(SyntaxFactory.ArgumentList(
                     SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(
-                        SyntaxFactory.Argument(SyntaxFactory.ParenthesizedLambdaExpression(lambdaBody)))));
+                        SyntaxFactory.Argument(SyntaxFactory.ParenthesizedLambdaExpression(lambdaBody))
+                    )
+                ));
 
             var newBody = SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(batchInvocation));
 
