@@ -235,6 +235,10 @@ public class Signal<T>(T value) : ISignal<T>
 {
     private readonly SignalState<T> _state = new(value);
 
+#if DEBUG
+    internal SignalState<T> State => _state;
+#endif
+
     public T Value
     {
         get => _state.ReadSignal();
@@ -336,8 +340,10 @@ internal static class Common
     internal static T BaseReadSignal<T>(ISignalState<T> signal)
     {
         var currentComp = CurrentContext.Computation;
-        if (currentComp is null) return signal.Value;
-        // 建立Computation与Signal的双向引用
+        if (currentComp is null || signal.LastObserver == currentComp) return signal.Value;
+        signal.LastObserver = currentComp;
+
+        // 建立 Computation 与 Signal 的双向引用
         var sSlot = signal.Observers?.Count ?? 0;
         var oSlot = currentComp.Sources?.Count ?? 0;
         if (currentComp.Sources is not null)
@@ -368,14 +374,12 @@ internal static class Common
     internal static T WriteSignal<T>(ISignalState<T> signal, T value)
     {
         var current = signal.Value;
+        if (signal.Comparator(current, value)) return current;
 
-        if (signal.Comparator.Invoke(current, value)) return current;
         signal.Value = value;
-
         if (signal.Observers is null) return value;
 
         ComputationNode.NotifyObservers(signal.Observers);
-
         return value;
     }
 }
@@ -384,6 +388,7 @@ public interface ISignalState
 {
     List<ComputationNode>? Observers { get; set; }
     List<int>? ObserverSlots { get; set; }
+    ComputationNode? LastObserver { get; set; }
     internal void UpdateIfNeeded(ComputationNode? ignore = null);
 }
 
@@ -399,6 +404,7 @@ public class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : ISig
 {
     public List<ComputationNode>? Observers { get; set; }
     public List<int>? ObserverSlots { get; set; }
+    public ComputationNode? LastObserver { get; set; } = null;
     public Func<T, T, bool> Comparator { get; init; } = comparator ?? Constant.EqualFn;
     public T Value { get; set; } = value;
 
@@ -512,6 +518,7 @@ public abstract class ComputationNode : Owner
         while ((Sources?.Count ?? 0) != 0)
         {
             var source = Util.RemoveLast(Sources!);
+            source.LastObserver = null;
             var index = Util.RemoveLast(SourceSlots!);
             var obs = source.Observers;
 
@@ -902,7 +909,7 @@ internal class MemoState<T>(
     public Func<T, T, bool> Comparator { get; } = comparator ?? Constant.EqualFn;
     public List<ComputationNode>? Observers { get; set; } = observers;
     public List<int>? ObserverSlots { get; set; } = observerSlots;
-
+    public ComputationNode? LastObserver { get; set; }
     public override T Value { get; set; } = value!;
 
     protected override void UpdateValue(T value) => WriteSignal(value);

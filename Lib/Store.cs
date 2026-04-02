@@ -3,7 +3,8 @@ namespace Lib;
 using System.Collections;
 using System.Collections.ObjectModel;
 
-public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
+// 不要把它当成普通的集合，尤其是在Effect环境上，所以你最好知道它是响应式类型
+public class ListStore<T> : IEnumerable<T>
 {
     private const int DefaultCapacity = 4;
 
@@ -11,6 +12,9 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
     private readonly Signal<int> _countSignal;
     private readonly Signal<int> _versionSignal = new(0);
     private readonly SortedDictionary<int, Signal<T?>> _oldValueSignals = []; // index是固定的
+
+    private bool _isBatch;
+    private bool _isChange;
 
     public Func<T?, T?, bool> Comparator { get; init; } = Constant.EqualFn;
 
@@ -26,12 +30,6 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
         _items = new(collection);
         _countSignal = new(_items.Count);
     }
-
-    bool ICollection<T>.IsReadOnly => false;
-    bool IList.IsReadOnly => false;
-    bool IList.IsFixedSize => false;
-    bool ICollection.IsSynchronized => false;
-    object ICollection.SyncRoot => this;
 
     public int Capacity
     {
@@ -53,6 +51,20 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
         _ = signal.Value; // 访问索引信号以建立依赖关系
     }
 
+    private void _updateSignalValue(int index, T value)
+    {
+        Reactive.Batch(() =>
+        {
+            if (!_oldValueSignals.TryGetValue(index, out var indexSignal)) return;
+            if (Comparator(indexSignal.UntrackValue, value)) return;
+            _items[index] = value;
+            _isChange = true;
+            if (_isBatch) return;
+            indexSignal.Value = value;
+            _versionSignal.Value = _versionSignal.UntrackValue + 1;
+        });
+    }
+
     public T this[int index]
     {
         get
@@ -64,14 +76,7 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
         set
         {
             if (index < 0 || index >= _items.Count) throw new ArgumentOutOfRangeException(nameof(index));
-            Reactive.Untrack(() =>
-            {
-                if (!_oldValueSignals.TryGetValue(index, out var indexSignal)) return;
-                if (Comparator(indexSignal.Value, value)) return;
-
-                _items[index] = value;
-                indexSignal.Value = value;
-            });
+            _updateSignalValue(index, value);
         }
     }
 
@@ -87,26 +92,32 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
     public T? TrySetValue(int index, T value)
     {
         if (index < 0 || index >= _items.Count) return default;
-        Reactive.Untrack(() =>
-        {
-            if (!_oldValueSignals.TryGetValue(index, out var indexSignal)) return;
-            if (Comparator(indexSignal.Value, value)) return;
-
-            _items[index] = value;
-            indexSignal.Value = value;
-        });
+        _updateSignalValue(index, value);
         return value;
     }
 
     public void Add(T item)
     {
-        var lastCount = _items.Count;
+        var oldCount = _items.Count;
         _items.Add(item);
-        UpdateSignals(lastCount);
+        _isChange = true;
+        UpdateSignals(oldCount);
+    }
+
+    public void AddRange(IEnumerable<T> collection)
+    {
+        var oldCount = _items.Count;
+        _items.AddRange(collection);
+        var newCount = _items.Count;
+        if (oldCount == newCount) return;
+        _isChange = true;
+        UpdateSignals(oldCount);
     }
 
     private void UpdateSignals(int fromIndex = 0)
     {
+        if (_isBatch) return;
+        if (!_isChange) return;
         Reactive.Batch(() =>
         {
             foreach (var (key, signal) in _oldValueSignals)
@@ -117,33 +128,31 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
                 signal.Value = newValue;
             }
 
-            if (_countSignal.Value != _items.Count)
-            {
+            if (_countSignal.UntrackValue != _items.Count)
                 _countSignal.Value = _items.Count;
-            }
 
-            _versionSignal.Value++;
+            _versionSignal.Value = _versionSignal.UntrackValue + 1;
+            _isChange = false;
         });
     }
 
-    public void CopyTo(int index, T[] array, int arrayIndex, int count) =>
-        _items.CopyTo(index, array, arrayIndex, count);
-
-    public void CopyTo(T[] array, int arrayIndex) =>
-        _items.CopyTo(array, arrayIndex);
-
-    public void AddRange(IEnumerable<T> collection)
+    public void CopyTo(int index, T[] array, int arrayIndex, int count)
     {
-        _items.AddRange(collection);
-        Reactive.Batch(() =>
-        {
-            _countSignal.Value = _items.Count;
-            _versionSignal.Value = _versionSignal.UntrackValue + 1;
-        });
+        _ = _versionSignal.Value;
+        _items.CopyTo(index, array, arrayIndex, count);
+    }
+
+    public void CopyTo(T[] array, int arrayIndex)
+    {
+        _ = _versionSignal.Value;
+        _items.CopyTo(array, arrayIndex);
     }
 
     public ReadOnlyCollection<T> AsReadOnly()
-        => new(_items);
+    {
+        _ = _versionSignal.Value;
+        return new ReadOnlyCollection<T>(_items);
+    }
 
     public int BinarySearch(int index, int count, T item, IComparer<T>? comparer)
     {
@@ -160,6 +169,7 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
 
     public void Clear()
     {
+        if (_items.Count == 0) return;
         _items.Clear();
         Reactive.Batch(() =>
         {
@@ -255,23 +265,23 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
     {
         var version = _versionSignal.Value;
 
-        Reactive.Untrack(() =>
+        for (var i = 0; i < _items.Count; i++)
         {
-            for (var i = 0; i < _items.Count; i++)
-            {
-                if (version != _versionSignal.Value)
-                {
-                    throw new InvalidOperationException();
-                }
+            if (version != _versionSignal.UntrackValue)
+                throw new InvalidOperationException();
 
-                action(_items[i], i);
-            }
-        });
+            action(_items[i], i);
+        }
     }
 
     public IEnumerator<T> GetEnumerator()
     {
         _ = _versionSignal.Value; // 访问版本信号以建立依赖关系
+        return _items.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
         return _items.GetEnumerator();
     }
 
@@ -305,12 +315,17 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
     public void Insert(int index, T item)
     {
         _items.Insert(index, item);
+        _isChange = true;
         UpdateSignals(index);
     }
 
     public void InsertRange(int index, IEnumerable<T> collection)
     {
+        var count = _items.Count;
         _items.InsertRange(index, collection);
+        var newCount = _items.Count;
+        if (count == newCount) return;
+        _isChange = true;
         UpdateSignals(index);
     }
 
@@ -337,6 +352,7 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
         var value = _items.Remove(item);
         if (value)
         {
+            _isChange = true;
             UpdateSignals();
         }
 
@@ -348,6 +364,7 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
         var value = _items.RemoveAll(match);
         if (value > 0)
         {
+            _isChange = true;
             UpdateSignals();
         }
 
@@ -357,32 +374,39 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
     public void RemoveAt(int index)
     {
         _items.RemoveAt(index);
+        _isChange = true;
         UpdateSignals(index);
     }
 
     public void RemoveRange(int index, int count)
     {
+        if (count == 0) return;
         _items.RemoveRange(index, count);
+        _isChange = true;
         UpdateSignals(index);
     }
 
     public void Reverse(int index, int count)
     {
+        if (count is 0 or 1) return;
         _items.Reverse(index, count);
+        _isChange = true;
         UpdateSignals(index);
     }
 
     public void Reverse()
         => Reverse(0, _items.Count);
 
-    public void Sort(int index, int count, IComparer<T>? comparer)
+    public void Sort(int index, int count, IComparer<T>? comparer = null)
     {
+        if (count is 0 or 1) return;
         _items.Sort(index, count, comparer);
+        _isChange = true;
         UpdateSignals(index);
     }
 
     public void Sort()
-        => Sort(0, _items.Count, null);
+        => Sort(0, _items.Count);
 
     public void Sort(IComparer<T>? comparer)
         => Sort(0, _items.Count, comparer);
@@ -390,6 +414,7 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
     public void Sort(Comparison<T> comparison)
     {
         _items.Sort(comparison);
+        _isChange = true;
         UpdateSignals();
     }
 
@@ -397,9 +422,11 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
     /// 批量修改以提高性能，尤其是修改结构
     /// </summary>
     /// <param name="fn"></param>
-    public void BatchModify(Action<List<T>> fn)
+    public void BatchModify(Action<ListStore<T>> fn)
     {
-        fn(_items);
+        _isBatch = true;
+        fn(this);
+        _isBatch = false;
         UpdateSignals();
     }
 
@@ -435,46 +462,5 @@ public class ListStore<T> : IList<T>, IList, IReadOnlyList<T>
     {
         _ = _versionSignal.Value;
         return _items.TrueForAll(match);
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
-
-    object? IList.this[int index]
-    {
-        get => throw new NotImplementedException();
-        set => throw new NotImplementedException();
-    }
-
-    void ICollection.CopyTo(Array array, int index)
-    {
-        throw new NotImplementedException();
-    }
-
-    int IList.Add(object? value)
-    {
-        throw new NotImplementedException();
-    }
-
-    bool IList.Contains(object? value)
-    {
-        throw new NotImplementedException();
-    }
-
-    int IList.IndexOf(object? value)
-    {
-        throw new NotImplementedException();
-    }
-
-    void IList.Insert(int index, object? item)
-    {
-        Insert(index, (T?)item!);
-    }
-
-    void IList.Remove(object? value)
-    {
-        throw new NotImplementedException();
     }
 }

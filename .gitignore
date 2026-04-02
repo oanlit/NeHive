@@ -5,3 +5,7 @@
 *.log
 bin/
 obj/
+
+global.json
+SolidReactive.sln.DotSettings.user
+.claudiaideconfig
