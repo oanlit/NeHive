@@ -6,17 +6,13 @@ public class SignalObservable<T>(Signal<T> signal) : IObservable<T>
 {
     public IDisposable Subscribe(IObserver<T> observer)
     {
-        var dispose = Reactive.CreateRoot(dispose =>
+        var effect = new Effect(() =>
         {
-            Reactive.CreateEffect(() =>
-            {
-                var value = signal.Value;
-                Reactive.Untrack(() => observer.OnNext(value));
-            });
-            return dispose;
+            var value = signal.Value;
+            Reactive.Untrack(() => observer.OnNext(value));
         });
 
-        return new Unsubscriber(dispose);
+        return new Unsubscriber(effect.Dispose);
     }
 
     private class Unsubscriber(Action dispose) : IDisposable

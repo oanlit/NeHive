@@ -8,54 +8,47 @@ public class SignalTest
     public void Repeat_Read_Signal_Test()
     {
         Signal<int> a = new(0);
-        var dispose = Reactive.CreateRoot(dispose =>
+        var effect = new Effect(() =>
         {
-            Reactive.CreateEffect(() =>
+            for (var i = 0; i < 1000; i++)
             {
-                for (var i = 0; i < 1000; i++)
-                {
-                    _ = a.Value;
-                }
-            });
-            return dispose;
+                _ = a.Value;
+            }
         });
 
-        Assert.Equal(1, a.State.Observers!.Count);
-        Assert.Equal(1, a.State.ObserverSlots!.Count);
-        Assert.Equal(1, a.State.Observers[0].Sources!.Count);
-        Assert.Equal(1, a.State.Observers[0].SourceSlots!.Count);
+        Assert.Single(a.State.Observers!);
+        Assert.Single(a.State.ObserverSlots!);
+        Assert.Single(a.State.Observers![0].Sources!);
+        Assert.Single(a.State.Observers![0].SourceSlots!);
 
-        dispose();
+        effect.Dispose();
     }
-    
+
     [Fact]
     public void Repeat_Alternation_Read_Signal_Test()
     {
         Signal<int> a = new(0);
         Signal<int> b = new(0);
-        var dispose = Reactive.CreateRoot(dispose =>
+
+        var effect = new Effect(() =>
         {
-            Reactive.CreateEffect(() =>
+            for (var i = 0; i < 1000; i++)
             {
-                for (var i = 0; i < 1000; i++)
-                {
-                    _ = a.Value;
-                    _ = b.Value;
-                }
-            });
-            return dispose;
+                _ = a.Value;
+                _ = b.Value;
+            }
         });
 
-        Assert.Equal(1, a.State.Observers!.Count);
-        Assert.Equal(1, a.State.ObserverSlots!.Count);
-        Assert.Equal(2, a.State.Observers[0].Sources!.Count);
+        Assert.Single(a.State.Observers!);
+        Assert.Single(a.State.ObserverSlots!);
+        Assert.Equal(2, a.State.Observers![0].Sources!.Count);
         Assert.Equal(2, a.State.Observers[0].SourceSlots!.Count);
-        
-        Assert.Equal(1, b.State.Observers!.Count);
-        Assert.Equal(1, b.State.ObserverSlots!.Count);
-        Assert.Equal(2, b.State.Observers[0].Sources!.Count);
+
+        Assert.Single(b.State.Observers!);
+        Assert.Single(b.State.ObserverSlots!);
+        Assert.Equal(2, b.State.Observers![0].Sources!.Count);
         Assert.Equal(2, b.State.Observers[0].SourceSlots!.Count);
 
-        dispose();
+        effect.Dispose();
     }
 }

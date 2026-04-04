@@ -317,12 +317,13 @@ internal class DenseBuffer<T> : IReadOnlyList<T>
     }
 }
 
-public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMap>>
+public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMap>>,IDisposable
     where TItem : notnull where TKey : notnull
 {
     public IReadOnlyList<TMap> Value => _mapCache.Value;
     public IReadOnlyList<TMap> UntrackValue => _mapCache.UntrackValue;
 
+    private bool _isDisposed;
     private readonly Memo<DenseBuffer<TMap>> _mapCache;
     private readonly IReadOnlySignal<IReadOnlyList<TItem>> _sourceListSignal;
     private IReadOnlyList<TItem> _oldList = [];
@@ -371,19 +372,21 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
 
     private TMap _mapper(IReadOnlyList<TItem> sourceList, int index)
     {
-        return Reactive.CreateRoot(disposer =>
+        var owner = new Owner();
+        var result = owner.RunWithOwner(() =>
         {
             if (_indexSignals is not null)
             {
                 Signal<int> indexSignal = new(index);
                 _indexSignals[index] = indexSignal;
-                _disposers[index] = disposer;
+                _disposers[index] = owner.Dispose;
                 return _mapFnWithIndex!.Invoke(sourceList[index], indexSignal);
             }
 
-            _disposers[index] = disposer;
+            _disposers[index] = owner.Dispose;
             return _mapFn!.Invoke(sourceList[index]);
         });
+        return result;
     }
 
     private DenseBuffer<TMap> _effectFn(DenseBuffer<TMap> oldMap)
@@ -459,5 +462,12 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
 
             return newMap;
         });
+    }
+    
+    public void Dispose()
+    {
+        if (_isDisposed) return;
+        _mapCache.Dispose();
+        _isDisposed = true;
     }
 }

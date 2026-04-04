@@ -21,19 +21,19 @@ public class ListStoreTest
     public void ListStore_ValueType_Test()
     {
         ListStore<int?> store = [10, 20, null];
-        List<List<int?>> snapshots = new();
-        List<int> doubleCounts = new();
+        List<List<int?>> snapshots = [];
+        List<int> doubleCounts = [];
 
-        var dispose = Reactive.CreateRoot(dispose =>
-        {
-            Reactive.CreateEffect(() => { snapshots.Add(TakeSnapshot(store)); });
-
-            Memo<int> doubleCount = new(() => store.Count * 2);
-
-            Reactive.CreateEffect(() => { doubleCounts.Add(doubleCount.Value); });
-
-            return dispose;
-        });
+        var owner = new Owner();
+        // owner.RunWithOwner(() =>
+        // {
+        //     _ = new Effect(() => { snapshots.Add(TakeSnapshot(store)); });
+        //     var doubleCount = new Memo<int>(() => store.Count * 2);
+        //     _ = new Effect(() => { doubleCounts.Add(doubleCount.Value); });
+        // });
+        owner.AddEffect(() => { snapshots.Add(TakeSnapshot(store)); });
+        Memo<int> doubleCount = owner.AddMemo(() => store.Count * 2);
+        owner.AddEffect(() => { doubleCounts.Add(doubleCount.Value); });
 
         // 初始
         Assert.Equal([10, 20, null], snapshots[^1]);
@@ -88,7 +88,7 @@ public class ListStoreTest
         Assert.Empty(snapshots[^1]);
         Assert.Equal(0, doubleCounts[^1]);
 
-        dispose();
+        owner.Dispose();
     }
 
     [Fact]
@@ -102,10 +102,11 @@ public class ListStoreTest
         var linqSnapshots = new List<List<string>>();
         var linqRuns = 0;
 
-        var dispose = Reactive.CreateRoot(dispose =>
+        var owner = new Owner();
+        owner.RunWithOwner(() =>
         {
             // slot[0] & slot[4]
-            Reactive.CreateEffect(() =>
+            _ = new Effect(() =>
             {
                 store.TryGetValue(0, out var v0);
                 store.TryGetValue(4, out var v4);
@@ -113,17 +114,17 @@ public class ListStoreTest
             });
 
             // slot[5]
-            Reactive.CreateEffect(() =>
+            _ = new Effect(() =>
             {
                 store.TryGetValue(5, out var v);
                 slot5Snapshots.Add(v);
             });
 
             // Count
-            Reactive.CreateEffect(() => { countSnapshots.Add(store.Count); });
+            _ = new Effect(() => { countSnapshots.Add(store.Count); });
 
             // LINQ 查询
-            Reactive.CreateEffect(() =>
+            _ = new Effect(() =>
             {
                 var result = store
                     .Where(x => x != null)
@@ -133,8 +134,6 @@ public class ListStoreTest
                 linqSnapshots.Add(result);
                 linqRuns++;
             });
-
-            return dispose;
         });
 
         // ✅ 初始状态
@@ -200,7 +199,7 @@ public class ListStoreTest
         Assert.Empty(linqSnapshots[^1]);
         Assert.Equal(6, linqRuns);
 
-        dispose();
+        owner.Dispose();
     }
 
     [Fact]
@@ -209,16 +208,10 @@ public class ListStoreTest
         var store = new ListStore<int> { 1, 2, 3 };
 
         int runs = 0;
-
-        var dispose = Reactive.CreateRoot(dispose =>
+        var effect = new Effect(() =>
         {
-            Reactive.CreateEffect(() =>
-            {
-                _ = store.GetEnumerator();
-                runs++;
-            });
-
-            return dispose;
+            _ = store.GetEnumerator();
+            runs++;
         });
 
         Assert.Equal(1, runs);
@@ -275,7 +268,7 @@ public class ListStoreTest
         store.Reverse(1, 1);
         Assert.Equal(4, runs);
 
-        dispose();
+        effect.Dispose();
     }
 
     [Fact]
@@ -283,18 +276,15 @@ public class ListStoreTest
     {
         ListStore<int> store = [1, 2, 3];
         var runs = 0;
-        var dispose = Reactive.CreateRoot(dispose =>
+        var effect = new Effect(() =>
         {
-            Reactive.CreateEffect(() =>
-            {
-                _ = store;
-                runs++;
-            });
-            return dispose;
+            _ = store;
+            runs++;
         });
+
         Assert.Equal(1, runs);
         store.Reverse();
         Assert.Equal(1, runs);
-        dispose();
+        effect.Dispose();
     }
 }

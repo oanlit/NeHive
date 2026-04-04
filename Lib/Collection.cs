@@ -41,7 +41,7 @@ public class ListStore<T> : IEnumerable<T>
 
     private void _subscribeSignal(int index, T? initValue)
     {
-        if (CurrentContext.Computation is null) return;
+        if (ReactiveContext.CurrentComputation is null) return;
         if (!_oldValueSignals.TryGetValue(index, out var signal))
         {
             signal = new Signal<T?>(initValue);
