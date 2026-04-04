@@ -1,4 +1,5 @@
 namespace Lib;
+
 using System.Diagnostics;
 
 public static partial class Reactive
@@ -16,6 +17,7 @@ public static partial class Reactive
             Trace.TraceWarning("cleanups created outside a `createRoot` or `render` will never be run");
             return;
         }
+
         _ = new EffectNode<object>(_ =>
         {
             Untrack(fn);
@@ -197,6 +199,12 @@ public class Owner : IDisposable
     public Memo<T> AddMemo<T>(Func<T> fn, T? value = default)
         => AddMemo(_ => fn(), value);
 
+    public Computation<T> AddComputation<T>(Func<T, T> fn,
+        T init,
+        bool pure = false,
+        ComputationPhase phase = ComputationPhase.Stale)
+        => _setContext(() => new Computation<T>(fn, init, pure, phase));
+
     public T RunWithOwner<T>(Func<T> fn)
     {
         ObjectDisposedException.ThrowIf(_isDisposed, nameof(Owner));
@@ -214,7 +222,7 @@ public enum ComputationPhase
     Pending
 }
 
-public class Computation<T>
+public class Computation<T> : IDisposable
 {
     private readonly ComputationNode<T> _node;
     private bool _isDisposed;
@@ -246,6 +254,18 @@ public class Effect : IDisposable
     private readonly EffectNode<object> _node;
     private bool _isDisposed;
 
+    public bool IsDisposed
+    {
+        get
+        {
+            if (_isDisposed) return true;
+            if ((_node.Sources?.Count ?? 0) != 0) return false;
+
+            _isDisposed = true;
+            return true;
+        }
+    }
+
     public Effect(Action fn)
     {
         var owner = ReactiveContext.CurrentOwner ?? Constant.UnOwned;
@@ -269,6 +289,18 @@ public class Effect<T> : IDisposable
 {
     private readonly EffectNode<T> _node;
     private bool _isDisposed;
+
+    public bool IsDisposed
+    {
+        get
+        {
+            if (_isDisposed) return true;
+            if ((_node.Sources?.Count ?? 0) != 0) return false;
+
+            _isDisposed = true;
+            return true;
+        }
+    }
 
     public Effect(Func<T, T> fn, T value)
     {
@@ -318,9 +350,51 @@ public class Memo<T> : IReadOnlySignal<T>
 {
     private readonly MemoNode<T> _memoNode;
     private bool _isDisposed;
+    private T _value;
 
-    public T Value => _memoNode.ReadSignal();
-    public T UntrackValue => _memoNode.UntrackValue;
+    public bool IsDisposed
+    {
+        get
+        {
+            if (_isDisposed) return true;
+            if ((_memoNode.Sources?.Count ?? 0) != 0) return false;
+
+            _isDisposed = true;
+            return true;
+        }
+    }
+
+    public T Value
+    {
+        get
+        {
+            if (_isDisposed) return _value;
+            if ((_memoNode.Sources?.Count ?? 0) == 0)
+            {
+                _isDisposed = true;
+                return _value;
+            }
+
+            _value = _memoNode.ReadSignal();
+            return _value;
+        }
+    }
+
+    public T UntrackValue
+    {
+        get
+        {
+            if (_isDisposed) return _value;
+            if ((_memoNode.Sources?.Count ?? 0) == 0)
+            {
+                _isDisposed = true;
+                return _value;
+            }
+
+            _value = _memoNode.UntrackValue;
+            return _value;
+        }
+    }
 
     public Memo(Func<T, T> fn, T? value = default)
     {
@@ -340,6 +414,7 @@ public class Memo<T> : IReadOnlySignal<T>
             }, owner, computation);
 
         _memoNode.UpdateComputation();
+        _value = _memoNode.UntrackValue;
     }
 
     public Memo(Func<T> fn, T? value = default)
@@ -357,8 +432,8 @@ public class Memo<T> : IReadOnlySignal<T>
 
 public class Context<T>(string id = "context", T defaultValue = default!)
 {
-    public string Id = id;
-    public T DefaultValue = defaultValue;
+    public readonly string Id = id;
+    public readonly T DefaultValue = defaultValue;
 
     public void Provider(T value, Action fn)
     {
@@ -375,6 +450,12 @@ public class Context<T>(string id = "context", T defaultValue = default!)
         if (owner?.Context?[Id] is T value) return value;
         return DefaultValue;
     }
+}
+
+internal class SimpleReadOnlySignal<T>(T source) : IReadOnlySignal<T>
+{
+    public T Value { get; } = source;
+    public T UntrackValue { get; } = source;
 }
 
 public enum ResourcePhase
@@ -415,15 +496,15 @@ public class Resource<TSource, TValue, TInfo>
     private readonly Signal<ResourcePhase> _state = new(ResourcePhase.Unresolved);
     private readonly Signal<object?> _error = new(null);
     private bool _resolved;
-    private Signal<TValue?> _value = new(default);
+    private readonly Signal<TValue?> _value = new(default);
     private Task<TValue>? _task;
     private object _initTask = Constant.EmptyObj;
-    private OwnerTree? _owner = ReactiveContext.CurrentOwner;
+    private readonly OwnerTree? _owner = ReactiveContext.CurrentOwner;
     private bool _scheduled;
     private readonly IReadOnlySignal<TSource?> _source;
 
     // object 的类型为 TValue | Task<TValue>
-    private Func<TSource, TValue?, TInfo?, object> _fetcher;
+    private readonly Func<TSource, TValue?, TInfo?, object> _fetcher;
 
     public Resource(Func<TSource, TValue?, TInfo?, object> fetcher, IReadOnlySignal<TSource> signalSource)
     {

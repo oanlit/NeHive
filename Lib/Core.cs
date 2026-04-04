@@ -2,53 +2,20 @@
 
 using System.Diagnostics;
 
-// 算法
-internal static class Constant
+internal interface ISignalState
 {
-    public static readonly OwnerTree UnOwned = new(
-        parent: null,
-        children: null,
-        context: null,
-        cleanups: null
-    );
-
-    public static bool EqualFn<T>(T a, T b)
-    {
-        return EqualityComparer<T>.Default.Equals(a, b);
-    }
-
-    public static readonly object EmptyObj = new { };
-
-    public static readonly Action EmptyAction = () => { };
+    List<ComputationNode>? Observers { get; set; }
+    List<int>? ObserverSlots { get; set; }
+    ComputationNode? LastObserver { get; set; }
+    internal void UpdateIfNeeded(ComputationNode? ignore = null);
 }
 
-internal static class Util
+internal interface ISignalState<T> : ISignalState
 {
-    public static T RemoveLast<T>(List<T> list)
-    {
-        var count = list.Count;
-        var value = list[count - 1];
-        list.RemoveAt(count - 1);
-        return value;
-    }
-
-    public static Func<object> WrapAction(Action fn)
-    {
-        return () =>
-        {
-            fn();
-            return Constant.EmptyObj;
-        };
-    }
-
-    public static Func<object, object> WrapActionWithArg(Action fn)
-    {
-        return _ =>
-        {
-            fn();
-            return Constant.EmptyObj;
-        };
-    }
+    T Value { get; internal set; }
+    Func<T, T, bool> Comparator { get; }
+    T ReadSignal();
+    T WriteSignal(T value);
 }
 
 internal static class Common
@@ -98,22 +65,6 @@ internal static class Common
         ComputationNode.NotifyObservers(signal.Observers);
         return value;
     }
-}
-
-internal interface ISignalState
-{
-    List<ComputationNode>? Observers { get; set; }
-    List<int>? ObserverSlots { get; set; }
-    ComputationNode? LastObserver { get; set; }
-    internal void UpdateIfNeeded(ComputationNode? ignore = null);
-}
-
-internal interface ISignalState<T> : ISignalState
-{
-    T Value { get; internal set; }
-    Func<T, T, bool> Comparator { get; }
-    T ReadSignal();
-    T WriteSignal(T value);
 }
 
 internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : ISignalState<T>
@@ -685,10 +636,4 @@ internal class MemoNode<T>(
             return Value;
         }
     }
-}
-
-internal class SimpleReadOnlySignal<T>(T source) : IReadOnlySignal<T>
-{
-    public T Value { get; } = source;
-    public T UntrackValue { get; } = source;
 }

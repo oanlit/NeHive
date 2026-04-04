@@ -317,7 +317,7 @@ internal class DenseBuffer<T> : IReadOnlyList<T>
     }
 }
 
-public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMap>>,IDisposable
+public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMap>>
     where TItem : notnull where TKey : notnull
 {
     public IReadOnlyList<TMap> Value => _mapCache.Value;
@@ -463,7 +463,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
             return newMap;
         });
     }
-    
+
     public void Dispose()
     {
         if (_isDisposed) return;
