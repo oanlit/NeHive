@@ -9,6 +9,11 @@ internal static class Util
         list.RemoveAt(count - 1);
         return value;
     }
+    
+    public static void RemoveRangeFrom<T>(List<T> list, int indexFrom)
+    {
+        list.RemoveRange(indexFrom, list.Count - indexFrom);
+    }
 
     public static Func<object> WrapAction(Action fn)
     {

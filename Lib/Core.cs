@@ -128,8 +128,11 @@ internal abstract class ComputationNode : OwnerTree
 {
     protected struct CurrentState
     {
-        public static List<ComputationNode>? UpdateQueue; // 更新值的队列
+        public static readonly List<ComputationNode> UpdateQueue = new(256); // 更新值的队列
+        public static bool IsUpdate; // 当前队列是否处于更新状态
+        public static int UpdateFromIndex; // 队列开始执行的位置
         public static List<ComputationNode>? EffectQueue; // 执行副作用的队列
+        
         public static long ExecCount; // 执行计数器，和ComputationNode.Version 配合使用
         public static string? Error = null;
     }
@@ -208,9 +211,9 @@ internal abstract class ComputationNode : OwnerTree
                 observer.AddQueue();
             }
 
-            if (CurrentState.UpdateQueue!.Count > 10e5)
+            if (CurrentState.UpdateQueue.Count > 10e5)
             {
-                CurrentState.UpdateQueue = [];
+                CurrentState.UpdateQueue.Clear();
                 throw new Exception("Potential Infinite Loop Detected.");
             }
 
@@ -222,7 +225,7 @@ internal abstract class ComputationNode : OwnerTree
     {
         if (Phase == ComputationPhase.Resolved)
         {
-            if (IsPure) CurrentState.UpdateQueue!.Add(this);
+            if (IsPure) CurrentState.UpdateQueue.Add(this);
             else CurrentState.EffectQueue!.Add(this);
 
             // MemoNode<T> 的额外行为
@@ -238,9 +241,14 @@ internal abstract class ComputationNode : OwnerTree
 
     internal static T RunUpdates<T>(Func<T> fn, bool init)
     {
-        if (CurrentState.UpdateQueue is not null) return fn();
+        if (CurrentState.IsUpdate) return fn();
         var wait = false;
-        if (!init) CurrentState.UpdateQueue = [];
+        if (!init)
+        {
+            Util.RemoveRangeFrom(CurrentState.UpdateQueue, CurrentState.UpdateFromIndex);
+            CurrentState.IsUpdate = true;
+        }
+
         if (CurrentState.EffectQueue is not null) wait = true;
         else CurrentState.EffectQueue = [];
         CurrentState.ExecCount++;
@@ -253,7 +261,10 @@ internal abstract class ComputationNode : OwnerTree
         catch (Exception err)
         {
             if (!wait) CurrentState.EffectQueue = null;
-            CurrentState.UpdateQueue = null;
+            
+            Util.RemoveRangeFrom(CurrentState.UpdateQueue, CurrentState.UpdateFromIndex);
+            CurrentState.IsUpdate = false;
+            
             HandleError(err);
             return default!;
         }
@@ -264,10 +275,9 @@ internal abstract class ComputationNode : OwnerTree
 
     private static void CompleteUpdates(bool wait)
     {
-        if (CurrentState.UpdateQueue is not null)
+        if (CurrentState.IsUpdate)
         {
-            RunQueue(CurrentState.UpdateQueue);
-            CurrentState.UpdateQueue = null;
+            RunUpdateQueue();
         }
 
         if (wait) return;
@@ -276,21 +286,25 @@ internal abstract class ComputationNode : OwnerTree
         if (e.Count != 0)
             RunUpdates(() =>
             {
-                RunUserEffects(e);
+                RunEffectQueue(e);
                 return Constant.EmptyObj;
             }, false);
     }
 
-    private static void RunQueue(List<ComputationNode> queues)
+    private static void RunUpdateQueue()
     {
-        for (var i = 0; i < queues.Count; i++)
+        var queues = CurrentState.UpdateQueue;
+        var fromIndex = CurrentState.UpdateFromIndex;
+        for (var i = fromIndex; i < queues.Count; i++)
         {
             var queue = queues[i];
             queue.RunTop();
         }
+        Util.RemoveRangeFrom(queues, fromIndex);
+        CurrentState.IsUpdate = false;
     }
 
-    private static void RunUserEffects(List<ComputationNode> queue)
+    private static void RunEffectQueue(List<ComputationNode> queue)
     {
         var userLength = 0;
         for (var i = 0; i < queue.Count; i++)
@@ -331,11 +345,27 @@ internal abstract class ComputationNode : OwnerTree
 
             else if (node.Phase == ComputationPhase.Pending)
             {
-                var updates = CurrentState.UpdateQueue;
-                CurrentState.UpdateQueue = null;
-                RunUpdates(() => LookUpstream(ancestors[0]), false);
-                CurrentState.UpdateQueue = updates;
+                RunIsolatedUpdates(() => LookUpstream(ancestors[0]));
             }
+        }
+    }
+
+    protected static void RunIsolatedUpdates(Action fn)
+    {
+        var prevIndex = CurrentState.UpdateFromIndex;
+        var prevIsUpdate = CurrentState.IsUpdate;
+
+        CurrentState.UpdateFromIndex = CurrentState.UpdateQueue.Count;
+        CurrentState.IsUpdate = false;
+
+        try
+        {
+            RunUpdates(fn, false);
+        }
+        finally
+        {
+            CurrentState.UpdateFromIndex = prevIndex;
+            CurrentState.IsUpdate = prevIsUpdate;
         }
     }
 
@@ -581,7 +611,7 @@ internal class MemoNode<T>(
             var observer = Observers[i];
             if (observer.Phase != ComputationPhase.Resolved) continue;
             observer.Phase = ComputationPhase.Pending;
-            if (observer.IsPure) CurrentState.UpdateQueue!.Add(observer);
+            if (observer.IsPure) CurrentState.UpdateQueue.Add(observer);
             else CurrentState.EffectQueue!.Add(observer);
             observer.MarkDownstream();
         }
@@ -606,14 +636,7 @@ internal class MemoNode<T>(
         if (Phase == ComputationPhase.Stale) UpdateComputation();
         else
         {
-            var updates = CurrentState.UpdateQueue;
-            CurrentState.UpdateQueue = null;
-            RunUpdates(() =>
-            {
-                LookUpstream();
-                return Constant.EmptyObj;
-            }, false);
-            CurrentState.UpdateQueue = updates;
+            RunIsolatedUpdates(() => { LookUpstream(); });
         }
     }
 
