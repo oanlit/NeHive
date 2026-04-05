@@ -61,7 +61,7 @@ store.Clear();
 
 owner.Clean();
 
-// new StudentStore();
+new StudentStore();
 
 // 创建一个 int 类型的 ListStore
 // ListStore<int?> store = [10, 20, null];

@@ -79,17 +79,58 @@ namespace StoreGenerator
             var ctors = originalClass.Members
                 .OfType<ConstructorDeclarationSyntax>();
 
+            var signalProps = properties.Where(p => !p.NoSignal && !p.IsDerived).ToList();
+            var memoProps = properties.Where(p => p.IsMemoDerived).ToList();
+            var needOwner = memoProps.Count > 0;
+            var ownerName = $"_{Util.LowerFirst(newClassName)}Owner";
+
             // 使用 SyntaxFactory 构建新类
             var newClass = SyntaxFactory.ClassDeclaration(newClassName)
                 .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)))
                 .WithParameterList(originalClass.ParameterList);
 
+            if (needOwner)
+            {
+                newClass = newClass.AddBaseListTypes(
+                    SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName("IDisposable"))
+                );
+            }
+
             // 收集所有要添加到类中的成员
             var members = new List<MemberDeclarationSyntax>();
 
-            // 1. 信号字段
-            var signalProps = properties.Where(p => !p.NoSignal && !p.IsDerived).ToList();
+            // owner 字段
+            if (needOwner)
+            {
+                var ownerType =
+                    SyntaxFactory.IdentifierName("Owner");
+                var variable = SyntaxFactory.VariableDeclarator(ownerName)
+                    .WithInitializer(
+                        SyntaxFactory.EqualsValueClause(
+                            SyntaxFactory.ObjectCreationExpression(ownerType)
+                                .WithArgumentList(
+                                    SyntaxFactory.ArgumentList()
+                                )
+                        )
+                    );
 
+                var ownerField =
+                    SyntaxFactory.FieldDeclaration(
+                            SyntaxFactory.VariableDeclaration(ownerType)
+                                .WithVariables(
+                                    SyntaxFactory.SingletonSeparatedList(variable)
+                                )
+                        )
+                        // private readonly
+                        .WithModifiers(SyntaxFactory.TokenList(
+                            SyntaxFactory.Token(SyntaxKind.PrivateKeyword),
+                            SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword)
+                        ));
+
+                members.Add(ownerField);
+            }
+
+            // 1. 信号字段
             foreach (var prop in signalProps)
             {
                 var propSyntax = originalClass.Members
@@ -152,7 +193,6 @@ namespace StoreGenerator
             }
 
             // Memo字段
-            var memoProps = properties.Where(p => p.IsMemoDerived).ToList();
             foreach (var prop in memoProps)
             {
                 var memoType = SyntaxFactory.GenericName("Memo")
@@ -252,24 +292,16 @@ namespace StoreGenerator
                     .OfType<PropertyDeclarationSyntax>()
                     .First(p => p.Identifier.Text == prop.Name);
 
-                var memoType = SyntaxFactory.GenericName("Memo")
-                    .WithTypeArgumentList(
-                        SyntaxFactory.TypeArgumentList(
-                            SyntaxFactory.SingletonSeparatedList(
-                                SyntaxFactory.ParseTypeName(prop.Type)
-                            )
-                        )
-                    );
-
                 var getter = propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
                     a.Kind() == SyntaxKind.GetAccessorDeclaration);
                 var getterBlock = getter?.Body;
-                
+
                 if (getterBlock == null)
                 {
                     var exp = getter is null
                         ? propSyntax.ExpressionBody?.Expression // 处理像：public int ScoreAndLevel => Score + Level; 这种情况
-                        : getter.ExpressionBody?.Expression; // 处理像：public int ScoreAndLevel { get => Score + Level; } 这种情况
+                        : getter.ExpressionBody
+                            ?.Expression; // 处理像：public int ScoreAndLevel { get => Score + Level; } 这种情况
                     getterBlock = SyntaxFactory.Block
                     (
                         SyntaxFactory.ReturnStatement(exp)
@@ -279,20 +311,25 @@ namespace StoreGenerator
                 var assignment =
                     SyntaxFactory.AssignmentExpression(
                         SyntaxKind.CoalesceAssignmentExpression, // ??=
-                        SyntaxFactory.IdentifierName(prop.FieldName), // _scoreandlevelSignal
-                        SyntaxFactory.ObjectCreationExpression(memoType) // new Memo<int>(...)
-                            .WithArgumentList(
-                                SyntaxFactory.ArgumentList(
-                                    SyntaxFactory.SingletonSeparatedList(
-                                        SyntaxFactory.Argument(
-                                            SyntaxFactory.ParenthesizedLambdaExpression(
-                                                SyntaxFactory.ParameterList(),
-                                                getterBlock
-                                            )
+                        SyntaxFactory.IdentifierName(prop.FieldName), // _scoreAndLevelSignal
+                        SyntaxFactory.InvocationExpression(
+                            SyntaxFactory.MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                SyntaxFactory.IdentifierName(ownerName),
+                                SyntaxFactory.IdentifierName("AddMemo")
+                            )
+                        ).WithArgumentList(
+                            SyntaxFactory.ArgumentList(
+                                SyntaxFactory.SingletonSeparatedList(
+                                    SyntaxFactory.Argument(
+                                        SyntaxFactory.ParenthesizedLambdaExpression(
+                                            SyntaxFactory.ParameterList(),
+                                            getterBlock
                                         )
                                     )
                                 )
                             )
+                        ) // owner.AddMemo(() => store.Count * 2);
                     );
 
                 var propertyGetter =
@@ -361,6 +398,36 @@ namespace StoreGenerator
                 members.Add(newMethod);
             }
 
+            if (needOwner)
+            {
+                var disposeOwner =
+                    SyntaxFactory.InvocationExpression(
+                        SyntaxFactory.MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            SyntaxFactory.IdentifierName(ownerName),
+                            SyntaxFactory.IdentifierName("Dispose")
+                        )
+                    ).WithArgumentList(SyntaxFactory.ArgumentList());
+
+                var methodSyntax =
+                    SyntaxFactory.MethodDeclaration(
+                            SyntaxFactory.PredefinedType(
+                                SyntaxFactory.Token(SyntaxKind.VoidKeyword)
+                            ), "Dispose"
+                        )
+                        .AddModifiers(
+                            SyntaxFactory.Token(SyntaxKind.PublicKeyword)
+                        )
+                        .WithBody(
+                            SyntaxFactory.Block()
+                                .AddStatements(
+                                    SyntaxFactory.ExpressionStatement(disposeOwner)
+                                )
+                        );
+
+                members.Add(methodSyntax);
+            }
+
             // 8. 其他成员（事件、索引器等）直接复制
             var otherMembers = originalClass.Members
                 .Where(m => !(m is ConstructorDeclarationSyntax
@@ -413,7 +480,7 @@ namespace StoreGenerator
             public bool IsDerived; // ⭐ 业务
             public bool IsMemoDerived; // ⭐ 业务
 
-            public string FieldName => $"_{Name.ToLowerInvariant()}Signal";
+            public string FieldName => $"_{Util.LowerFirst(Name)}Signal";
         }
 
         private static List<PropertyInfo> CollectProperties(
