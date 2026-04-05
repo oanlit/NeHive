@@ -131,8 +131,10 @@ internal abstract class ComputationNode : OwnerTree
         public static readonly List<ComputationNode> UpdateQueue = new(256); // 更新值的队列
         public static bool IsUpdate; // 当前队列是否处于更新状态
         public static int UpdateFromIndex; // 队列开始执行的位置
-        public static List<ComputationNode>? EffectQueue; // 执行副作用的队列
-        
+        public static readonly List<ComputationNode> EffectQueue = new(256); // 执行副作用的队列
+        public static bool IsFlushingEffects; // 副作用队列是否处于刷新状态
+        public static int EffectFromIndex; // 副作用队列开始执行的位置
+
         public static long ExecCount; // 执行计数器，和ComputationNode.Version 配合使用
         public static string? Error = null;
     }
@@ -211,10 +213,25 @@ internal abstract class ComputationNode : OwnerTree
                 observer.AddQueue();
             }
 
-            if (CurrentState.UpdateQueue.Count > 10e5)
+            if (CurrentState.UpdateQueue.Count > 4096)
             {
-                CurrentState.UpdateQueue.Clear();
-                throw new Exception("Potential Infinite Loop Detected.");
+                ResetScheduler();
+                Console.Error.WriteLine(@$"
+FATAL: UpdateQueue Potential Infinite Loop Detected.
+
+${Util.GetStackTraceString()}
+");
+            }
+
+            if (CurrentState.EffectQueue.Count > 4096)
+            {
+                ResetScheduler();
+                Console.Error.WriteLine(@$"
+FATAL: EffectQueue Potential Infinite Loop Detected.
+
+${Util.GetStackTraceString()}
+");
+                Process.GetCurrentProcess().Kill();
             }
 
             return Constant.EmptyObj;
@@ -226,7 +243,7 @@ internal abstract class ComputationNode : OwnerTree
         if (Phase == ComputationPhase.Resolved)
         {
             if (IsPure) CurrentState.UpdateQueue.Add(this);
-            else CurrentState.EffectQueue!.Add(this);
+            else CurrentState.EffectQueue.Add(this);
 
             // MemoNode<T> 的额外行为
             MarkDownstream();
@@ -242,15 +259,12 @@ internal abstract class ComputationNode : OwnerTree
     internal static T RunUpdates<T>(Func<T> fn, bool init)
     {
         if (CurrentState.IsUpdate) return fn();
-        var wait = false;
+        var wait = CurrentState.IsFlushingEffects;
         if (!init)
         {
-            Util.RemoveRangeFrom(CurrentState.UpdateQueue, CurrentState.UpdateFromIndex);
             CurrentState.IsUpdate = true;
         }
 
-        if (CurrentState.EffectQueue is not null) wait = true;
-        else CurrentState.EffectQueue = [];
         CurrentState.ExecCount++;
         try
         {
@@ -258,13 +272,21 @@ internal abstract class ComputationNode : OwnerTree
             CompleteUpdates(wait);
             return res;
         }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
         catch (Exception err)
         {
-            if (!wait) CurrentState.EffectQueue = null;
-            
+            if (!CurrentState.IsFlushingEffects)
+            {
+                CurrentState.IsFlushingEffects = false;
+                Util.RemoveRangeFrom(CurrentState.EffectQueue, CurrentState.EffectFromIndex);
+            }
+
             Util.RemoveRangeFrom(CurrentState.UpdateQueue, CurrentState.UpdateFromIndex);
             CurrentState.IsUpdate = false;
-            
+
             HandleError(err);
             return default!;
         }
@@ -277,37 +299,51 @@ internal abstract class ComputationNode : OwnerTree
     {
         if (CurrentState.IsUpdate)
         {
-            RunUpdateQueue();
+            var queues = CurrentState.UpdateQueue;
+            var fromIndex = CurrentState.UpdateFromIndex;
+            var toIndex = queues.Count;
+            RunUpdateQueue(fromIndex, toIndex);
+            Util.RemoveRangeFrom(queues, fromIndex);
+            CurrentState.IsUpdate = false;
         }
 
         if (wait) return;
-        var e = CurrentState.EffectQueue!;
-        CurrentState.EffectQueue = null;
-        if (e.Count != 0)
-            RunUpdates(() =>
-            {
-                RunEffectQueue(e);
-                return Constant.EmptyObj;
-            }, false);
+
+        CurrentState.IsFlushingEffects = false;
+        var e = CurrentState.EffectQueue;
+        var effectFromIndex = CurrentState.EffectFromIndex;
+        var effectToIndex = e.Count;
+        var count = effectToIndex - effectFromIndex;
+        if (count == 0) return;
+
+        CurrentState.EffectFromIndex = e.Count;
+        RunUpdates(() =>
+        {
+            RunEffectQueue(effectFromIndex, effectToIndex);
+            return Constant.EmptyObj;
+        }, false);
+        Util.RemoveRangeFrom(CurrentState.EffectQueue, effectFromIndex);
+        CurrentState.EffectFromIndex = effectFromIndex;
+        CurrentState.IsFlushingEffects = false;
     }
 
-    private static void RunUpdateQueue()
+    private static void RunUpdateQueue(int fromIndex, int toIndex)
     {
         var queues = CurrentState.UpdateQueue;
-        var fromIndex = CurrentState.UpdateFromIndex;
-        for (var i = fromIndex; i < queues.Count; i++)
+        for (var i = fromIndex; i < toIndex; i++)
         {
             var queue = queues[i];
             queue.RunTop();
         }
-        Util.RemoveRangeFrom(queues, fromIndex);
-        CurrentState.IsUpdate = false;
     }
 
-    private static void RunEffectQueue(List<ComputationNode> queue)
+    private static void RunEffectQueue(int fromIndex, int toIndex)
     {
         var userLength = 0;
-        for (var i = 0; i < queue.Count; i++)
+        var queue = CurrentState.EffectQueue;
+        CurrentState.EffectFromIndex = queue.Count;
+
+        for (var i = fromIndex; i < toIndex; i++)
         {
             var e = queue[i];
             if (!e.IsUser) e.RunTop();
@@ -400,7 +436,7 @@ internal abstract class ComputationNode : OwnerTree
         var error = CastError(err);
         if (fns is null) throw error;
 
-        if (CurrentState.EffectQueue is not null)
+        if (CurrentState.IsFlushingEffects)
         {
             ComputationNode<object> handler = new(Util.WrapActionWithArg(() => RunErrors(error, fns, owner)),
                 Constant.EmptyObj, isPure: false, phase: ComputationPhase.Stale);
@@ -426,10 +462,26 @@ internal abstract class ComputationNode : OwnerTree
                 f(err);
             }
         }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
         catch (Exception e)
         {
             HandleError(e, owner?.Parent);
         }
+    }
+
+    private static void ResetScheduler()
+    {
+        CurrentState.UpdateQueue.Clear();
+        CurrentState.EffectQueue.Clear();
+
+        CurrentState.UpdateFromIndex = 0;
+        CurrentState.EffectFromIndex = 0;
+
+        CurrentState.IsUpdate = false;
+        CurrentState.IsFlushingEffects = false;
     }
 
     // 额外API，非核心算法
@@ -487,6 +539,10 @@ internal abstract class ComputationNode : OwnerTree
         {
             return RunUpdates(fn, true)!;
         }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
         catch (Exception err)
         {
             HandleError(err);
@@ -534,6 +590,10 @@ internal class ComputationNode<T>(
         {
             nextValue = Fn(Value);
         }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
         catch (Exception err)
         {
             if (IsPure)
@@ -565,7 +625,7 @@ internal class EffectNode<T> : ComputationNode<T>
     public EffectNode(Func<T, T> fn,
         T value) : base(fn, value, isUser: true)
     {
-        if (CurrentState.EffectQueue is null)
+        if (!CurrentState.IsFlushingEffects)
             UpdateComputation();
         else
             CurrentState.EffectQueue.Add(this);
@@ -612,7 +672,7 @@ internal class MemoNode<T>(
             if (observer.Phase != ComputationPhase.Resolved) continue;
             observer.Phase = ComputationPhase.Pending;
             if (observer.IsPure) CurrentState.UpdateQueue.Add(observer);
-            else CurrentState.EffectQueue!.Add(observer);
+            else CurrentState.EffectQueue.Add(observer);
             observer.MarkDownstream();
         }
     }
