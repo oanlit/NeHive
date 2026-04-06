@@ -147,23 +147,16 @@ public class EffectTest
         Assert.Equal(3, inner);
     }
 
-    // [Fact]
-    // public void Infinite_Loop_Should_Throw()
-    // {
-    //     var a = new Signal<int>(0);
-    //
-    //     var effect = new Effect(() =>
-    //     {
-    //         if (a.Value < 10)
-    //             a.Value++;
-    //     });
-    //     effect.Dispose();
-    //     Assert.Throws<InfiniteReactiveLoopException>(() =>
-    //     {
-    //         using var effect2 = new Effect(() =>
-    //         {
-    //             a.Value++;
-    //         });
-    //     });
-    // }
+    [Fact]
+    public void Infinite_Loop_Should_Throw()
+    {
+        var a = new Signal<int>(0);
+        Assert.Throws<InfiniteReactiveLoopException>(() =>
+        {
+            using var effect = new Effect(() =>
+            {
+                a.Value++;
+            });
+        });
+    }
 }

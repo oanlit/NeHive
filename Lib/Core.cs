@@ -136,10 +136,10 @@ internal abstract class ComputationNode : OwnerTree
     protected struct CurrentState
     {
         public static readonly List<ComputationNode> UpdateQueue = new(256); // 更新值的队列
-        public static bool IsUpdate; // 当前队列是否处于更新状态
+        public static bool UpdateIsBusy; // 当前队列是否处于更新状态
         public static int UpdateFromIndex; // 队列开始执行的位置
         public static readonly List<ComputationNode> EffectQueue = new(256); // 执行副作用的队列
-        public static bool IsFlushingEffects; // 副作用队列是否处于刷新状态
+        public static bool EffectsIsBusy; // 副作用队列是否处于忙碌状态
         public static int EffectFromIndex; // 副作用队列开始执行的位置
 
         public static long ExecCount; // 执行计数器，和ComputationNode.Version 配合使用
@@ -220,25 +220,27 @@ internal abstract class ComputationNode : OwnerTree
                 observer.AddQueue();
             }
 
-            if (CurrentState.UpdateQueue.Count > 4096)
+            if (CurrentState.UpdateQueue.Count > 10e5)
             {
                 ResetScheduler();
-                Console.Error.WriteLine(@$"
-FATAL: UpdateQueue Potential Infinite Loop Detected.
-
-${Util.GetStackTraceString()}
-");
+//                 Console.Error.WriteLine(@$"
+// FATAL: UpdateQueue Potential Infinite Loop Detected.
+//
+// ${Util.GetStackTraceString()}
+// ");
+                throw new InfiniteReactiveLoopException("CRITICAL: UpdateQueue Potential Infinite Loop Detected.");
             }
 
-            if (CurrentState.EffectQueue.Count > 4096)
+            if (CurrentState.EffectQueue.Count > 10e5)
             {
                 ResetScheduler();
-                Console.Error.WriteLine(@$"
-FATAL: EffectQueue Potential Infinite Loop Detected.
-
-${Util.GetStackTraceString()}
-");
-                Process.GetCurrentProcess().Kill();
+//                 Console.Error.WriteLine(@$"
+// FATAL: EffectQueue Potential Infinite Loop Detected.
+//
+// ${Util.GetStackTraceString()}
+// ");
+//                 Process.GetCurrentProcess().Kill();
+                throw new InfiniteReactiveLoopException("CRITICAL: EffectQueue Potential Infinite Loop Detected.");
             }
 
             return Constant.EmptyObj;
@@ -263,27 +265,26 @@ ${Util.GetStackTraceString()}
     {
     }
 
+    // 调度核心
     internal static T RunUpdates<T>(Func<T> fn, bool init)
     {
-        if (CurrentState.IsUpdate) return fn();
-        var isOuter = CurrentState.IsFlushingEffects;
+        if (CurrentState.UpdateIsBusy) return fn();
+        var unLoop = CurrentState.EffectsIsBusy;
         if (!init)
         {
-            CurrentState.IsUpdate = true;
+            CurrentState.UpdateIsBusy = true;
         }
 
-        CurrentState.IsFlushingEffects = true;
+        CurrentState.EffectsIsBusy = true;
         CurrentState.ExecCount++;
-        var firstEffectFromIndex = CurrentState.EffectFromIndex;
         try
         {
             var res = fn();
+            FlushUpdates();
+            if (unLoop) return res;
+
             while (true)
             {
-                FlushUpdates();
-
-                if (isOuter) break;
-                CurrentState.IsFlushingEffects = false;
                 var e = CurrentState.EffectQueue;
                 var effectFromIndex = CurrentState.EffectFromIndex;
                 var effectToIndex = e.Count;
@@ -291,31 +292,32 @@ ${Util.GetStackTraceString()}
                 if (count == 0) break;
 
                 CurrentState.EffectFromIndex = e.Count;
-                isOuter = false;
-                CurrentState.IsUpdate = true;
-                CurrentState.IsFlushingEffects = true;
+                CurrentState.UpdateIsBusy = true;
                 CurrentState.ExecCount++;
+
                 RunEffectQueue(effectFromIndex, effectToIndex);
+                FlushUpdates();
             }
 
-            if (!isOuter)
-            {
-                Util.RemoveRangeFrom(CurrentState.EffectQueue, firstEffectFromIndex);
-                CurrentState.EffectFromIndex = firstEffectFromIndex;
-                CurrentState.IsFlushingEffects = false;
-            }
+            CurrentState.EffectQueue.Clear();
+            CurrentState.EffectFromIndex = 0;
+            CurrentState.EffectsIsBusy = false;
             return res;
+        }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
         }
         catch (Exception err)
         {
-            if (!CurrentState.IsFlushingEffects)
+            if (!CurrentState.EffectsIsBusy)
             {
-                CurrentState.IsFlushingEffects = false;
+                CurrentState.EffectsIsBusy = false;
                 Util.RemoveRangeFrom(CurrentState.EffectQueue, CurrentState.EffectFromIndex);
             }
 
             Util.RemoveRangeFrom(CurrentState.UpdateQueue, CurrentState.UpdateFromIndex);
-            CurrentState.IsUpdate = false;
+            CurrentState.UpdateIsBusy = false;
             HandleError(err);
             return default!;
         }
@@ -325,21 +327,21 @@ ${Util.GetStackTraceString()}
 
     private static void FlushUpdates()
     {
-        if (!CurrentState.IsUpdate) return;
+        if (!CurrentState.UpdateIsBusy) return;
         var queues = CurrentState.UpdateQueue;
         var fromIndex = CurrentState.UpdateFromIndex;
         RunUpdateQueue(fromIndex);
         Util.RemoveRangeFrom(queues, fromIndex);
-        CurrentState.IsUpdate = false;
+        CurrentState.UpdateIsBusy = false;
     }
 
     private static void RunUpdateQueue(int fromIndex)
     {
-        var queues = CurrentState.UpdateQueue;
-        for (var i = fromIndex; i < queues.Count; i++)
+        var queue = CurrentState.UpdateQueue;
+        for (var i = fromIndex; i < queue.Count; i++)
         {
-            var queue = queues[i];
-            queue.RunTop();
+            var node = queue[i];
+            node.RunTop();
         }
     }
 
@@ -349,9 +351,9 @@ ${Util.GetStackTraceString()}
         var queue = CurrentState.EffectQueue;
         for (var i = fromIndex; i < toIndex; i++)
         {
-            var e = queue[i];
-            if (!e.IsUser) e.RunTop();
-            else queue[userLength++] = e;
+            var node = queue[i];
+            if (!node.IsUser) node.RunTop();
+            else queue[userLength++] = node;
         }
 
         for (var i = 0; i < userLength; i++) queue[i].RunTop();
@@ -393,10 +395,10 @@ ${Util.GetStackTraceString()}
     protected static void RunIsolatedUpdates(Action fn)
     {
         var prevIndex = CurrentState.UpdateFromIndex;
-        var prevIsUpdate = CurrentState.IsUpdate;
+        var prevIsUpdate = CurrentState.UpdateIsBusy;
 
         CurrentState.UpdateFromIndex = CurrentState.UpdateQueue.Count;
-        CurrentState.IsUpdate = false;
+        CurrentState.UpdateIsBusy = false;
 
         try
         {
@@ -405,7 +407,7 @@ ${Util.GetStackTraceString()}
         finally
         {
             CurrentState.UpdateFromIndex = prevIndex;
-            CurrentState.IsUpdate = prevIsUpdate;
+            CurrentState.UpdateIsBusy = prevIsUpdate;
         }
     }
 
@@ -440,7 +442,7 @@ ${Util.GetStackTraceString()}
         var error = CastError(err);
         if (fns is null) throw error;
 
-        if (CurrentState.IsFlushingEffects)
+        if (CurrentState.EffectsIsBusy)
         {
             ComputationNode<object> handler = new(Util.WrapActionWithArg(() => RunErrors(error, fns, owner)),
                 Constant.EmptyObj, isPure: false, phase: ComputationPhase.Stale);
@@ -466,6 +468,10 @@ ${Util.GetStackTraceString()}
                 f(err);
             }
         }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
         catch (Exception e)
         {
             HandleError(e, owner?.Parent);
@@ -480,8 +486,8 @@ ${Util.GetStackTraceString()}
         CurrentState.UpdateFromIndex = 0;
         CurrentState.EffectFromIndex = 0;
 
-        CurrentState.IsUpdate = false;
-        CurrentState.IsFlushingEffects = false;
+        CurrentState.UpdateIsBusy = false;
+        CurrentState.EffectsIsBusy = false;
     }
 
     // 额外API，非核心算法
@@ -539,6 +545,10 @@ ${Util.GetStackTraceString()}
         {
             return RunUpdates(fn, true)!;
         }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
         catch (Exception err)
         {
             HandleError(err);
@@ -586,6 +596,10 @@ internal class ComputationNode<T>(
         {
             nextValue = Fn(Value);
         }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
         catch (Exception err)
         {
             if (IsPure)
@@ -617,7 +631,7 @@ internal class EffectNode<T> : ComputationNode<T>
     public EffectNode(Func<T, T> fn,
         T value) : base(fn, value, isUser: true)
     {
-        if (!CurrentState.IsFlushingEffects)
+        if (!CurrentState.EffectsIsBusy)
             UpdateComputation();
         else
             CurrentState.EffectQueue.Add(this);
