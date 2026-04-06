@@ -201,9 +201,8 @@ public class Owner : IDisposable
 
     public Computation<T> AddComputation<T>(Func<T, T> fn,
         T init,
-        bool pure = false,
-        ComputationPhase phase = ComputationPhase.Stale)
-        => _setContext(() => new Computation<T>(fn, init, pure, phase));
+        bool pure = false)
+        => _setContext(() => new Computation<T>(fn, init, pure));
 
     public T RunWithOwner<T>(Func<T> fn)
     {
@@ -215,13 +214,6 @@ public class Owner : IDisposable
         => RunWithOwner(Util.WrapAction(fn));
 }
 
-public enum ComputationPhase
-{
-    Resolved,
-    Stale,
-    Pending
-}
-
 public class Computation<T> : IDisposable
 {
     private readonly ComputationNode<T> _node;
@@ -229,10 +221,9 @@ public class Computation<T> : IDisposable
 
     public Computation(Func<T, T> fn,
         T init,
-        bool pure = false,
-        ComputationPhase phase = ComputationPhase.Stale)
+        bool pure = false)
     {
-        _node = new(fn, init, isPure: pure, phase: phase);
+        _node = new(fn, init, isPure: pure);
     }
 
     public void Dispose()

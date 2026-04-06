@@ -124,6 +124,13 @@ internal static class ReactiveContext
     public static ComputationNode? CurrentComputation; // 当前计算节点
 }
 
+internal enum ComputationPhase
+{
+    Resolved,
+    Stale,
+    Pending
+}
+
 internal abstract class ComputationNode : OwnerTree
 {
     protected struct CurrentState
@@ -265,16 +272,14 @@ ${Util.GetStackTraceString()}
             CurrentState.IsUpdate = true;
         }
 
+        CurrentState.IsFlushingEffects = true;
+
         CurrentState.ExecCount++;
         try
         {
             var res = fn();
             CompleteUpdates(wait);
             return res;
-        }
-        catch (InfiniteReactiveLoopException)
-        {
-            throw;
         }
         catch (Exception err)
         {
@@ -462,10 +467,6 @@ ${Util.GetStackTraceString()}
                 f(err);
             }
         }
-        catch (InfiniteReactiveLoopException)
-        {
-            throw;
-        }
         catch (Exception e)
         {
             HandleError(e, owner?.Parent);
@@ -539,10 +540,6 @@ ${Util.GetStackTraceString()}
         {
             return RunUpdates(fn, true)!;
         }
-        catch (InfiniteReactiveLoopException)
-        {
-            throw;
-        }
         catch (Exception err)
         {
             HandleError(err);
@@ -589,10 +586,6 @@ internal class ComputationNode<T>(
         try
         {
             nextValue = Fn(Value);
-        }
-        catch (InfiniteReactiveLoopException)
-        {
-            throw;
         }
         catch (Exception err)
         {
