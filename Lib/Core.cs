@@ -266,19 +266,44 @@ ${Util.GetStackTraceString()}
     internal static T RunUpdates<T>(Func<T> fn, bool init)
     {
         if (CurrentState.IsUpdate) return fn();
-        var wait = CurrentState.IsFlushingEffects;
+        var isOuter = CurrentState.IsFlushingEffects;
         if (!init)
         {
             CurrentState.IsUpdate = true;
         }
 
         CurrentState.IsFlushingEffects = true;
-
         CurrentState.ExecCount++;
+        var firstEffectFromIndex = CurrentState.EffectFromIndex;
         try
         {
             var res = fn();
-            CompleteUpdates(wait);
+            while (true)
+            {
+                FlushUpdates();
+
+                if (isOuter) break;
+                CurrentState.IsFlushingEffects = false;
+                var e = CurrentState.EffectQueue;
+                var effectFromIndex = CurrentState.EffectFromIndex;
+                var effectToIndex = e.Count;
+                var count = effectToIndex - effectFromIndex;
+                if (count == 0) break;
+
+                CurrentState.EffectFromIndex = e.Count;
+                isOuter = false;
+                CurrentState.IsUpdate = true;
+                CurrentState.IsFlushingEffects = true;
+                CurrentState.ExecCount++;
+                RunEffectQueue(effectFromIndex, effectToIndex);
+            }
+
+            if (!isOuter)
+            {
+                Util.RemoveRangeFrom(CurrentState.EffectQueue, firstEffectFromIndex);
+                CurrentState.EffectFromIndex = firstEffectFromIndex;
+                CurrentState.IsFlushingEffects = false;
+            }
             return res;
         }
         catch (Exception err)
@@ -291,51 +316,27 @@ ${Util.GetStackTraceString()}
 
             Util.RemoveRangeFrom(CurrentState.UpdateQueue, CurrentState.UpdateFromIndex);
             CurrentState.IsUpdate = false;
-
             HandleError(err);
             return default!;
         }
     }
 
-    internal static void RunUpdates(Action fn, bool init)
-        => RunUpdates(Util.WrapAction(fn), init);
+    internal static void RunUpdates(Action fn, bool init) => RunUpdates(Util.WrapAction(fn), init);
 
-    private static void CompleteUpdates(bool wait)
+    private static void FlushUpdates()
     {
-        if (CurrentState.IsUpdate)
-        {
-            var queues = CurrentState.UpdateQueue;
-            var fromIndex = CurrentState.UpdateFromIndex;
-            var toIndex = queues.Count;
-            RunUpdateQueue(fromIndex, toIndex);
-            Util.RemoveRangeFrom(queues, fromIndex);
-            CurrentState.IsUpdate = false;
-        }
-
-        if (wait) return;
-
-        CurrentState.IsFlushingEffects = false;
-        var e = CurrentState.EffectQueue;
-        var effectFromIndex = CurrentState.EffectFromIndex;
-        var effectToIndex = e.Count;
-        var count = effectToIndex - effectFromIndex;
-        if (count == 0) return;
-
-        CurrentState.EffectFromIndex = e.Count;
-        RunUpdates(() =>
-        {
-            RunEffectQueue(effectFromIndex, effectToIndex);
-            return Constant.EmptyObj;
-        }, false);
-        Util.RemoveRangeFrom(CurrentState.EffectQueue, effectFromIndex);
-        CurrentState.EffectFromIndex = effectFromIndex;
-        CurrentState.IsFlushingEffects = false;
+        if (!CurrentState.IsUpdate) return;
+        var queues = CurrentState.UpdateQueue;
+        var fromIndex = CurrentState.UpdateFromIndex;
+        RunUpdateQueue(fromIndex);
+        Util.RemoveRangeFrom(queues, fromIndex);
+        CurrentState.IsUpdate = false;
     }
 
-    private static void RunUpdateQueue(int fromIndex, int toIndex)
+    private static void RunUpdateQueue(int fromIndex)
     {
         var queues = CurrentState.UpdateQueue;
-        for (var i = fromIndex; i < toIndex; i++)
+        for (var i = fromIndex; i < queues.Count; i++)
         {
             var queue = queues[i];
             queue.RunTop();
@@ -346,8 +347,6 @@ ${Util.GetStackTraceString()}
     {
         var userLength = 0;
         var queue = CurrentState.EffectQueue;
-        CurrentState.EffectFromIndex = queue.Count;
-
         for (var i = fromIndex; i < toIndex; i++)
         {
             var e = queue[i];
