@@ -5,10 +5,10 @@ using System.Diagnostics;
 public static partial class Reactive
 {
     public static void Batch(Action fn)
-        => ComputationNode.RunUpdates(fn, false);
+        => ComputationNode.RunBatch(fn, false);
 
     public static T Batch<T>(Func<T> fn)
-        => ComputationNode.RunUpdates(fn, false);
+        => ComputationNode.RunBatch(fn, false);
 
     public static void OnMount(Action fn)
     {
@@ -44,7 +44,7 @@ public static partial class Reactive
 
     public static void BatchUntrack(Action fn)
     {
-        ComputationNode.RunUpdates(() =>
+        ComputationNode.RunBatch(() =>
         {
             ComputationNode.Untrack(fn);
             return Constant.EmptyObj;
@@ -430,7 +430,7 @@ public class Context<T>(string id = "context", T defaultValue = default!)
     {
         var owner = ReactiveContext.CurrentOwner;
         if (owner is null) throw new Exception("CurrentOwner is None!");
-        owner.Context ??= new Dictionary<string, object?>();
+        owner.Context ??= new Dictionary<object, object?>();
         owner.Context[Id] = value;
         fn();
     }
@@ -582,7 +582,7 @@ public class Resource<TSource, TValue, TInfo>
         _task = pTask;
         _scheduled = true;
         _ = ResetScheduledAsync();
-        ComputationNode.RunUpdates(
+        ComputationNode.RunBatch(
             () => { _state.Value = _resolved ? ResourcePhase.Refreshing : ResourcePhase.Pending; },
             false);
         return HandleAsync();
@@ -622,7 +622,7 @@ public class Resource<TSource, TValue, TInfo>
 
     private void _completeLoad(TValue? v, object? err)
     {
-        ComputationNode.RunUpdates(() =>
+        ComputationNode.RunBatch(() =>
         {
             if (err is null)
             {

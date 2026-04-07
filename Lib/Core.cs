@@ -94,13 +94,13 @@ internal class OwnerTree(
     OwnerTree? parent = null,
     List<ComputationNode>? children = null,
     List<Action>? cleanups = null,
-    Dictionary<string, object?>? context = null
+    Dictionary<object, object?>? context = null
 )
 {
     internal readonly OwnerTree? Parent = parent;
     internal List<ComputationNode>? Children = children;
     internal List<Action>? Cleanups = cleanups;
-    internal Dictionary<string, object?>? Context = context;
+    internal Dictionary<object, object?>? Context = context;
 
     internal virtual void CleanNode()
     {
@@ -135,12 +135,13 @@ internal abstract class ComputationNode : OwnerTree
 {
     protected struct CurrentState
     {
+        public static bool IsStartBatch; // 当前是否处于批量调度状态
+
         public static readonly List<ComputationNode> UpdateQueue = new(256); // 更新值的队列
         public static bool UpdateIsBusy; // 当前队列是否处于更新状态
         public static int UpdateFromIndex; // 队列开始执行的位置
         public static readonly List<ComputationNode> EffectQueue = new(256); // 执行副作用的队列
-        public static bool EffectsIsBusy; // 副作用队列是否处于忙碌状态
-        public static int EffectFromIndex; // 副作用队列开始执行的位置
+        // public static int EffectFromIndex; // 副作用队列开始执行的位置
 
         public static long ExecCount; // 执行计数器，和ComputationNode.Version 配合使用
         public static string? Error = null;
@@ -163,7 +164,7 @@ internal abstract class ComputationNode : OwnerTree
         OwnerTree? parent = null,
         List<ComputationNode>? children = null,
         List<Action>? cleanups = null,
-        Dictionary<string, object?>? context = null
+        Dictionary<object, object?>? context = null
     ) : base(parent, children, cleanups, context)
     {
         Phase = phase;
@@ -212,7 +213,7 @@ internal abstract class ComputationNode : OwnerTree
     // 核心功能入口点
     internal static void NotifyObservers(List<ComputationNode> observers)
     {
-        RunUpdates(() =>
+        RunBatch(() =>
         {
             for (var i = 0; i < observers.Count; i++)
             {
@@ -266,42 +267,39 @@ internal abstract class ComputationNode : OwnerTree
     }
 
     // 调度核心
-    internal static T RunUpdates<T>(Func<T> fn, bool init)
+    internal static T RunBatch<T>(Func<T> fn, bool init)
     {
         if (CurrentState.UpdateIsBusy) return fn();
-        var unLoop = CurrentState.EffectsIsBusy;
+        var unLoop = CurrentState.IsStartBatch;
         if (!init)
         {
             CurrentState.UpdateIsBusy = true;
         }
 
-        CurrentState.EffectsIsBusy = true;
-        CurrentState.ExecCount++;
+        CurrentState.IsStartBatch = true;
         try
         {
             var res = fn();
-            FlushUpdates();
+            RunUpdates();
             if (unLoop) return res;
 
+            var effectFromIndex = 0;
             while (true)
             {
                 var e = CurrentState.EffectQueue;
-                var effectFromIndex = CurrentState.EffectFromIndex;
                 var effectToIndex = e.Count;
                 var count = effectToIndex - effectFromIndex;
                 if (count == 0) break;
 
-                CurrentState.EffectFromIndex = e.Count;
                 CurrentState.UpdateIsBusy = true;
-                CurrentState.ExecCount++;
 
                 RunEffectQueue(effectFromIndex, effectToIndex);
-                FlushUpdates();
+                effectFromIndex = effectToIndex;
+                RunUpdates();
             }
 
             CurrentState.EffectQueue.Clear();
-            CurrentState.EffectFromIndex = 0;
-            CurrentState.EffectsIsBusy = false;
+            CurrentState.IsStartBatch = false;
             return res;
         }
         catch (InfiniteReactiveLoopException)
@@ -310,10 +308,10 @@ internal abstract class ComputationNode : OwnerTree
         }
         catch (Exception err)
         {
-            if (!CurrentState.EffectsIsBusy)
+            if (!unLoop)
             {
-                CurrentState.EffectsIsBusy = false;
-                Util.RemoveRangeFrom(CurrentState.EffectQueue, CurrentState.EffectFromIndex);
+                CurrentState.EffectQueue.Clear();
+                CurrentState.IsStartBatch = false;
             }
 
             Util.RemoveRangeFrom(CurrentState.UpdateQueue, CurrentState.UpdateFromIndex);
@@ -323,16 +321,26 @@ internal abstract class ComputationNode : OwnerTree
         }
     }
 
-    internal static void RunUpdates(Action fn, bool init) => RunUpdates(Util.WrapAction(fn), init);
+    internal static void RunBatch(Action fn, bool init) => RunBatch(Util.WrapAction(fn), init);
 
-    private static void FlushUpdates()
+    private static void RunUpdates()
     {
         if (!CurrentState.UpdateIsBusy) return;
         var queues = CurrentState.UpdateQueue;
         var fromIndex = CurrentState.UpdateFromIndex;
-        RunUpdateQueue(fromIndex);
-        Util.RemoveRangeFrom(queues, fromIndex);
-        CurrentState.UpdateIsBusy = false;
+
+        CurrentState.ExecCount++;
+
+        try
+        {
+            RunUpdateQueue(fromIndex);
+        }
+        finally
+        {
+            Util.RemoveRangeFrom(queues, fromIndex);
+            CurrentState.UpdateFromIndex = fromIndex;
+            CurrentState.UpdateIsBusy = false;
+        }
     }
 
     private static void RunUpdateQueue(int fromIndex)
@@ -398,11 +406,12 @@ internal abstract class ComputationNode : OwnerTree
         var prevIsUpdate = CurrentState.UpdateIsBusy;
 
         CurrentState.UpdateFromIndex = CurrentState.UpdateQueue.Count;
-        CurrentState.UpdateIsBusy = false;
+        CurrentState.UpdateIsBusy = true;
 
         try
         {
-            RunUpdates(fn, false);
+            fn();
+            RunUpdates();
         }
         finally
         {
@@ -442,7 +451,7 @@ internal abstract class ComputationNode : OwnerTree
         var error = CastError(err);
         if (fns is null) throw error;
 
-        if (CurrentState.EffectsIsBusy)
+        if (CurrentState.IsStartBatch)
         {
             ComputationNode<object> handler = new(Util.WrapActionWithArg(() => RunErrors(error, fns, owner)),
                 Constant.EmptyObj, isPure: false, phase: ComputationPhase.Stale);
@@ -484,10 +493,9 @@ internal abstract class ComputationNode : OwnerTree
         CurrentState.EffectQueue.Clear();
 
         CurrentState.UpdateFromIndex = 0;
-        CurrentState.EffectFromIndex = 0;
 
         CurrentState.UpdateIsBusy = false;
-        CurrentState.EffectsIsBusy = false;
+        CurrentState.IsStartBatch = false;
     }
 
     // 额外API，非核心算法
@@ -543,7 +551,7 @@ internal abstract class ComputationNode : OwnerTree
         ReactiveContext.CurrentComputation = null;
         try
         {
-            return RunUpdates(fn, true)!;
+            return RunBatch(fn, true)!;
         }
         catch (InfiniteReactiveLoopException)
         {
@@ -575,7 +583,7 @@ internal class ComputationNode<T>(
     OwnerTree? parent = null,
     List<ComputationNode>? children = null,
     List<Action>? cleanups = null,
-    Dictionary<string, object?>? context = null
+    Dictionary<object, object?>? context = null
 ) : ComputationNode(phase, sources, sourceSlots,
     version, isPure, isUser,
     parent, children, cleanups, context)
@@ -631,7 +639,7 @@ internal class EffectNode<T> : ComputationNode<T>
     public EffectNode(Func<T, T> fn,
         T value) : base(fn, value, isUser: true)
     {
-        if (!CurrentState.EffectsIsBusy)
+        if (!CurrentState.IsStartBatch)
             UpdateComputation();
         else
             CurrentState.EffectQueue.Add(this);
@@ -653,7 +661,7 @@ internal class MemoNode<T>(
     OwnerTree? parent = null,
     List<ComputationNode>? children = null,
     List<Action>? cleanups = null,
-    Dictionary<string, object?>? context = null
+    Dictionary<object, object?>? context = null
 ) : ComputationNode<T>(fn, value!, phase,
         sources, sourceSlots, version, isPure, isUser,
         parent, children, cleanups, context),
