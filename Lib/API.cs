@@ -50,51 +50,6 @@ public static partial class Reactive
             return Constant.EmptyObj;
         }, false);
     }
-
-    public static Func<T, bool> CreateSelector<T>(Func<T> source, Func<T, T, bool>? fn = null) where T : notnull
-    {
-        fn ??= Constant.EqualFn;
-        var subs = new Dictionary<T, HashSet<ComputationNode>>();
-        var computationFn = (T? prevValue) =>
-        {
-            var nextValue = source();
-            foreach (var (key, val) in subs.AsEnumerable())
-                if (fn(key, nextValue) != fn(key, prevValue!)) // 异或比较
-                {
-                    foreach (var c in val)
-                    {
-                        // c.Phase = ComputationPhase.Stale;
-                        // if (c.IsPure) CurrentState.UpdateQueue!.Add(c);
-                        // else CurrentState.EffectQueue!.Add(c);
-                        c.AddQueue(); // 以上是源码，用这个会不会有问题?
-                    }
-                }
-
-            return nextValue;
-        };
-        var node = new MemoNode<T>(fn: computationFn, isPure: true, phase: ComputationPhase.Stale);
-        node.UpdateComputation();
-        return key =>
-        {
-            var currentComputation = ReactiveContext.CurrentComputation;
-            if (currentComputation is null) return fn(key, node.Value);
-
-            if (subs.TryGetValue(key, out var computations))
-                computations.Add(currentComputation);
-            else
-            {
-                computations = [currentComputation];
-                subs.Add(key, computations);
-            }
-
-            OnCleanup(() =>
-            {
-                computations.Remove(currentComputation);
-                if (computations.Count == 0) subs.Remove(key);
-            });
-            return fn(key, node.Value);
-        };
-    }
 }
 
 public interface IReadOnlySignal<out T>
@@ -343,23 +298,13 @@ public class Memo<T> : IReadOnlySignal<T>
     private bool _isDisposed;
     private T _value;
 
-    public bool IsDisposed
-    {
-        get
-        {
-            if (_isDisposed) return true;
-            if ((_memoNode.Sources?.Count ?? 0) != 0) return false;
-
-            _isDisposed = true;
-            return true;
-        }
-    }
+    public Func<T, T> Fn;
 
     public T Value
     {
         get
         {
-            if (_isDisposed) return _value;
+            if (_isDisposed) return Fn(_value);
             if ((_memoNode.Sources?.Count ?? 0) == 0)
             {
                 _isDisposed = true;
@@ -375,7 +320,7 @@ public class Memo<T> : IReadOnlySignal<T>
     {
         get
         {
-            if (_isDisposed) return _value;
+            if (_isDisposed) return Fn(_value);
             if ((_memoNode.Sources?.Count ?? 0) == 0)
             {
                 _isDisposed = true;
@@ -387,10 +332,23 @@ public class Memo<T> : IReadOnlySignal<T>
         }
     }
 
+    public bool IsDisposed
+    {
+        get
+        {
+            if (_isDisposed) return true;
+            if ((_memoNode.Sources?.Count ?? 0) != 0) return false;
+
+            _isDisposed = true;
+            return true;
+        }
+    }
+
     public Memo(Func<T, T> fn, T? value = default)
     {
         var owner = ReactiveContext.CurrentOwner ?? Constant.UnOwned;
         var computation = ReactiveContext.CurrentComputation;
+        Fn = fn;
         _memoNode = ComputationNode.SetContext(() =>
             new MemoNode<T>(
                 fn,
@@ -418,6 +376,63 @@ public class Memo<T> : IReadOnlySignal<T>
         if (_isDisposed) return;
         ComputationNode.Untrack(() => _memoNode.CleanNode());
         _isDisposed = true;
+    }
+}
+
+public class Selector<T> where T : notnull
+{
+    private readonly Dictionary<T, HashSet<ComputationNode>> _subs;
+    private readonly Memo<T> _memo;
+
+    public readonly Func<T, T, bool> CompareFn;
+
+    public Selector(IReadOnlySignal<T> source, Func<T, T, bool>? compareFn = null)
+    {
+        CompareFn = compareFn ?? Constant.EqualFn;
+        _subs = new Dictionary<T, HashSet<ComputationNode>>();
+
+        _memo = new Memo<T>(fn: ComputationFn);
+        return;
+
+        T ComputationFn(T? prevValue)
+        {
+            var nextValue = source.Value;
+            foreach (var (key, val) in _subs.AsEnumerable())
+                if (CompareFn(key, nextValue) != CompareFn(key, prevValue!)) // 异或比较
+                {
+                    // foreach (var c in val)
+                    // {
+                    //     c.Phase = ComputationPhase.Stale;
+                    //     if (c.IsPure) CurrentState.UpdateQueue!.Add(c);
+                    //     else CurrentState.EffectQueue!.Add(c);
+                    // }
+                    ComputationNode.NotifyObservers(val); // 以上是源码，用这个会不会有问题?
+                }
+
+            return nextValue;
+        }
+    }
+
+    public bool Select(T key)
+    {
+        var value = _memo.Value;
+        var currentComputation = ReactiveContext.CurrentComputation;
+        if (currentComputation is null) return CompareFn(key, value);
+
+        if (_subs.TryGetValue(key, out var computations))
+            computations.Add(currentComputation);
+        else
+        {
+            computations = [currentComputation];
+            _subs.Add(key, computations);
+        }
+
+        Reactive.OnCleanup(() =>
+        {
+            computations.Remove(currentComputation);
+            if (computations.Count == 0) _subs.Remove(key);
+        });
+        return CompareFn(key, value);
     }
 }
 

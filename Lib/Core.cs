@@ -141,7 +141,6 @@ internal abstract class ComputationNode : OwnerTree
         public static bool UpdateIsBusy; // 当前队列是否处于更新状态
         public static int UpdateFromIndex; // 队列开始执行的位置
         public static readonly List<ComputationNode> EffectQueue = new(256); // 执行副作用的队列
-        // public static int EffectFromIndex; // 副作用队列开始执行的位置
 
         public static long ExecCount; // 执行计数器，和ComputationNode.Version 配合使用
         public static string? Error = null;
@@ -211,36 +210,29 @@ internal abstract class ComputationNode : OwnerTree
     }
 
     // 核心功能入口点
-    internal static void NotifyObservers(List<ComputationNode> observers)
+    internal static void NotifyObservers(IEnumerable<ComputationNode> observers)
     {
         RunBatch(() =>
         {
-            for (var i = 0; i < observers.Count; i++)
+            // for (var i = 0; i < observers.Count; i++)
+            // {
+            //     var observer = observers[i];
+            //     observer.AddQueue();
+            // }
+            foreach (var observer in observers)
             {
-                var observer = observers[i];
                 observer.AddQueue();
             }
 
             if (CurrentState.UpdateQueue.Count > 10e5)
             {
                 ResetScheduler();
-//                 Console.Error.WriteLine(@$"
-// FATAL: UpdateQueue Potential Infinite Loop Detected.
-//
-// ${Util.GetStackTraceString()}
-// ");
                 throw new InfiniteReactiveLoopException("CRITICAL: UpdateQueue Potential Infinite Loop Detected.");
             }
 
             if (CurrentState.EffectQueue.Count > 10e5)
             {
                 ResetScheduler();
-//                 Console.Error.WriteLine(@$"
-// FATAL: EffectQueue Potential Infinite Loop Detected.
-//
-// ${Util.GetStackTraceString()}
-// ");
-//                 Process.GetCurrentProcess().Kill();
                 throw new InfiniteReactiveLoopException("CRITICAL: EffectQueue Potential Infinite Loop Detected.");
             }
 
@@ -403,7 +395,7 @@ internal abstract class ComputationNode : OwnerTree
     protected static void RunIsolatedUpdates(Action fn)
     {
         var prevIndex = CurrentState.UpdateFromIndex;
-        var prevIsUpdate = CurrentState.UpdateIsBusy;
+        var prevIsBusy = CurrentState.UpdateIsBusy;
 
         CurrentState.UpdateFromIndex = CurrentState.UpdateQueue.Count;
         CurrentState.UpdateIsBusy = true;
@@ -416,7 +408,7 @@ internal abstract class ComputationNode : OwnerTree
         finally
         {
             CurrentState.UpdateFromIndex = prevIndex;
-            CurrentState.UpdateIsBusy = prevIsUpdate;
+            CurrentState.UpdateIsBusy = prevIsBusy;
         }
     }
 
@@ -496,6 +488,8 @@ internal abstract class ComputationNode : OwnerTree
 
         CurrentState.UpdateIsBusy = false;
         CurrentState.IsStartBatch = false;
+
+        CurrentState.ExecCount = 0;
     }
 
     // 额外API，非核心算法
@@ -710,7 +704,7 @@ internal class MemoNode<T>(
         if (Phase == ComputationPhase.Stale) UpdateComputation();
         else
         {
-            RunIsolatedUpdates(() => { LookUpstream(); });
+            RunIsolatedUpdates(() => LookUpstream());
         }
     }
 
