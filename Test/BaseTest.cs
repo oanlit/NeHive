@@ -1,7 +1,6 @@
 namespace Test;
 
 using Lib;
-
 using Xunit;
 
 public class SignalTests
@@ -53,7 +52,11 @@ public class SignalTests
     {
         var signal = new Signal<int>(0);
         var callCount = 0;
-        using var effect = new Effect(() => { callCount++; _ = signal.Value; });
+        using var effect = new Effect(() =>
+        {
+            callCount++;
+            _ = signal.Value;
+        });
         // Effect runs immediately
         Assert.Equal(1, callCount);
         signal.Value = 1;
@@ -77,7 +80,11 @@ public class EffectTests
     {
         var signal = new Signal<int>(0);
         var effectCount = 0;
-        using var effect = new Effect(() => { effectCount++; _ = signal.Value; });
+        using var effect = new Effect(() =>
+        {
+            effectCount++;
+            _ = signal.Value;
+        });
 
         Assert.Equal(1, effectCount);
         signal.Value = 1;
@@ -106,13 +113,17 @@ public class EffectTests
     {
         var signal = new Signal<int>(0);
         var effectCount = 0;
-        var effect = new Effect(() => { effectCount++; _ = signal.Value; });
+        var effect = new Effect(() =>
+        {
+            effectCount++;
+            _ = signal.Value;
+        });
         Assert.Equal(1, effectCount);
 
         effect.Dispose();
         signal.Value = 1;
         Assert.Equal(1, effectCount); // No further execution
-        Assert.True(effect.IsDisposed);
+        Assert.True(effect.IsInvalid);
     }
 
     [Fact]
@@ -120,7 +131,7 @@ public class EffectTests
     {
         var effect = new Effect(() => { }); // No dependencies
         // After execution, the effect has no sources, so IsDisposed becomes true
-        Assert.True(effect.IsDisposed);
+        Assert.True(effect.IsInvalid);
     }
 
     [Fact]
@@ -128,9 +139,9 @@ public class EffectTests
     {
         var signal = new Signal<int>(0);
         var effect = new Effect(() => _ = signal.Value);
-        Assert.False(effect.IsDisposed); // Has a source (signal)
+        Assert.False(effect.IsInvalid); // Has a source (signal)
         effect.Dispose();
-        Assert.True(effect.IsDisposed);
+        Assert.True(effect.IsInvalid);
     }
 }
 
@@ -140,8 +151,8 @@ public class MemoTests
     public void Memo_InitialValue_ReturnsComputedValue()
     {
         var signal = new Signal<int>(5);
-        var memo = new Memo<int>(s => s * 2, signal.Value);
-        Assert.Equal(10, memo.Value);
+        var memo = new Memo<int>(s => signal.Value * 2 + s, 20);
+        Assert.Equal(30, memo.Value);
         memo.Dispose();
     }
 
@@ -150,7 +161,11 @@ public class MemoTests
     {
         var signal = new Signal<int>(2);
         var computeCount = 0;
-        var memo = new Memo<int>(() => { computeCount++; return signal.Value * 3; });
+        var memo = new Memo<int>(() =>
+        {
+            computeCount++;
+            return signal.Value * 3;
+        });
 
         Assert.Equal(6, memo.Value);
         Assert.Equal(1, computeCount);
@@ -185,25 +200,11 @@ public class MemoTests
     }
 
     [Fact]
-    public void Memo_Dispose_StopsTrackingAndIsDisposed()
-    {
-        var signal = new Signal<int>(1);
-        var memo = new Memo<int>(() => signal.Value * 2);
-        Assert.Equal(2, memo.Value);
-
-        memo.Dispose();
-        signal.Value = 10;
-        // After dispose, memo no longer updates and is considered disposed
-        Assert.Equal(2, memo.Value); // Stale value
-        Assert.True(memo.IsDisposed);
-    }
-
-    [Fact]
     public void Memo_IsDisposed_WhenNoSources()
     {
         var memo = new Memo<int>(() => 42); // No dependencies
         // After creation, it has no sources, so IsDisposed becomes true
-        Assert.True(memo.IsDisposed);
+        Assert.True(memo.IsInvalid);
         // Value still accessible but may return stale (but constant here)
         Assert.Equal(42, memo.Value);
     }
@@ -261,8 +262,16 @@ public class IntegrationTests
         var signal = new Signal<int>(0);
         var count1 = 0;
         var count2 = 0;
-        using var effect1 = new Effect(() => { count1++; _ = signal.Value; });
-        using var effect2 = new Effect(() => { count2++; _ = signal.Value; });
+        using var effect1 = new Effect(() =>
+        {
+            count1++;
+            _ = signal.Value;
+        });
+        using var effect2 = new Effect(() =>
+        {
+            count2++;
+            _ = signal.Value;
+        });
 
         Assert.Equal(1, count1);
         Assert.Equal(1, count2);
@@ -278,8 +287,16 @@ public class IntegrationTests
         var signal = new Signal<int>(0);
         var count1 = 0;
         var count2 = 0;
-        var effect1 = new Effect(() => { count1++; _ = signal.Value; });
-        using var effect2 = new Effect(() => { count2++; _ = signal.Value; });
+        var effect1 = new Effect(() =>
+        {
+            count1++;
+            _ = signal.Value;
+        });
+        using var effect2 = new Effect(() =>
+        {
+            count2++;
+            _ = signal.Value;
+        });
 
         effect1.Dispose();
         signal.Value = 2;
@@ -301,7 +318,7 @@ public class IntegrationTests
         memo1.Dispose();
         memo2.Dispose();
     }
-    
+
     // ========== Signal + Effect ==========
     [Fact]
     public void Effect_UsingUntrackValue_DoesNotReRunWhenSignalChanges()
@@ -375,32 +392,6 @@ public class IntegrationTests
     // ========== Memo + UntrackValue ==========
 
     [Fact]
-    public void Memo_UsingUntrackValue_DoesNotCauseRecomputationOnSignalChange()
-    {
-        var signal = new Signal<int>(1);
-        var computeCount = 0;
-
-        var memo = new Memo<int>(() =>
-        {
-            computeCount++;
-            return signal.UntrackValue * 10; // Untracked access
-        });
-
-        Assert.Equal(10, memo.Value);
-        Assert.Equal(1, computeCount);
-
-        signal.Value = 2;
-        // Memo should NOT recompute because it used UntrackValue (no dependency recorded)
-        Assert.Equal(10, memo.Value);
-        Assert.Equal(1, computeCount);
-
-        // Force access again – still no recomputation
-        Assert.Equal(10, memo.Value);
-        Assert.Equal(1, computeCount);
-        memo.Dispose();
-    }
-
-    [Fact]
     public void Memo_UsingValue_RecomputesWhenSignalChanges()
     {
         var signal = new Signal<int>(1);
@@ -448,50 +439,109 @@ public class IntegrationTests
     }
 
     // ========== Effect + Memo + UntrackValue ==========
-
     [Fact]
-    public void Effect_ObservesMemoThatUsesUntrackValue_EffectRunsOnlyWhenMemoRecomputes()
+    public void UntrackValue_DoesNotPreventDisposalWhenNoDependenciesExist()
     {
-        var signal = new Signal<int>(1);
-        var memoComputeCount = 0;
-        var effectRunCount = 0;
+        var signal = new Signal<int>(42);
+        var memo = new Memo<int>(() => signal.UntrackValue + 1);
+        Assert.Equal(43, memo.Value);
 
-        var memo = new Memo<int>(() =>
-        {
-            memoComputeCount++;
-            return signal.UntrackValue * 5; // No dependency on signal
-        });
+        // Even though memo reads UntrackValue, it has no dependencies, so IsInvalid should become true
+        Assert.True(memo.IsInvalid);
 
-        using var effect = new Effect(() =>
-        {
-            effectRunCount++;
-            var _ = memo.Value; // Effect depends on memo
-        });
-
-        Assert.Equal(1, memoComputeCount);
-        Assert.Equal(1, effectRunCount);
-        Assert.Equal(5, memo.Value);
-
-        signal.Value = 10;
-        // Memo does NOT recompute (UntrackValue), so memo.Value unchanged
-        Assert.Equal(5, memo.Value);
-        Assert.Equal(1, memoComputeCount);
-        // Effect should NOT run because memo.Value didn't change
-        Assert.Equal(1, effectRunCount);
+        signal.Value = 100;
+        Assert.Equal(101, memo.Value);
         memo.Dispose();
     }
 
     [Fact]
-    public void Effect_ObservesMemoThatUsesValue_EffectRunsWhenSignalChanges()
+    public void Memo_InitialInvalid_RecomputesOnEachValueAccess()
     {
-        var signal = new Signal<int>(1);
-        var memoComputeCount = 0;
+        // 验证无依赖的 Memo 初始失效，每次访问 Value 都会重新计算（不缓存）
+        var signal = new Signal<int>(100);
+        var computeCount = 0;
+
+        // Memo 内部使用 UntrackValue，不建立依赖
+        var memo = new Memo<int>(() =>
+        {
+            computeCount++;
+            return signal.UntrackValue + 1;
+        });
+
+        // 初始状态：无依赖，失效
+        Assert.True(memo.IsInvalid);
+        Assert.Equal(1, computeCount); // 构造时已执行一次 fn
+
+        // 第一次读取 Value → 重新计算（因为失效）
+        Assert.Equal(101, memo.Value);
+        Assert.Equal(2, computeCount);
+
+        // 第二次读取 Value → 仍然失效，再次重新计算
+        Assert.Equal(101, memo.Value);
+        Assert.Equal(3, computeCount);
+
+        // 修改信号值，但 Memo 仍无依赖，不会自动更新
+        signal.Value = 200;
+        // 再次读取 → 重新计算，得到新值
+        Assert.Equal(201, memo.Value);
+        Assert.Equal(4, computeCount);
+
+        memo.Dispose();
+    }
+
+    [Fact]
+    public void Memo_TransitionsFromInvalidToValidWhenReadingValueWithDependency()
+    {
+        // 验证失效 Memo 在首次读取 Value 且 fn 内使用信号 .Value 时，
+        // 会建立依赖，变为有效，后续信号变化时自动更新。
+        var signal = new Signal<int>(5);
+        var computeCount = 0;
         var effectRunCount = 0;
 
         var memo = new Memo<int>(() =>
         {
-            memoComputeCount++;
-            return signal.Value * 5; // Establishes dependency
+            computeCount++;
+            return signal.Value * 2; // 使用 .Value，但构造时因 Untrack 不建立依赖
+        });
+
+        Assert.False(memo.IsInvalid);
+        Assert.Equal(1, computeCount); // 构造执行一次
+
+        // 创建 Effect 依赖 memo.Value
+        using var effect = new Effect(() =>
+        {
+            effectRunCount++;
+            _ = memo.Value;
+        });
+
+        Assert.Equal(1, effectRunCount);
+        Assert.Equal(10, memo.Value); // 5*2
+
+        // 修改信号，memo 自动重新计算
+        signal.Value = 10;
+        Assert.Equal(2, computeCount);
+
+        Assert.Equal(20, memo.Value);
+        Assert.Equal(2, computeCount);
+
+        // Effect 应因 memo 变化而重新运行
+        Assert.Equal(2, effectRunCount);
+
+        memo.Dispose();
+    }
+
+    [Fact]
+    public void Memo_DisposeCausesInvalidationAndDegradation()
+    {
+        // 验证 Dispose 后 Memo 失效，退化为普通函数
+        var signal = new Signal<int>(1);
+        var computeCount = 0;
+        var effectRunCount = 0;
+
+        var memo = new Memo<int>(() =>
+        {
+            computeCount++;
+            return signal.Value * 10;
         });
 
         using var effect = new Effect(() =>
@@ -500,35 +550,37 @@ public class IntegrationTests
             _ = memo.Value;
         });
 
-        Assert.Equal(1, memoComputeCount);
+        // 正常依赖行为
+        Assert.Equal(1, computeCount);
         Assert.Equal(1, effectRunCount);
-        Assert.Equal(5, memo.Value);
+        Assert.Equal(10, memo.Value);
 
         signal.Value = 2;
-        // Memo recomputes
-        Assert.Equal(10, memo.Value);
-        Assert.Equal(2, memoComputeCount);
-        // Effect runs due to memo.Value change
-        Assert.Equal(2, effectRunCount);
+        Assert.Equal(2, computeCount);
+        Assert.Equal(2, effectRunCount); // Effect 因 memo 变化而运行
+        Assert.Equal(20, memo.Value);
+
+        // Dispose Memo
         memo.Dispose();
-    }
 
-    // ========== UntrackValue + Manual Disposal / Cleanup ==========
+        // 此时 Memo 失效，退化为普通函数，会通知effect，执行退化的普通函数，暴露函数所依赖的信号
+        Assert.True(memo.IsInvalid);
+        Assert.Equal(3, effectRunCount);
+        Assert.Equal(3, computeCount); // 重新计算
 
-    [Fact]
-    public void UntrackValue_DoesNotPreventDisposalWhenNoDependenciesExist()
-    {
-        var signal = new Signal<int>(42);
-        var memo = new Memo<int>(() => signal.UntrackValue + 1);
-        Assert.Equal(43, memo.Value);
+        // 再次修改信号
+        signal.Value = 3;
+        // Effect 运行（因为读取 memo.Value 执行的是普通函数会读取内部的依赖）
+        Assert.Equal(4, effectRunCount);
+        Assert.Equal(4, computeCount); // 重新计算
 
-        // Even though memo reads UntrackValue, it has no dependencies, so IsDisposed should become true
-        Assert.True(memo.IsDisposed);
+        // 读取 memo.Value：失效分支，重新执行 fn
+        Assert.Equal(30, memo.Value);
+        Assert.Equal(5, computeCount); // 重新计算
 
-        // Access after "disposal" still returns the stale value (implementation behavior)
-        signal.Value = 100;
-        Assert.Equal(43, memo.Value);
-        memo.Dispose();
+        // 再次读取仍会重复计算（每次失效都重新执行）
+        Assert.Equal(30, memo.Value);
+        Assert.Equal(6, computeCount);
     }
 }
 

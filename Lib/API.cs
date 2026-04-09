@@ -99,7 +99,7 @@ public class Signal<T>(T value) : ISignal<T>
 public class Owner : IDisposable
 {
     private readonly OwnerTree _root;
-    private bool _isDisposed;
+    public bool IsDisposed { get; private set; }
 
     public Owner(Owner? parentOwner = null)
     {
@@ -111,6 +111,7 @@ public class Owner : IDisposable
             context: current?.Context,
             cleanups: null
         );
+        _root.AfterDisposed += () => IsDisposed = true;
     }
 
     public void AddMount(Action fn)
@@ -124,20 +125,20 @@ public class Owner : IDisposable
 
     public void Clean()
     {
-        if (_isDisposed) return;
-        ComputationNode.Untrack(() => _root.CleanNode());
+        if (IsDisposed) return;
+        _root.Dispose();
+        IsDisposed = false; // 只 Dispose 子项
     }
 
     public void Dispose()
     {
-        if (_isDisposed) return;
-        Clean();
-        _isDisposed = true;
+        if (IsDisposed) return;
+        _root.Dispose();
     }
 
     private T _setContext<T>(Func<T> fn)
     {
-        ObjectDisposedException.ThrowIf(_isDisposed, nameof(Owner));
+        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Owner));
         var computation = ReactiveContext.CurrentComputation;
         return ComputationNode.SetContext(fn, _root, computation);
     }
@@ -161,7 +162,7 @@ public class Owner : IDisposable
 
     public T RunWithOwner<T>(Func<T> fn)
     {
-        ObjectDisposedException.ThrowIf(_isDisposed, nameof(Owner));
+        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Owner));
         return ComputationNode.RunWithOwner(_root, fn)!;
     }
 
@@ -172,20 +173,23 @@ public class Owner : IDisposable
 public class Computation<T> : IDisposable
 {
     private readonly ComputationNode<T> _node;
-    private bool _isDisposed;
+    public bool IsInvalid { get; private set; }
 
     public Computation(Func<T, T> fn,
         T init,
         bool pure = false)
     {
         _node = new(fn, init, isPure: pure);
+        if ((_node.Sources?.Count ?? 0) == 0)
+            IsInvalid = true;
+        else
+            _node.AfterDisposed += () => IsInvalid = true;
     }
 
     public void Dispose()
     {
-        if (_isDisposed) return;
-        ComputationNode.Untrack(() => _node.CleanNode());
-        _isDisposed = true;
+        if (IsInvalid) return;
+        _node.Dispose();
     }
 }
 
@@ -198,19 +202,7 @@ public record struct EffectOptions<T>(
 public class Effect : IDisposable
 {
     private readonly EffectNode<object> _node;
-    private bool _isDisposed;
-
-    public bool IsDisposed
-    {
-        get
-        {
-            if (_isDisposed) return true;
-            if ((_node.Sources?.Count ?? 0) != 0) return false;
-
-            _isDisposed = true;
-            return true;
-        }
-    }
+    public bool IsInvalid { get; private set; }
 
     public Effect(Action fn)
     {
@@ -221,32 +213,24 @@ public class Effect : IDisposable
             () => new EffectNode<object>(Util.WrapActionWithArg(fn), Constant.EmptyObj),
             owner, computation
         );
+        if ((_node.Sources?.Count ?? 0) == 0)
+            IsInvalid = true;
+        else
+            _node.AfterDisposed += () => IsInvalid = true;
     }
 
     public void Dispose()
     {
-        if (_isDisposed) return;
-        ComputationNode.Untrack(() => _node.CleanNode());
-        _isDisposed = true;
+        if (IsInvalid) return;
+        _node.Dispose();
     }
 }
 
 public class Effect<T> : IDisposable
 {
     private readonly EffectNode<T> _node;
-    private bool _isDisposed;
 
-    public bool IsDisposed
-    {
-        get
-        {
-            if (_isDisposed) return true;
-            if ((_node.Sources?.Count ?? 0) != 0) return false;
-
-            _isDisposed = true;
-            return true;
-        }
-    }
+    public bool IsInvalid { get; private set; }
 
     public Effect(Func<T, T> fn, T value)
     {
@@ -257,6 +241,7 @@ public class Effect<T> : IDisposable
             () => new EffectNode<T>(fn, value),
             owner, computation
         );
+        _afterConstructor();
     }
 
     public Effect(EffectOptions<T> options)
@@ -282,36 +267,45 @@ public class Effect<T> : IDisposable
             () => new EffectNode<T>(fn, prevInput!),
             owner, computation
         );
+        _afterConstructor();
+    }
+
+    private void _afterConstructor()
+    {
+        if ((_node.Sources?.Count ?? 0) == 0)
+            IsInvalid = true;
+        else
+        {
+            _node.AfterDisposed += () => IsInvalid = true;
+        }
     }
 
     public void Dispose()
     {
-        if (_isDisposed) return;
-        ComputationNode.Untrack(() => _node.CleanNode());
-        _isDisposed = true;
+        if (IsInvalid) return;
+        _node.Dispose();
     }
 }
 
 public class Memo<T> : IReadOnlySignal<T>
 {
     private readonly MemoNode<T> _memoNode;
-    private bool _isDisposed;
+
+    private IEnumerable<ComputationNode>? _lastObservers;
     private T _value;
 
-    public Func<T, T> Fn;
+    public readonly Func<T, T> Fn;
+
+    // 缓存是否失效 (不影响依赖建立)
+    public bool IsInvalid { get; private set; }
 
     public T Value
     {
         get
         {
-            if (_isDisposed) return Fn(_value);
-            if ((_memoNode.Sources?.Count ?? 0) == 0)
-            {
-                _isDisposed = true;
-                return _value;
-            }
-
+            if (IsInvalid) return Fn(_value);
             _value = _memoNode.ReadSignal();
+            _lastObservers = _memoNode.Observers;
             return _value;
         }
     }
@@ -320,27 +314,14 @@ public class Memo<T> : IReadOnlySignal<T>
     {
         get
         {
-            if (_isDisposed) return Fn(_value);
-            if ((_memoNode.Sources?.Count ?? 0) == 0)
+            if (IsInvalid)
             {
-                _isDisposed = true;
+                _value = Reactive.Untrack(() => Fn(_value));
                 return _value;
             }
 
             _value = _memoNode.UntrackValue;
             return _value;
-        }
-    }
-
-    public bool IsDisposed
-    {
-        get
-        {
-            if (_isDisposed) return true;
-            if ((_memoNode.Sources?.Count ?? 0) != 0) return false;
-
-            _isDisposed = true;
-            return true;
         }
     }
 
@@ -361,9 +342,12 @@ public class Memo<T> : IReadOnlySignal<T>
                 Phase = ComputationPhase.Resolved,
                 Value = value!
             }, owner, computation);
-
         _memoNode.UpdateComputation();
         _value = _memoNode.UntrackValue;
+        if ((_memoNode.Sources?.Count ?? 0) == 0)
+            IsInvalid = true;
+        else
+            _memoNode.AfterDisposed += _afterDisposed;
     }
 
     public Memo(Func<T> fn, T? value = default)
@@ -373,9 +357,16 @@ public class Memo<T> : IReadOnlySignal<T>
 
     public void Dispose()
     {
-        if (_isDisposed) return;
-        ComputationNode.Untrack(() => _memoNode.CleanNode());
-        _isDisposed = true;
+        if (IsInvalid) return;
+        _memoNode.Dispose();
+    }
+
+    private void _afterDisposed()
+    {
+        IsInvalid = true;
+        if (_lastObservers is null) return;
+        ComputationNode.NotifyObservers(_lastObservers);
+        _lastObservers = null;
     }
 }
 
@@ -383,6 +374,7 @@ public class Selector<T> where T : notnull
 {
     private readonly Dictionary<T, HashSet<ComputationNode>> _subs;
     private readonly Memo<T> _memo;
+    private readonly Signal<bool> _logicSignal = new(true);
 
     public readonly Func<T, T, bool> CompareFn;
 
@@ -398,16 +390,11 @@ public class Selector<T> where T : notnull
         {
             var nextValue = source.Value;
             foreach (var (key, val) in _subs.AsEnumerable())
-                if (CompareFn(key, nextValue) != CompareFn(key, prevValue!)) // 异或比较
-                {
-                    // foreach (var c in val)
-                    // {
-                    //     c.Phase = ComputationPhase.Stale;
-                    //     if (c.IsPure) CurrentState.UpdateQueue!.Add(c);
-                    //     else CurrentState.EffectQueue!.Add(c);
-                    // }
-                    ComputationNode.NotifyObservers(val); // 以上是源码，用这个会不会有问题?
-                }
+            {
+                // 异或比较
+                if (CompareFn(key, nextValue) == CompareFn(key, prevValue!)) continue;
+                ComputationNode.NotifyObservers(val);
+            }
 
             return nextValue;
         }
@@ -415,10 +402,13 @@ public class Selector<T> where T : notnull
 
     public bool Select(T key)
     {
-        var value = _memo.Value;
+        _ = _logicSignal.Value; // 逻辑依赖，不会导致外部观察者误以为没有信号而失效
+
+        var value = _memo.UntrackValue;
         var currentComputation = ReactiveContext.CurrentComputation;
         if (currentComputation is null) return CompareFn(key, value);
 
+        // 建立一个逻辑依赖
         if (_subs.TryGetValue(key, out var computations))
             computations.Add(currentComputation);
         else

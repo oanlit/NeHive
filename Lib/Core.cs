@@ -100,14 +100,22 @@ internal class OwnerTree(
     internal readonly OwnerTree? Parent = parent;
     internal List<ComputationNode>? Children = children;
     internal List<Action>? Cleanups = cleanups;
+
+    internal event Action AfterDisposed = () => { };
     internal Dictionary<object, object?>? Context = context;
 
-    internal virtual void CleanNode()
+    internal virtual void CleanNode(bool isDispose = false)
     {
         int i;
         if (Children is not null)
         {
-            for (i = Children.Count - 1; i >= 0; i--) Children[i].CleanNode();
+            for (i = Children.Count - 1; i >= 0; i--)
+            {
+                var child = Children[i];
+                child.CleanNode(isDispose);
+                if (isDispose) child.AfterDisposed();
+            }
+
             Children = null;
         }
 
@@ -115,6 +123,21 @@ internal class OwnerTree(
 
         for (i = Cleanups!.Count - 1; i >= 0; i--) Cleanups[i]();
         Cleanups = null;
+    }
+
+    internal void Dispose()
+    {
+        var currentComputation = ReactiveContext.CurrentComputation;
+        ReactiveContext.CurrentComputation = null;
+        try
+        {
+            CleanNode(true);
+            AfterDisposed();
+        }
+        finally
+        {
+            ReactiveContext.CurrentComputation = currentComputation;
+        }
     }
 }
 
@@ -185,7 +208,7 @@ internal abstract class ComputationNode : OwnerTree
         }
     }
 
-    internal override void CleanNode()
+    internal override void CleanNode(bool isDispose = false)
     {
         while ((Sources?.Count ?? 0) != 0)
         {
@@ -204,7 +227,7 @@ internal abstract class ComputationNode : OwnerTree
             source.ObserverSlots![index] = s;
         }
 
-        base.CleanNode();
+        base.CleanNode(isDispose);
 
         Phase = ComputationPhase.Resolved; // 当前及旧的子Computation 不再执行
     }

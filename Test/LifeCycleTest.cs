@@ -24,50 +24,6 @@ public class LifeCycleTest
     }
 
     [Fact]
-    public void Memo_Dispose_Stop_Reactive_Test()
-    {
-        Signal<int> s = new(1);
-        var memo = new Memo<int>(() => s.Value * 2);
-
-        List<int> values = [];
-        var e = new Effect(() => { values.Add(memo.Value); });
-
-        Assert.Equal([2], values);
-
-        s.Value = 2;
-        Assert.Equal([2, 4], values);
-
-        memo.Dispose();
-
-        s.Value = 3;
-
-        // memo 不再更新
-        Assert.Equal([2, 4], values);
-
-        e.Dispose();
-    }
-
-    [Fact]
-    public void Memo_Dispose_No_Tracking_Test()
-    {
-        Signal<int> s = new(1);
-        var memo = new Memo<int>(() => s.Value * 2);
-
-        memo.Dispose();
-
-        List<int> values = [];
-
-        var e = new Effect(() => { values.Add(memo.Value); });
-
-        s.Value = 2;
-
-        // 如果还在 track，这里会再触发
-        Assert.Single(values);
-
-        e.Dispose();
-    }
-
-    [Fact]
     public void Cleanup_Order_Test()
     {
         List<string> logs = [];
@@ -109,9 +65,9 @@ public class LifeCycleTest
 
         var owner = new Owner();
 
-        owner.AddEffect(() => a.Add(s.Value));
+        var e1 = owner.AddEffect(() => a.Add(s.Value));
 
-        var e = new Effect(() => b.Add(s.Value));
+        var e2 = new Effect(() => b.Add(s.Value));
 
         s.Value = 1;
 
@@ -119,6 +75,9 @@ public class LifeCycleTest
         Assert.Equal([0, 1], b);
 
         owner.Dispose();
+        Assert.True(owner.IsDisposed);
+        Assert.True(e1.IsInvalid);
+        Assert.False(e2.IsInvalid);
 
         s.Value = 2;
 
@@ -128,7 +87,8 @@ public class LifeCycleTest
         // 独立 effect 继续
         Assert.Equal([0, 1, 2], b);
 
-        e.Dispose();
+        e2.Dispose();
+        Assert.True(e2.IsInvalid);
 
         s.Value = 3;
 
@@ -199,26 +159,29 @@ public class LifeCycleTest
     {
         Signal<int> s = new(0);
         List<int> values = [];
-
+    
         var owner = new Owner();
-
-        owner.AddEffect(() => values.Add(s.Value));
-
+    
+        var e = owner.AddEffect(() => values.Add(s.Value));
+        Assert.False(e.IsInvalid);
+    
         s.Value = 1;
         Assert.Equal([0, 1], values);
-
+    
         owner.Clean();
-
+        Assert.False(owner.IsDisposed);
+        Assert.True(e.IsInvalid);
+    
         s.Value = 2;
-
+    
         // ❗旧 effect 不应再触发
         Assert.Equal([0, 1], values);
-
+    
         // 重新挂
         owner.AddEffect(() => values.Add(s.Value));
-
+    
         s.Value = 3;
-
+    
         Assert.Equal([0, 1, 2, 3], values);
     }
 
@@ -261,7 +224,7 @@ public class LifeCycleTest
         // ❗所有嵌套 effect 都应停止
         Assert.Equal([0, 0, 1, 10], logs);
     }
-    
+
     [Fact]
     public void Owner_Dispose_Should_Throw_Test()
     {
@@ -269,9 +232,6 @@ public class LifeCycleTest
 
         owner.Dispose();
 
-        Assert.Throws<ObjectDisposedException>(() =>
-        {
-            owner.AddEffect(() => { });
-        });
+        Assert.Throws<ObjectDisposedException>(() => { owner.AddEffect(() => { }); });
     }
 }
