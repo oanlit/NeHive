@@ -299,11 +299,11 @@ internal abstract class ComputationNode : OwnerTree
         }
         catch (Exception err)
         {
-            SchedulerContext.EffectQueue.Clear();
-            SchedulerContext.BatchCount = 0;
-
-            Util.RemoveRangeFrom(SchedulerContext.UpdateQueue, SchedulerContext.UpdateFromIndex);
             HandleError(err);
+        }
+        finally
+        {
+            ResetScheduler();
         }
     }
 
@@ -340,6 +340,14 @@ internal abstract class ComputationNode : OwnerTree
         try
         {
             RunUpdateQueue(fromIndex);
+        }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
+        catch (Exception err)
+        {
+            HandleError(err);
         }
         finally
         {
@@ -491,12 +499,8 @@ internal abstract class ComputationNode : OwnerTree
     {
         SchedulerContext.UpdateQueue.Clear();
         SchedulerContext.EffectQueue.Clear();
-
         SchedulerContext.UpdateFromIndex = 0;
-
         SchedulerContext.BatchCount = 0;
-
-        SchedulerContext.ExecCount = 0;
     }
 
     // 额外API，非核心算法
