@@ -156,19 +156,6 @@ internal enum ComputationPhase
 
 internal abstract class ComputationNode : OwnerTree
 {
-    protected struct CurrentState
-    {
-        public static bool IsStartBatch; // 当前是否处于批量调度状态
-
-        public static readonly List<ComputationNode> UpdateQueue = new(256); // 更新值的队列
-        public static bool UpdateIsBusy; // 当前队列是否处于更新状态
-        public static int UpdateFromIndex; // 队列开始执行的位置
-        public static readonly List<ComputationNode> EffectQueue = new(256); // 执行副作用的队列
-
-        public static long ExecCount; // 执行计数器，和ComputationNode.Version 配合使用
-        public static string? Error = null;
-    }
-
     internal ComputationPhase Phase;
     internal List<ISignalState>? Sources;
     internal List<int>? SourceSlots;
@@ -235,40 +222,33 @@ internal abstract class ComputationNode : OwnerTree
     // 核心功能入口点
     internal static void NotifyObservers(IEnumerable<ComputationNode> observers)
     {
-        RunBatch(() =>
+        StartBatch();
+        foreach (var observer in observers)
         {
-            // for (var i = 0; i < observers.Count; i++)
-            // {
-            //     var observer = observers[i];
-            //     observer.AddQueue();
-            // }
-            foreach (var observer in observers)
-            {
-                observer.AddQueue();
-            }
+            observer.AddQueue();
+        }
 
-            if (CurrentState.UpdateQueue.Count > 10e5)
-            {
-                ResetScheduler();
-                throw new InfiniteReactiveLoopException("CRITICAL: UpdateQueue Potential Infinite Loop Detected.");
-            }
+        if (SchedulerContext.UpdateQueue.Count > 10e5)
+        {
+            ResetScheduler();
+            throw new InfiniteReactiveLoopException("CRITICAL: UpdateQueue Potential Infinite Loop Detected.");
+        }
 
-            if (CurrentState.EffectQueue.Count > 10e5)
-            {
-                ResetScheduler();
-                throw new InfiniteReactiveLoopException("CRITICAL: EffectQueue Potential Infinite Loop Detected.");
-            }
+        if (SchedulerContext.EffectQueue.Count > 10e5)
+        {
+            ResetScheduler();
+            throw new InfiniteReactiveLoopException("CRITICAL: EffectQueue Potential Infinite Loop Detected.");
+        }
 
-            return Constant.EmptyObj;
-        }, false);
+        EndBatch();
     }
 
-    internal void AddQueue()
+    private void AddQueue()
     {
         if (Phase == ComputationPhase.Resolved)
         {
-            if (IsPure) CurrentState.UpdateQueue.Add(this);
-            else CurrentState.EffectQueue.Add(this);
+            if (IsPure) SchedulerContext.UpdateQueue.Add(this);
+            else SchedulerContext.EffectQueue.Add(this);
 
             // MemoNode<T> 的额外行为
             MarkDownstream();
@@ -282,40 +262,36 @@ internal abstract class ComputationNode : OwnerTree
     }
 
     // 调度核心
-    internal static T RunBatch<T>(Func<T> fn, bool init)
+    protected struct SchedulerContext
     {
-        if (CurrentState.UpdateIsBusy) return fn();
-        var unLoop = CurrentState.IsStartBatch;
-        if (!init)
-        {
-            CurrentState.UpdateIsBusy = true;
-        }
+        public static int BatchCount; // Batch的重入次数
 
-        CurrentState.IsStartBatch = true;
+        public static readonly List<ComputationNode> EffectQueue = new(256); // 执行副作用的队列
+        public static readonly List<ComputationNode> UpdateQueue = new(256); // 更新值的队列
+        public static int UpdateFromIndex; // 队列开始执行的位置
+
+        public static long ExecCount; // 执行计数器，和ComputationNode.Version 配合使用
+        public static string? Error = null;
+    }
+    private static void RunBatch()
+    {
+        if (SchedulerContext.BatchCount != 1) return;
+
+        var effectFromIndex = 0;
         try
         {
-            var res = fn();
-            RunUpdates();
-            if (unLoop) return res;
-
-            var effectFromIndex = 0;
             while (true)
             {
-                var e = CurrentState.EffectQueue;
+                RunUpdates();
+
+                var e = SchedulerContext.EffectQueue;
                 var effectToIndex = e.Count;
                 var count = effectToIndex - effectFromIndex;
                 if (count == 0) break;
 
-                CurrentState.UpdateIsBusy = true;
-
                 RunEffectQueue(effectFromIndex, effectToIndex);
                 effectFromIndex = effectToIndex;
-                RunUpdates();
             }
-
-            CurrentState.EffectQueue.Clear();
-            CurrentState.IsStartBatch = false;
-            return res;
         }
         catch (InfiniteReactiveLoopException)
         {
@@ -323,28 +299,43 @@ internal abstract class ComputationNode : OwnerTree
         }
         catch (Exception err)
         {
-            if (!unLoop)
-            {
-                CurrentState.EffectQueue.Clear();
-                CurrentState.IsStartBatch = false;
-            }
+            SchedulerContext.EffectQueue.Clear();
+            SchedulerContext.BatchCount = 0;
 
-            Util.RemoveRangeFrom(CurrentState.UpdateQueue, CurrentState.UpdateFromIndex);
-            CurrentState.UpdateIsBusy = false;
+            Util.RemoveRangeFrom(SchedulerContext.UpdateQueue, SchedulerContext.UpdateFromIndex);
             HandleError(err);
-            return default!;
         }
     }
 
-    internal static void RunBatch(Action fn, bool init) => RunBatch(Util.WrapAction(fn), init);
+    internal static void StartBatch()
+        => SchedulerContext.BatchCount++;
+
+    internal static void EndBatch()
+    {
+        var batchCount = SchedulerContext.BatchCount;
+        if (batchCount <= 0)
+        {
+            SchedulerContext.BatchCount = 0;
+            return;
+        }
+        if (batchCount > 1)
+        {
+            SchedulerContext.BatchCount--;
+            return;
+        }
+
+        // batchCount == 1
+        RunBatch();
+        SchedulerContext.BatchCount = 0;
+    }
 
     private static void RunUpdates()
     {
-        if (!CurrentState.UpdateIsBusy) return;
-        var queues = CurrentState.UpdateQueue;
-        var fromIndex = CurrentState.UpdateFromIndex;
+        var queues = SchedulerContext.UpdateQueue;
+        var fromIndex = SchedulerContext.UpdateFromIndex;
 
-        CurrentState.ExecCount++;
+        if (fromIndex == queues.Count) return;
+        SchedulerContext.ExecCount++;
 
         try
         {
@@ -353,14 +344,13 @@ internal abstract class ComputationNode : OwnerTree
         finally
         {
             Util.RemoveRangeFrom(queues, fromIndex);
-            CurrentState.UpdateFromIndex = fromIndex;
-            CurrentState.UpdateIsBusy = false;
+            SchedulerContext.UpdateFromIndex = fromIndex;
         }
     }
 
     private static void RunUpdateQueue(int fromIndex)
     {
-        var queue = CurrentState.UpdateQueue;
+        var queue = SchedulerContext.UpdateQueue;
         for (var i = fromIndex; i < queue.Count; i++)
         {
             var node = queue[i];
@@ -371,7 +361,7 @@ internal abstract class ComputationNode : OwnerTree
     private static void RunEffectQueue(int fromIndex, int toIndex)
     {
         var userLength = 0;
-        var queue = CurrentState.EffectQueue;
+        var queue = SchedulerContext.EffectQueue;
         for (var i = fromIndex; i < toIndex; i++)
         {
             var node = queue[i];
@@ -395,7 +385,7 @@ internal abstract class ComputationNode : OwnerTree
         var node = this;
         while (true)
         {
-            if (!(Parent is ComputationNode parent && parent.Version <= CurrentState.ExecCount)) break;
+            if (!(Parent is ComputationNode parent && parent.Version <= SchedulerContext.ExecCount)) break;
             if (parent.Phase != ComputationPhase.Resolved) ancestors.Add(node);
             node = parent;
         }
@@ -417,11 +407,8 @@ internal abstract class ComputationNode : OwnerTree
 
     protected static void RunIsolatedUpdates(Action fn)
     {
-        var prevIndex = CurrentState.UpdateFromIndex;
-        var prevIsBusy = CurrentState.UpdateIsBusy;
-
-        CurrentState.UpdateFromIndex = CurrentState.UpdateQueue.Count;
-        CurrentState.UpdateIsBusy = true;
+        var prevIndex = SchedulerContext.UpdateFromIndex;
+        SchedulerContext.UpdateFromIndex = SchedulerContext.UpdateQueue.Count;
 
         try
         {
@@ -430,8 +417,7 @@ internal abstract class ComputationNode : OwnerTree
         }
         finally
         {
-            CurrentState.UpdateFromIndex = prevIndex;
-            CurrentState.UpdateIsBusy = prevIsBusy;
+            SchedulerContext.UpdateFromIndex = prevIndex;
         }
     }
 
@@ -458,20 +444,20 @@ internal abstract class ComputationNode : OwnerTree
     {
         owner ??= ReactiveContext.CurrentOwner;
         List<Action<object>>? fns = null;
-        if (CurrentState.Error is not null)
+        if (SchedulerContext.Error is not null)
         {
-            fns = owner?.Context?[CurrentState.Error] as List<Action<object>>;
+            fns = owner?.Context?[SchedulerContext.Error] as List<Action<object>>;
         }
 
         var error = CastError(err);
         if (fns is null) throw error;
 
-        if (CurrentState.IsStartBatch)
+        if (SchedulerContext.BatchCount > 0)
         {
             ComputationNode<object> handler = new(Util.WrapActionWithArg(() => RunErrors(error, fns, owner)),
                 Constant.EmptyObj, isPure: false, phase: ComputationPhase.Stale);
             handler.Phase = ComputationPhase.Stale;
-            CurrentState.EffectQueue.Add(handler);
+            SchedulerContext.EffectQueue.Add(handler);
         }
         else RunErrors(error, fns, owner);
     }
@@ -486,9 +472,8 @@ internal abstract class ComputationNode : OwnerTree
     {
         try
         {
-            for (var i = 0; i < fns.Count; i++)
+            foreach (var f in fns)
             {
-                var f = fns[i];
                 f(err);
             }
         }
@@ -504,15 +489,14 @@ internal abstract class ComputationNode : OwnerTree
 
     private static void ResetScheduler()
     {
-        CurrentState.UpdateQueue.Clear();
-        CurrentState.EffectQueue.Clear();
+        SchedulerContext.UpdateQueue.Clear();
+        SchedulerContext.EffectQueue.Clear();
 
-        CurrentState.UpdateFromIndex = 0;
+        SchedulerContext.UpdateFromIndex = 0;
 
-        CurrentState.UpdateIsBusy = false;
-        CurrentState.IsStartBatch = false;
+        SchedulerContext.BatchCount = 0;
 
-        CurrentState.ExecCount = 0;
+        SchedulerContext.ExecCount = 0;
     }
 
     // 额外API，非核心算法
@@ -568,7 +552,10 @@ internal abstract class ComputationNode : OwnerTree
         ReactiveContext.CurrentComputation = null;
         try
         {
-            return RunBatch(fn, true)!;
+            StartBatch();
+            var result = fn();
+            EndBatch();
+            return result;
         }
         catch (InfiniteReactiveLoopException)
         {
@@ -606,14 +593,14 @@ internal class ComputationNode<T>(
     parent, children, cleanups, context)
 {
     public readonly Func<T, T> Fn = fn;
-    public virtual T Value { get; set; } = value;
+    public T Value { get; set; } = value;
 
     protected virtual void UpdateValue(T value) => Value = value;
 
     protected override void RunComputation()
     {
         T nextValue;
-        var execCount = CurrentState.ExecCount;
+        var execCount = SchedulerContext.ExecCount;
         var tempOwner = ReactiveContext.CurrentOwner;
         var tempComputation = ReactiveContext.CurrentComputation;
         ReactiveContext.CurrentOwner = ReactiveContext.CurrentComputation = this;
@@ -656,41 +643,50 @@ internal class EffectNode<T> : ComputationNode<T>
     public EffectNode(Func<T, T> fn,
         T value) : base(fn, value, isUser: true)
     {
-        if (!CurrentState.IsStartBatch)
-            UpdateComputation();
+        if (SchedulerContext.BatchCount > 0)
+            SchedulerContext.EffectQueue.Add(this);
         else
-            CurrentState.EffectQueue.Add(this);
+            UpdateComputation();
     }
 }
 
-internal class MemoNode<T>(
-    Func<T, T> fn,
-    ComputationPhase phase = ComputationPhase.Resolved,
-    T? value = default,
-    Func<T, T, bool>? comparator = null,
-    List<ComputationNode>? observers = null,
-    List<int>? observerSlots = null,
-    List<ISignalState>? sources = null,
-    List<int>? sourceSlots = null,
-    long version = 0,
-    bool isPure = true,
-    bool isUser = false,
-    OwnerTree? parent = null,
-    List<ComputationNode>? children = null,
-    List<Action>? cleanups = null,
-    Dictionary<object, object?>? context = null
-) : ComputationNode<T>(fn, value!, phase,
-        sources, sourceSlots, version, isPure, isUser,
-        parent, children, cleanups, context),
+internal class MemoNode<T> : ComputationNode<T>,
     ISignalState<T>
 {
-    public Func<T, T, bool> Comparator { get; } = comparator ?? Constant.EqualFn;
-    public List<ComputationNode>? Observers { get; set; } = observers;
-    public List<int>? ObserverSlots { get; set; } = observerSlots;
+    public Func<T, T, bool> Comparator { get; }
+    public List<ComputationNode>? Observers { get; set; }
+    public List<int>? ObserverSlots { get; set; }
     public ComputationNode? LastObserver { get; set; }
-    public override T Value { get; set; } = value!;
+
+    // private T _value;
 
     protected override void UpdateValue(T value) => WriteSignal(value);
+
+    internal MemoNode(
+        Func<T, T> fn,
+        ComputationPhase phase = ComputationPhase.Resolved,
+        T? value = default,
+        Func<T, T, bool>? comparator = null,
+        List<ComputationNode>? observers = null,
+        List<int>? observerSlots = null,
+        List<ISignalState>? sources = null,
+        List<int>? sourceSlots = null,
+        long version = 0,
+        bool isPure = true,
+        bool isUser = false,
+        OwnerTree? parent = null,
+        List<ComputationNode>? children = null,
+        List<Action>? cleanups = null,
+        Dictionary<object, object?>? context = null
+    ) : base(fn, value!, phase,
+        sources, sourceSlots, version, isPure, isUser,
+        parent, children, cleanups, context)
+    {
+        Comparator = comparator ?? Constant.EqualFn;
+        Observers = observers;
+        ObserverSlots = observerSlots;
+        Value = value!;
+    }
 
     /**
      * 递归向下传播脏状态
@@ -702,8 +698,8 @@ internal class MemoNode<T>(
             var observer = Observers[i];
             if (observer.Phase != ComputationPhase.Resolved) continue;
             observer.Phase = ComputationPhase.Pending;
-            if (observer.IsPure) CurrentState.UpdateQueue.Add(observer);
-            else CurrentState.EffectQueue.Add(observer);
+            if (observer.IsPure) SchedulerContext.UpdateQueue.Add(observer);
+            else SchedulerContext.EffectQueue.Add(observer);
             observer.MarkDownstream();
         }
     }
@@ -713,7 +709,7 @@ internal class MemoNode<T>(
         switch (Phase)
         {
             case ComputationPhase.Stale:
-                if (this != ignore && Version < CurrentState.ExecCount)
+                if (this != ignore && Version < SchedulerContext.ExecCount)
                     RunTop();
                 break;
             case ComputationPhase.Pending:

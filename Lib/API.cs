@@ -5,10 +5,19 @@ using System.Diagnostics;
 public static partial class Reactive
 {
     public static void Batch(Action fn)
-        => ComputationNode.RunBatch(fn, false);
+    {
+        ComputationNode.StartBatch();
+        fn();
+        ComputationNode.EndBatch();
+    }
 
     public static T Batch<T>(Func<T> fn)
-        => ComputationNode.RunBatch(fn, false);
+    {
+        ComputationNode.StartBatch();
+        var result = fn();
+        ComputationNode.EndBatch();
+        return result;
+    }
 
     public static void OnMount(Action fn)
     {
@@ -44,11 +53,9 @@ public static partial class Reactive
 
     public static void BatchUntrack(Action fn)
     {
-        ComputationNode.RunBatch(() =>
-        {
-            ComputationNode.Untrack(fn);
-            return Constant.EmptyObj;
-        }, false);
+        ComputationNode.StartBatch();
+        ComputationNode.Untrack(fn);
+        ComputationNode.EndBatch();
     }
 }
 
@@ -343,6 +350,7 @@ public class Memo<T> : IReadOnlySignal<T>
                 Value = value!
             }, owner, computation);
         _memoNode.UpdateComputation();
+
         _value = _memoNode.UntrackValue;
         if ((_memoNode.Sources?.Count ?? 0) == 0)
             IsInvalid = true;
@@ -389,11 +397,11 @@ public class Selector<T> where T : notnull
         T ComputationFn(T? prevValue)
         {
             var nextValue = source.Value;
-            foreach (var (key, val) in _subs.AsEnumerable())
+            foreach (var (key, observers) in _subs.AsEnumerable())
             {
                 // 异或比较
                 if (CompareFn(key, nextValue) == CompareFn(key, prevValue!)) continue;
-                ComputationNode.NotifyObservers(val);
+                ComputationNode.NotifyObservers(observers);
             }
 
             return nextValue;
@@ -587,9 +595,11 @@ public class Resource<TSource, TValue, TInfo>
         _task = pTask;
         _scheduled = true;
         _ = ResetScheduledAsync();
-        ComputationNode.RunBatch(
-            () => { _state.Value = _resolved ? ResourcePhase.Refreshing : ResourcePhase.Pending; },
-            false);
+
+        ComputationNode.StartBatch();
+        _state.Value = _resolved ? ResourcePhase.Refreshing : ResourcePhase.Pending;
+        ComputationNode.EndBatch();
+
         return HandleAsync();
 
         async Task ResetScheduledAsync()
@@ -627,16 +637,15 @@ public class Resource<TSource, TValue, TInfo>
 
     private void _completeLoad(TValue? v, object? err)
     {
-        ComputationNode.RunBatch(() =>
+        ComputationNode.StartBatch();
+        if (err is null)
         {
-            if (err is null)
-            {
-                _value.Value = v;
-                _state.Value = _resolved ? ResourcePhase.Ready : ResourcePhase.Unresolved;
-            }
-            else _state.Value = ResourcePhase.Errored;
+            _value.Value = v;
+            _state.Value = _resolved ? ResourcePhase.Ready : ResourcePhase.Unresolved;
+        }
+        else _state.Value = ResourcePhase.Errored;
 
-            _error.Value = err;
-        }, false);
+        _error.Value = err;
+        ComputationNode.EndBatch();
     }
 }
