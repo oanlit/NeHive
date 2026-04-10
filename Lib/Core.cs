@@ -76,14 +76,10 @@ internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : IS
     public T Value { get; set; } = value;
 
     public T ReadSignal()
-    {
-        return Common.BaseReadSignal(this);
-    }
+        => Common.BaseReadSignal(this);
 
     public T WriteSignal(T value)
-    {
-        return Common.WriteSignal(this, value);
-    }
+        => Common.WriteSignal(this, value);
 
     public void UpdateIfNeeded(ComputationNode? ignore = null)
     {
@@ -145,6 +141,8 @@ internal static class ReactiveContext
 {
     public static OwnerTree? CurrentOwner; // 当前正在执行的所有者
     public static ComputationNode? CurrentComputation; // 当前计算节点
+    public static readonly Action BeforeFlush = () => { };
+    public static readonly Action AfterFlush = () => { };
 }
 
 internal enum ComputationPhase
@@ -270,16 +268,18 @@ internal abstract class ComputationNode : OwnerTree
         public static readonly List<ComputationNode> UpdateQueue = new(256); // 更新值的队列
         public static int UpdateFromIndex; // 队列开始执行的位置
 
-        public static long ExecCount; // 执行计数器，和ComputationNode.Version 配合使用
+        public static long ExecCount; // 执行计数器，和 ComputationNode.Version 配合使用
         public static string? Error = null;
     }
-    private static void RunBatch()
+
+    private static void Flush()
     {
         if (SchedulerContext.BatchCount != 1) return;
 
         var effectFromIndex = 0;
         try
         {
+            ReactiveContext.BeforeFlush();
             while (true)
             {
                 RunUpdates();
@@ -292,6 +292,7 @@ internal abstract class ComputationNode : OwnerTree
                 RunEffectQueue(effectFromIndex, effectToIndex);
                 effectFromIndex = effectToIndex;
             }
+            ReactiveContext.AfterFlush();
         }
         catch (InfiniteReactiveLoopException)
         {
@@ -318,6 +319,7 @@ internal abstract class ComputationNode : OwnerTree
             SchedulerContext.BatchCount = 0;
             return;
         }
+
         if (batchCount > 1)
         {
             SchedulerContext.BatchCount--;
@@ -325,7 +327,7 @@ internal abstract class ComputationNode : OwnerTree
         }
 
         // batchCount == 1
-        RunBatch();
+        Flush();
         SchedulerContext.BatchCount = 0;
     }
 
