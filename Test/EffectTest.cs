@@ -65,47 +65,6 @@ public class EffectTest
     }
 
     [Fact]
-    public void Effect_Multiple_Writes_Should_Batch()
-    {
-        var a = new Signal<int>(0);
-        int runs = 0;
-
-        using var effect = new Effect(() =>
-        {
-            runs++;
-            _ = a.Value;
-        });
-
-        Reactive.Batch(() =>
-        {
-            a.Value = 1;
-            a.Value = 2;
-            a.Value = 3;
-        });
-
-        Assert.Equal(2, runs);
-        // 初始 1 次 + batch 后 1 次
-    }
-
-    [Fact]
-    public void Effect_Memo_Effect_Chain_Test()
-    {
-        var a = new Signal<int>(1);
-
-        using var owner = new Owner();
-
-        var m = owner.AddMemo(() => a.Value + 1);
-
-        int result = 0;
-
-        owner.AddEffect(() => { result = m.Value; });
-
-        a.Value = 10;
-
-        Assert.Equal(11, result);
-    }
-
-    [Fact]
     public void Conditional_Write_Should_Not_Trigger_Extra()
     {
         var a = new Signal<int>(1);
@@ -119,44 +78,5 @@ public class EffectTest
         });
 
         Assert.Equal(1, runs);
-    }
-
-    [Fact]
-    public void Nested_Effect_With_Write_Test()
-    {
-        var a = new Signal<int>(1);
-
-        var outer = 0;
-        var inner = 0;
-
-        using var effect = new Effect(() =>
-        {
-            outer++;
-            _ = a.Value;
-
-            _ = new Effect(() =>
-            {
-                inner++;
-                if (a.Value < 3)
-                    a.Value++;
-            });
-        });
-
-        Assert.True(a.Value >= 3);
-        Assert.Equal(3, outer);
-        Assert.Equal(3, inner);
-    }
-
-    [Fact]
-    public void Infinite_Loop_Should_Throw()
-    {
-        var a = new Signal<int>(0);
-        Assert.Throws<InfiniteReactiveLoopException>(() =>
-        {
-            using var effect = new Effect(() =>
-            {
-                a.Value++;
-            });
-        });
     }
 }

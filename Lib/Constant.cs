@@ -2,12 +2,7 @@ namespace Lib;
 
 internal static class Constant
 {
-    public static readonly OwnerTree UnOwned = new(
-        parent: null,
-        children: null,
-        context: null,
-        cleanups: null
-    );
+    public static readonly OwnerTree RootOwnerTree = new(true);
 
     public static bool EqualFn<T>(T a, T b)
     {

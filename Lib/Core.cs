@@ -1,11 +1,9 @@
 ﻿namespace Lib;
 
-using System.Diagnostics;
-
 internal interface ISignalState
 {
-    List<ComputationNode>? Observers { get; set; }
-    List<int>? ObserverSlots { get; set; }
+    List<ComputationNode> Observers { get; }
+    List<int> ObserverSlots { get; }
     ComputationNode? LastObserver { get; set; }
     internal void UpdateIfNeeded(ComputationNode? ignore = null);
 }
@@ -27,29 +25,14 @@ internal static class Common
         signal.LastObserver = currentComp;
 
         // 建立 Computation 与 Signal 的双向引用
-        var sSlot = signal.Observers?.Count ?? 0;
-        var oSlot = currentComp.Sources?.Count ?? 0;
-        if (currentComp.Sources is not null)
-        {
-            currentComp.Sources.Add(signal); // 当前计算节点自动收集依赖
-            currentComp.SourceSlots!.Add(sSlot);
-        }
-        else
-        {
-            currentComp.Sources = [signal];
-            currentComp.SourceSlots = [sSlot];
-        }
+        var sSlot = signal.Observers.Count;
+        var oSlot = currentComp.Sources.Count;
 
-        if (signal.Observers is not null)
-        {
-            signal.Observers.Add(currentComp);
-            signal.ObserverSlots!.Add(oSlot);
-        }
-        else
-        {
-            signal.Observers = [currentComp];
-            signal.ObserverSlots = [oSlot];
-        }
+        currentComp.Sources.Add(signal); // 当前计算节点自动收集依赖
+        currentComp.SourceSlots.Add(sSlot);
+
+        signal.Observers.Add(currentComp);
+        signal.ObserverSlots.Add(oSlot);
 
         return signal.Value;
     }
@@ -60,7 +43,7 @@ internal static class Common
         if (signal.Comparator(current, value)) return current;
 
         signal.Value = value;
-        if (signal.Observers is null) return value;
+        if (signal.Observers.Count == 0) return value;
 
         ComputationNode.NotifyObservers(signal.Observers);
         return value;
@@ -69,8 +52,8 @@ internal static class Common
 
 internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : ISignalState<T>
 {
-    public List<ComputationNode>? Observers { get; set; }
-    public List<int>? ObserverSlots { get; set; }
+    public List<ComputationNode> Observers { get; set; } = [];
+    public List<int> ObserverSlots { get; } = [];
     public ComputationNode? LastObserver { get; set; } = null;
     public Func<T, T, bool> Comparator { get; init; } = comparator ?? Constant.EqualFn;
     public T Value { get; set; } = value;
@@ -86,39 +69,52 @@ internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : IS
     }
 }
 
-internal class OwnerTree(
-    OwnerTree? parent = null,
-    List<ComputationNode>? children = null,
-    List<Action>? cleanups = null,
-    Dictionary<object, object?>? context = null
-)
+internal class OwnerTree
 {
-    internal readonly OwnerTree? Parent = parent;
-    internal List<ComputationNode>? Children = children;
-    internal List<Action>? Cleanups = cleanups;
+    internal readonly OwnerTree? Parent;
+    internal readonly List<OwnerTree> Children;
+    internal readonly List<Action> Cleanups;
 
-    internal event Action AfterDisposed = () => { };
-    internal Dictionary<object, object?>? Context = context;
+    internal Dictionary<object, object?>? Context;
 
-    internal virtual void CleanNode(bool isDispose = false)
+    internal OwnerTree(OwnerTree? parent = null,
+        List<OwnerTree>? children = null,
+        List<Action>? cleanups = null,
+        Dictionary<object, object?>? context = null)
+    {
+        Parent = parent ?? ReactiveContext.CurrentOwner;
+        Children = children ?? [];
+        Cleanups = cleanups ?? [];
+        Context = context;
+
+        Parent.Children.Add(this);
+    }
+
+    internal OwnerTree(bool isRoot)
+    {
+        _ = isRoot;
+        Parent = null;
+        Children = [];
+        Cleanups = [];
+        Context = null;
+    }
+
+    internal virtual void CleanNode(bool isDispose = false, bool disposeChildren = false)
     {
         int i;
-        if (Children is not null)
+        for (i = Children.Count - 1; i >= 0; i--)
         {
-            for (i = Children.Count - 1; i >= 0; i--)
-            {
-                var child = Children[i];
-                child.CleanNode(isDispose);
-                if (isDispose) child.AfterDisposed();
-            }
-
-            Children = null;
+            var child = Children[i];
+            child.CleanNode(isDispose || disposeChildren);
         }
 
-        if ((Cleanups?.Count ?? 0) == 0) return;
+        Children.Clear();
 
-        for (i = Cleanups!.Count - 1; i >= 0; i--) Cleanups[i]();
-        Cleanups = null;
+        if (!isDispose) return;
+        if (Cleanups.Count == 0) return;
+
+        for (i = Cleanups.Count - 1; i >= 0; i--) Cleanups[i]();
+        Cleanups.Clear();
     }
 
     internal void Dispose()
@@ -128,7 +124,6 @@ internal class OwnerTree(
         try
         {
             CleanNode(true);
-            AfterDisposed();
         }
         finally
         {
@@ -139,7 +134,7 @@ internal class OwnerTree(
 
 internal static class ReactiveContext
 {
-    public static OwnerTree? CurrentOwner; // 当前正在执行的所有者
+    public static OwnerTree CurrentOwner = Constant.RootOwnerTree; // 当前正在执行的所有者
     public static ComputationNode? CurrentComputation; // 当前计算节点
     public static readonly Action BeforeFlush = () => { };
     public static readonly Action AfterFlush = () => { };
@@ -155,8 +150,8 @@ internal enum ComputationPhase
 internal abstract class ComputationNode : OwnerTree
 {
     internal ComputationPhase Phase;
-    internal List<ISignalState>? Sources;
-    internal List<int>? SourceSlots;
+    internal readonly List<ISignalState> Sources;
+    internal readonly List<int> SourceSlots;
     protected long Version;
     public readonly bool IsPure;
     public readonly bool IsUser;
@@ -169,50 +164,39 @@ internal abstract class ComputationNode : OwnerTree
         bool isPure = false,
         bool isUser = false,
         OwnerTree? parent = null,
-        List<ComputationNode>? children = null,
+        List<OwnerTree>? children = null,
         List<Action>? cleanups = null,
         Dictionary<object, object?>? context = null
     ) : base(parent, children, cleanups, context)
     {
         Phase = phase;
-        Sources = sources;
-        SourceSlots = sourceSlots;
+        Sources = sources ?? [];
+        SourceSlots = sourceSlots ?? [];
         Version = version;
         IsPure = isPure;
         IsUser = isUser;
-
-        if (ReactiveContext.CurrentOwner is null)
-            Trace.TraceWarning(
-                "computations created outside a `createRoot` or `render` will never be disposed"
-            );
-        else if (ReactiveContext.CurrentOwner != Constant.UnOwned)
-        {
-            if (ReactiveContext.CurrentOwner.Children is null)
-                ReactiveContext.CurrentOwner.Children = [this];
-            else ReactiveContext.CurrentOwner.Children.Add(this);
-        }
     }
 
-    internal override void CleanNode(bool isDispose = false)
+    internal override void CleanNode(bool isDispose = false, bool disposeChildren = false)
     {
-        while ((Sources?.Count ?? 0) != 0)
+        while (Sources.Count != 0)
         {
-            var source = Util.RemoveLast(Sources!);
+            var source = Util.RemoveLast(Sources);
             source.LastObserver = null;
-            var index = Util.RemoveLast(SourceSlots!);
+            var index = Util.RemoveLast(SourceSlots);
             var obs = source.Observers;
 
-            if (obs is null) continue;
+            if (obs.Count == 0) continue;
             var n = Util.RemoveLast(obs);
-            var s = Util.RemoveLast(source.ObserverSlots!);
+            var s = Util.RemoveLast(source.ObserverSlots);
 
             if (index >= obs.Count) continue;
-            n.SourceSlots![s] = index;
+            n.SourceSlots[s] = index;
             obs[index] = n;
-            source.ObserverSlots![index] = s;
+            source.ObserverSlots[index] = s;
         }
 
-        base.CleanNode(isDispose);
+        base.CleanNode(isDispose, !IsPure);
 
         Phase = ComputationPhase.Resolved; // 当前及旧的子Computation 不再执行
     }
@@ -292,6 +276,7 @@ internal abstract class ComputationNode : OwnerTree
                 RunEffectQueue(effectFromIndex, effectToIndex);
                 effectFromIndex = effectToIndex;
             }
+
             ReactiveContext.AfterFlush();
         }
         catch (InfiniteReactiveLoopException)
@@ -370,16 +355,12 @@ internal abstract class ComputationNode : OwnerTree
 
     private static void RunEffectQueue(int fromIndex, int toIndex)
     {
-        var userLength = 0;
         var queue = SchedulerContext.EffectQueue;
         for (var i = fromIndex; i < toIndex; i++)
         {
             var node = queue[i];
-            if (!node.IsUser) node.RunTop();
-            else queue[userLength++] = node;
+            node.RunTop();
         }
-
-        for (var i = 0; i < userLength; i++) queue[i].RunTop();
     }
 
     protected void RunTop()
@@ -395,7 +376,7 @@ internal abstract class ComputationNode : OwnerTree
         var node = this;
         while (true)
         {
-            if (!(Parent is ComputationNode parent && parent.Version <= SchedulerContext.ExecCount)) break;
+            if (node.Parent is not ComputationNode parent || parent.Version > SchedulerContext.ExecCount) break;
             if (parent.Phase != ComputationPhase.Resolved) ancestors.Add(node);
             node = parent;
         }
@@ -409,9 +390,7 @@ internal abstract class ComputationNode : OwnerTree
                 node.UpdateComputation();
 
             else if (node.Phase == ComputationPhase.Pending)
-            {
                 RunIsolatedUpdates(() => LookUpstream(ancestors[0]));
-            }
         }
     }
 
@@ -446,7 +425,7 @@ internal abstract class ComputationNode : OwnerTree
     protected void LookUpstream(ComputationNode? ignore = null)
     {
         Phase = ComputationPhase.Resolved;
-        for (var i = 0; i < Sources?.Count; i += 1)
+        for (var i = 0; i < Sources.Count; i += 1)
             Sources[i].UpdateIfNeeded();
     }
 
@@ -456,7 +435,7 @@ internal abstract class ComputationNode : OwnerTree
         List<Action<object>>? fns = null;
         if (SchedulerContext.Error is not null)
         {
-            fns = owner?.Context?[SchedulerContext.Error] as List<Action<object>>;
+            fns = owner.Context?[SchedulerContext.Error] as List<Action<object>>;
         }
 
         var error = CastError(err);
@@ -506,7 +485,7 @@ internal abstract class ComputationNode : OwnerTree
     }
 
     // 额外API，非核心算法
-    internal static T SetContext<T>(Func<T> fn, OwnerTree? root, ComputationNode? node)
+    internal static T SetContext<T>(Func<T> fn, OwnerTree root, ComputationNode? node)
     {
         var currentComputation = ReactiveContext.CurrentComputation;
         var currentOwner = ReactiveContext.CurrentOwner;
@@ -550,7 +529,7 @@ internal abstract class ComputationNode : OwnerTree
     internal static T Untrack<T>(IReadOnlySignal<T> source)
         => Untrack(() => source.Value);
 
-    internal static T? RunWithOwner<T>(OwnerTree? o, Func<T> fn)
+    internal static T? RunWithOwner<T>(OwnerTree o, Func<T> fn)
     {
         var tempOwner = ReactiveContext.CurrentOwner;
         var tempComputation = ReactiveContext.CurrentComputation;
@@ -591,7 +570,7 @@ internal class ComputationNode<T>(
     bool isPure = false,
     bool isUser = false,
     OwnerTree? parent = null,
-    List<ComputationNode>? children = null,
+    List<OwnerTree>? children = null,
     List<Action>? cleanups = null,
     Dictionary<object, object?>? context = null
 ) : ComputationNode(phase, sources, sourceSlots,
@@ -623,8 +602,8 @@ internal class ComputationNode<T>(
             if (IsPure)
             {
                 Phase = ComputationPhase.Stale;
-                Children?.ForEach(node => node.CleanNode());
-                Children = null;
+                Children.ForEach(node => node.CleanNode());
+                Children.Clear();
             }
 
             // won't be picked up until next update
@@ -660,8 +639,8 @@ internal class MemoNode<T> : ComputationNode<T>,
     ISignalState<T>
 {
     public Func<T, T, bool> Comparator { get; }
-    public List<ComputationNode>? Observers { get; set; }
-    public List<int>? ObserverSlots { get; set; }
+    public List<ComputationNode> Observers { get; set; }
+    public List<int> ObserverSlots { get; }
     public ComputationNode? LastObserver { get; set; }
 
     // private T _value;
@@ -681,7 +660,7 @@ internal class MemoNode<T> : ComputationNode<T>,
         bool isPure = true,
         bool isUser = false,
         OwnerTree? parent = null,
-        List<ComputationNode>? children = null,
+        List<OwnerTree>? children = null,
         List<Action>? cleanups = null,
         Dictionary<object, object?>? context = null
     ) : base(fn, value!, phase,
@@ -689,8 +668,8 @@ internal class MemoNode<T> : ComputationNode<T>,
         parent, children, cleanups, context)
     {
         Comparator = comparator ?? Constant.EqualFn;
-        Observers = observers;
-        ObserverSlots = observerSlots;
+        Observers = observers ?? [];
+        ObserverSlots = observerSlots ?? [];
         Value = value!;
     }
 
@@ -699,7 +678,7 @@ internal class MemoNode<T> : ComputationNode<T>,
      */
     internal override void MarkDownstream()
     {
-        for (var i = 0; i < Observers?.Count; i++)
+        for (var i = 0; i < Observers.Count; i++)
         {
             var observer = Observers[i];
             if (observer.Phase != ComputationPhase.Resolved) continue;

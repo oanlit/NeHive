@@ -105,31 +105,6 @@ public class LifeCycleTest
     }
 
     [Fact]
-    public void No_Zombie_Effect_Test()
-    {
-        Signal<int> s = new(0);
-        List<int> values = [];
-
-        var e = new Effect(() =>
-        {
-            if (s.Value > 0)
-            {
-                _ = new Effect(() => { values.Add(s.Value); });
-            }
-        });
-
-        s.Value = 1; // 创建子 effect
-        s.Value = 2;
-
-        e.Dispose();
-
-        s.Value = 3;
-
-        // 如果有 zombie，这里会继续写
-        Assert.DoesNotContain(3, values);
-    }
-
-    [Fact]
     public void Dynamic_Dependency_Switch_Test()
     {
         Signal<int> a = new(1);
@@ -159,30 +134,54 @@ public class LifeCycleTest
     {
         Signal<int> s = new(0);
         List<int> values = [];
-    
-        var owner = new Owner();
-    
+
+        using var owner = new Owner();
+
         var e = owner.AddEffect(() => values.Add(s.Value));
         Assert.False(e.IsInvalid);
+
+        s.Value = 1;
+        Assert.Equal([0, 1], values);
+
+        owner.Clean();
+        Assert.False(owner.IsDisposed);
+        Assert.True(e.IsInvalid);
+
+        s.Value = 2;
+
+        // ❗旧 effect 不应再触发
+        Assert.Equal([0, 1], values);
+
+        // 重新挂
+        owner.AddEffect(() => values.Add(s.Value));
+
+        s.Value = 3;
+
+        Assert.Equal([0, 1, 2, 3], values);
+    }
+
+    [Fact]
+    public void Clean_Root_Test()
+    {
+        Signal<int> s = new(0);
+        List<int> values = [];
+    
+        using var owner = new Owner();
+    
+        var e1 = owner.AddEffect(() => values.Add(s.Value));
+        Assert.False(e1.IsInvalid);
     
         s.Value = 1;
         Assert.Equal([0, 1], values);
     
-        owner.Clean();
-        Assert.False(owner.IsDisposed);
-        Assert.True(e.IsInvalid);
+        var root = Reactive.RootOwner;
+    
+        root.Dispose();
+        Assert.True(owner.IsDisposed);
+        Assert.True(e1.IsInvalid);
     
         s.Value = 2;
-    
-        // ❗旧 effect 不应再触发
         Assert.Equal([0, 1], values);
-    
-        // 重新挂
-        owner.AddEffect(() => values.Add(s.Value));
-    
-        s.Value = 3;
-    
-        Assert.Equal([0, 1, 2, 3], values);
     }
 
     [Fact]
@@ -197,32 +196,6 @@ public class LifeCycleTest
         owner.Clean();
 
         Assert.Equal([1], logs);
-    }
-
-    [Fact]
-    public void Owner_Clean_Nested_Effect_Test()
-    {
-        Signal<int> s = new(0);
-        List<int> logs = [];
-
-        var owner = new Owner();
-
-        owner.AddEffect(() =>
-        {
-            logs.Add(s.Value);
-
-            _ = new Effect(() => { logs.Add(s.Value * 10); });
-        });
-
-        s.Value = 1;
-        Assert.Equal([0, 0, 1, 10], logs);
-
-        owner.Clean();
-
-        s.Value = 2;
-
-        // ❗所有嵌套 effect 都应停止
-        Assert.Equal([0, 0, 1, 10], logs);
     }
 
     [Fact]

@@ -582,6 +582,47 @@ public class IntegrationTests
         Assert.Equal(30, memo.Value);
         Assert.Equal(6, computeCount);
     }
+    
+    [Fact]
+    public void Effect_Multiple_Writes_Should_Batch()
+    {
+        var a = new Signal<int>(0);
+        int runs = 0;
+
+        using var effect = new Effect(() =>
+        {
+            runs++;
+            _ = a.Value;
+        });
+
+        Reactive.Batch(() =>
+        {
+            a.Value = 1;
+            a.Value = 2;
+            a.Value = 3;
+        });
+
+        Assert.Equal(2, runs);
+        // 初始 1 次 + batch 后 1 次
+    }
+
+    [Fact]
+    public void Effect_Memo_Effect_Chain_Test()
+    {
+        var a = new Signal<int>(1);
+
+        using var owner = new Owner();
+
+        var m = owner.AddMemo(() => a.Value + 1);
+
+        int result = 0;
+
+        owner.AddEffect(() => { result = m.Value; });
+
+        a.Value = 10;
+
+        Assert.Equal(11, result);
+    }
 }
 
 public class BaseTest

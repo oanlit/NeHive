@@ -1,7 +1,5 @@
 namespace Lib;
 
-using System.Diagnostics;
-
 public static partial class Reactive
 {
     public static void Batch(Action fn)
@@ -21,12 +19,6 @@ public static partial class Reactive
 
     public static void OnMount(Action fn)
     {
-        if (ReactiveContext.CurrentOwner is null)
-        {
-            Trace.TraceWarning("cleanups created outside a `createRoot` or `render` will never be run");
-            return;
-        }
-
         _ = new EffectNode<object>(_ =>
         {
             Untrack(fn);
@@ -36,10 +28,7 @@ public static partial class Reactive
 
     public static void OnCleanup(Action fn)
     {
-        if (ReactiveContext.CurrentOwner is null)
-            Trace.TraceWarning("cleanups created outside a `createRoot` or `render` will never be run");
-        else if (ReactiveContext.CurrentOwner.Cleanups is null) ReactiveContext.CurrentOwner.Cleanups = [fn];
-        else ReactiveContext.CurrentOwner.Cleanups.Add(fn);
+        ReactiveContext.CurrentOwner.Cleanups.Add(fn);
     }
 
     public static T Untrack<T>(Func<T> fn)
@@ -56,6 +45,17 @@ public static partial class Reactive
         ComputationNode.StartBatch();
         ComputationNode.Untrack(fn);
         ComputationNode.EndBatch();
+    }
+    
+    public static Owner RootOwner
+        => OwnerHolder[Constant.RootOwnerTree];
+
+    internal static readonly Dictionary<OwnerTree, Owner> OwnerHolder = [];
+
+    static Reactive()
+    {
+        var root = new Owner(true);
+        OwnerHolder[Constant.RootOwnerTree] = root;
     }
 }
 
@@ -100,7 +100,7 @@ public class Signal<T>(T value) : ISignal<T>
     }
 
     public T UntrackValue => _state.Value;
-    internal bool HasObserver => _state.Observers?.Count > 0;
+    internal bool HasObserver => _state.Observers.Count > 0;
 }
 
 public class Owner : IDisposable
@@ -115,10 +115,18 @@ public class Owner : IDisposable
         _root = new OwnerTree(
             parent: current,
             children: null,
-            context: current?.Context,
+            context: current.Context,
             cleanups: null
         );
-        _root.AfterDisposed += () => IsDisposed = true;
+        _root.Cleanups.Add(() => IsDisposed = true);
+        Reactive.OwnerHolder[_root] = this;
+    }
+
+    internal Owner(bool isRoot)
+    {
+        _ = isRoot;
+        _root = Constant.RootOwnerTree;
+        Reactive.OwnerHolder[_root] = this;
     }
 
     public void AddMount(Action fn)
@@ -126,21 +134,29 @@ public class Owner : IDisposable
 
     public void AddCleanup(Action fn)
     {
-        if (_root.Cleanups is null) _root.Cleanups = [fn];
-        else _root.Cleanups.Add(fn);
+        _root.Cleanups.Add(fn);
     }
 
     public void Clean()
     {
         if (IsDisposed) return;
         _root.Dispose();
-        IsDisposed = false; // 只 Dispose 子项
+        // 只 Dispose 子项
+        IsDisposed = false;
+        _root.Cleanups.Add(OnDispose);
+        Reactive.OwnerHolder[_root] = this;
     }
 
     public void Dispose()
     {
         if (IsDisposed) return;
         _root.Dispose();
+    }
+
+    private void OnDispose()
+    {
+        IsDisposed = true;
+        Reactive.OwnerHolder.Remove(_root);
     }
 
     private T _setContext<T>(Func<T> fn)
@@ -153,14 +169,14 @@ public class Owner : IDisposable
     public Effect<T> AddEffect<T>(Func<T, T> fn, T value)
         => _setContext(() => new Effect<T>(fn, value));
 
-    public Effect<object> AddEffect(Action fn)
-        => AddEffect(Util.WrapActionWithArg(fn), Constant.EmptyObj);
+    public Effect AddEffect(Action fn)
+        => _setContext(() => new Effect(fn));
 
     public Memo<T> AddMemo<T>(Func<T, T> fn, T? value = default)
         => _setContext(() => new Memo<T>(fn, value));
 
     public Memo<T> AddMemo<T>(Func<T> fn, T? value = default)
-        => AddMemo(_ => fn(), value);
+        => _setContext(() => new Memo<T>(fn, value));
 
     public Computation<T> AddComputation<T>(Func<T, T> fn,
         T init,
@@ -187,10 +203,10 @@ public class Computation<T> : IDisposable
         bool pure = false)
     {
         _node = new(fn, init, isPure: pure);
-        if ((_node.Sources?.Count ?? 0) == 0)
+        if (_node.Sources.Count == 0)
             IsInvalid = true;
         else
-            _node.AfterDisposed += () => IsInvalid = true;
+            _node.Cleanups.Add(() => IsInvalid = true);
     }
 
     public void Dispose()
@@ -213,17 +229,17 @@ public class Effect : IDisposable
 
     public Effect(Action fn)
     {
-        var owner = ReactiveContext.CurrentOwner ?? Constant.UnOwned;
+        var owner = ReactiveContext.CurrentOwner;
         var computation = ReactiveContext.CurrentComputation;
 
         _node = ComputationNode.SetContext(
             () => new EffectNode<object>(Util.WrapActionWithArg(fn), Constant.EmptyObj),
             owner, computation
         );
-        if ((_node.Sources?.Count ?? 0) == 0)
+        if (_node.Sources.Count == 0)
             IsInvalid = true;
         else
-            _node.AfterDisposed += () => IsInvalid = true;
+            _node.Cleanups.Add(() => IsInvalid = true);
     }
 
     public void Dispose()
@@ -241,7 +257,7 @@ public class Effect<T> : IDisposable
 
     public Effect(Func<T, T> fn, T value)
     {
-        var owner = ReactiveContext.CurrentOwner ?? Constant.UnOwned;
+        var owner = ReactiveContext.CurrentOwner;
         var computation = ReactiveContext.CurrentComputation;
 
         _node = ComputationNode.SetContext(
@@ -268,7 +284,7 @@ public class Effect<T> : IDisposable
             return result;
         };
 
-        var owner = ReactiveContext.CurrentOwner ?? Constant.UnOwned;
+        var owner = ReactiveContext.CurrentOwner;
         var computation = ReactiveContext.CurrentComputation;
         _node = ComputationNode.SetContext(
             () => new EffectNode<T>(fn, prevInput!),
@@ -279,12 +295,10 @@ public class Effect<T> : IDisposable
 
     private void _afterConstructor()
     {
-        if ((_node.Sources?.Count ?? 0) == 0)
+        if (_node.Sources.Count == 0)
             IsInvalid = true;
         else
-        {
-            _node.AfterDisposed += () => IsInvalid = true;
-        }
+            _node.Cleanups.Add(() => IsInvalid = true);
     }
 
     public void Dispose()
@@ -298,10 +312,9 @@ public class Memo<T> : IReadOnlySignal<T>
 {
     private readonly MemoNode<T> _memoNode;
 
-    private IEnumerable<ComputationNode>? _lastObservers;
     private T _value;
 
-    public readonly Func<T, T> Fn;
+    private readonly Func<T, T> _fn;
 
     // 缓存是否失效 (不影响依赖建立)
     public bool IsInvalid { get; private set; }
@@ -310,9 +323,8 @@ public class Memo<T> : IReadOnlySignal<T>
     {
         get
         {
-            if (IsInvalid) return Fn(_value);
+            if (IsInvalid) return _fn(_value);
             _value = _memoNode.ReadSignal();
-            _lastObservers = _memoNode.Observers;
             return _value;
         }
     }
@@ -323,7 +335,7 @@ public class Memo<T> : IReadOnlySignal<T>
         {
             if (IsInvalid)
             {
-                _value = Reactive.Untrack(() => Fn(_value));
+                _value = Reactive.Untrack(() => _fn(_value));
                 return _value;
             }
 
@@ -334,9 +346,9 @@ public class Memo<T> : IReadOnlySignal<T>
 
     public Memo(Func<T, T> fn, T? value = default)
     {
-        var owner = ReactiveContext.CurrentOwner ?? Constant.UnOwned;
+        var owner = ReactiveContext.CurrentOwner;
         var computation = ReactiveContext.CurrentComputation;
-        Fn = fn;
+        _fn = fn;
         _memoNode = ComputationNode.SetContext(() =>
             new MemoNode<T>(
                 fn,
@@ -344,18 +356,16 @@ public class Memo<T> : IReadOnlySignal<T>
                 isPure: true
             )
             {
-                Observers = null,
-                ObserverSlots = null,
                 Phase = ComputationPhase.Resolved,
                 Value = value!
             }, owner, computation);
         _memoNode.UpdateComputation();
 
         _value = _memoNode.UntrackValue;
-        if ((_memoNode.Sources?.Count ?? 0) == 0)
+        if (_memoNode.Sources.Count == 0)
             IsInvalid = true;
         else
-            _memoNode.AfterDisposed += _afterDisposed;
+            _memoNode.Cleanups.Add(_afterDisposed);
     }
 
     public Memo(Func<T> fn, T? value = default)
@@ -372,9 +382,10 @@ public class Memo<T> : IReadOnlySignal<T>
     private void _afterDisposed()
     {
         IsInvalid = true;
-        if (_lastObservers is null) return;
-        ComputationNode.NotifyObservers(_lastObservers);
-        _lastObservers = null;
+        var observers = _memoNode.Observers;
+        if (observers.Count == 0) return;
+        ComputationNode.NotifyObservers(observers);
+        _memoNode.Observers.Clear();
     }
 }
 
@@ -451,7 +462,7 @@ public class Context<T>(string id = "context", T defaultValue = default!)
     public T UseContext()
     {
         var owner = ReactiveContext.CurrentOwner;
-        if (owner?.Context?[Id] is T value) return value;
+        if (owner.Context?[Id] is T value) return value;
         return DefaultValue;
     }
 }
@@ -503,7 +514,7 @@ public class Resource<TSource, TValue, TInfo>
     private readonly Signal<TValue?> _value = new(default);
     private Task<TValue>? _task;
     private object _initTask = Constant.EmptyObj;
-    private readonly OwnerTree? _owner = ReactiveContext.CurrentOwner;
+    private readonly OwnerTree _owner = ReactiveContext.CurrentOwner;
     private bool _scheduled;
     private readonly IReadOnlySignal<TSource?> _source;
 

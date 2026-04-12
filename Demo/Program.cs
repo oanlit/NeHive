@@ -119,9 +119,10 @@ using Lib;
 //
 // dispose();
 
-var a = new Signal<int>(0);
+// var a = new Signal<int>(0);
+//
+// using var effect = new Effect(() =>
+// {
+//     a.Value++;
+// });
 
-using var effect = new Effect(() =>
-{
-    a.Value++;
-});
