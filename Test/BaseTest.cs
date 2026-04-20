@@ -127,14 +127,6 @@ public class EffectTests
     }
 
     [Fact]
-    public void Effect_IsDisposed_WhenSourcesBecomeEmpty()
-    {
-        var effect = new Effect(() => { }); // No dependencies
-        // After execution, the effect has no sources, so IsDisposed becomes true
-        Assert.True(effect.IsInvalid);
-    }
-
-    [Fact]
     public void Effect_IsDisposed_AfterManualDisposeEvenWithSources()
     {
         var signal = new Signal<int>(0);
@@ -197,16 +189,6 @@ public class MemoTests
         Assert.Equal(21, memo.Value); // recompute
         Assert.Equal(21, memo.UntrackValue);
         memo.Dispose();
-    }
-
-    [Fact]
-    public void Memo_IsDisposed_WhenNoSources()
-    {
-        var memo = new Memo<int>(() => 42); // No dependencies
-        // After creation, it has no sources, so IsDisposed becomes true
-        Assert.True(memo.IsInvalid);
-        // Value still accessible but may return stale (but constant here)
-        Assert.Equal(42, memo.Value);
     }
 
     [Fact]
@@ -440,56 +422,6 @@ public class IntegrationTests
 
     // ========== Effect + Memo + UntrackValue ==========
     [Fact]
-    public void UntrackValue_DoesNotPreventDisposalWhenNoDependenciesExist()
-    {
-        var signal = new Signal<int>(42);
-        var memo = new Memo<int>(() => signal.UntrackValue + 1);
-        Assert.Equal(43, memo.Value);
-
-        // Even though memo reads UntrackValue, it has no dependencies, so IsInvalid should become true
-        Assert.True(memo.IsInvalid);
-
-        signal.Value = 100;
-        Assert.Equal(101, memo.Value);
-        memo.Dispose();
-    }
-
-    [Fact]
-    public void Memo_InitialInvalid_RecomputesOnEachValueAccess()
-    {
-        // 验证无依赖的 Memo 初始失效，每次访问 Value 都会重新计算（不缓存）
-        var signal = new Signal<int>(100);
-        var computeCount = 0;
-
-        // Memo 内部使用 UntrackValue，不建立依赖
-        var memo = new Memo<int>(() =>
-        {
-            computeCount++;
-            return signal.UntrackValue + 1;
-        });
-
-        // 初始状态：无依赖，失效
-        Assert.True(memo.IsInvalid);
-        Assert.Equal(1, computeCount); // 构造时已执行一次 fn
-
-        // 第一次读取 Value → 重新计算（因为失效）
-        Assert.Equal(101, memo.Value);
-        Assert.Equal(2, computeCount);
-
-        // 第二次读取 Value → 仍然失效，再次重新计算
-        Assert.Equal(101, memo.Value);
-        Assert.Equal(3, computeCount);
-
-        // 修改信号值，但 Memo 仍无依赖，不会自动更新
-        signal.Value = 200;
-        // 再次读取 → 重新计算，得到新值
-        Assert.Equal(201, memo.Value);
-        Assert.Equal(4, computeCount);
-
-        memo.Dispose();
-    }
-
-    [Fact]
     public void Memo_TransitionsFromInvalidToValidWhenReadingValueWithDependency()
     {
         // 验证失效 Memo 在首次读取 Value 且 fn 内使用信号 .Value 时，
@@ -611,13 +543,13 @@ public class IntegrationTests
     {
         var a = new Signal<int>(1);
 
-        using var owner = new Owner();
+        using var scope = new Scope();
 
-        var m = owner.AddMemo(() => a.Value + 1);
+        var m = scope.AddMemo(() => a.Value + 1);
 
         int result = 0;
 
-        owner.AddEffect(() => { result = m.Value; });
+        scope.AddEffect(() => { result = m.Value; });
 
         a.Value = 10;
 
@@ -660,12 +592,12 @@ public class BaseTest
         var a = new Signal<int>(1);
         var logs = new List<int>();
 
-        using var owner = new Owner();
+        using var scope = new Scope();
 
-        var m1 = owner.AddMemo(() => a.Value + 1);
-        var m2 = owner.AddMemo(() => m1.Value + 1);
+        var m1 = scope.AddMemo(() => a.Value + 1);
+        var m2 = scope.AddMemo(() => m1.Value + 1);
 
-        owner.AddEffect(() => { logs.Add(m2.Value); });
+        scope.AddEffect(() => { logs.Add(m2.Value); });
 
         a.Value = 10;
 
@@ -677,14 +609,14 @@ public class BaseTest
     {
         var a = new Signal<int>(1);
 
-        using var owner = new Owner();
+        using var scope = new Scope();
 
-        var m1 = owner.AddMemo(() => a.Value + 1);
-        var m2 = owner.AddMemo(() => m1.Value + 1);
+        var m1 = scope.AddMemo(() => a.Value + 1);
+        var m2 = scope.AddMemo(() => m1.Value + 1);
 
         int observed = 0;
 
-        owner.AddEffect(() => { observed = m2.Value; });
+        scope.AddEffect(() => { observed = m2.Value; });
 
         a.Value = 10;
 

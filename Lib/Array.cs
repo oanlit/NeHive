@@ -341,7 +341,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         _sourceListSignal = sourceListSignal;
         _mapFn = mapFn;
         _keyFn = keyFn;
-        Reactive.OnCleanup(_disposeAll);
+        Reactive.OnDispose(_disposeAll);
         _mapCache = new Memo<DenseBuffer<TMap>>(fn: _effectFn, value: []);
     }
 
@@ -353,7 +353,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         _mapFnWithIndex = mapFnWithIndex;
         _keyFn = keyFn;
         _indexSignals = [];
-        Reactive.OnCleanup(_disposeAll);
+        Reactive.OnDispose(_disposeAll);
         _mapCache = new Memo<DenseBuffer<TMap>>(fn: _effectFn, value: []);
     }
 
@@ -372,8 +372,8 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
 
     private TMap _mapper(IReadOnlyList<TItem> sourceList, int index)
     {
-        var owner = new Owner();
-        var result = owner.RunWithOwner(() =>
+        var owner = new Scope();
+        var result = owner.RunInScope(() =>
         {
             if (_indexSignals is not null)
             {

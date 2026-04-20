@@ -27,7 +27,7 @@ public static partial class Reactive
     {
         var signal = new Signal<T>(initialValue);
         var subscription = producer.Subscribe(new ObserverSignal<T>(signal));
-        OnCleanup(() => subscription.Dispose());
+        OnDispose(() => subscription.Dispose());
         return signal;
     }
 

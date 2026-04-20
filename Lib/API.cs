@@ -17,18 +17,9 @@ public static partial class Reactive
         return result;
     }
 
-    public static void OnMount(Action fn)
+    public static void OnDispose(Action fn)
     {
-        _ = new EffectNode<object>(_ =>
-        {
-            Untrack(fn);
-            return Constant.EmptyObj;
-        }, Constant.EmptyObj);
-    }
-
-    public static void OnCleanup(Action fn)
-    {
-        ReactiveContext.CurrentOwner.Cleanups.Add(fn);
+        Scope.CurrentScope.OnDispose(fn);
     }
 
     public static T Untrack<T>(Func<T> fn)
@@ -45,17 +36,6 @@ public static partial class Reactive
         ComputationNode.StartBatch();
         ComputationNode.Untrack(fn);
         ComputationNode.EndBatch();
-    }
-    
-    public static Owner RootOwner
-        => OwnerHolder[Constant.RootOwnerTree];
-
-    internal static readonly Dictionary<OwnerTree, Owner> OwnerHolder = [];
-
-    static Reactive()
-    {
-        var root = new Owner(true);
-        OwnerHolder[Constant.RootOwnerTree] = root;
     }
 }
 
@@ -103,48 +83,37 @@ public class Signal<T>(T value) : ISignal<T>
     internal bool HasObserver => _state.Observers.Count > 0;
 }
 
-public class Owner : IDisposable
+public class Scope : IDisposable
 {
-    private readonly OwnerTree _root;
+    private static readonly Dictionary<ScopeNode, Scope> OwnerHolder = [];
+
+    private readonly ScopeNode _root;
     public bool IsDisposed { get; private set; }
 
-    public Owner(Owner? parentOwner = null)
+    public Scope(Scope? parentScope = null)
     {
-        var currentOwner = ReactiveContext.CurrentOwner;
-        var current = parentOwner?._root ?? currentOwner;
-        _root = new OwnerTree(
+        var currentScope = ReactiveContext.CurrentScope;
+        var current = parentScope?._root ?? currentScope;
+        _root = new ScopeNode(
             parent: current,
             children: null,
             context: current.Context,
             cleanups: null
         );
-        _root.Cleanups.Add(() => IsDisposed = true);
-        Reactive.OwnerHolder[_root] = this;
+        _root.Cleanups.Add(_onDispose);
+        OwnerHolder[_root] = this;
     }
 
-    internal Owner(bool isRoot)
+    public void OnDispose(Action fn)
     {
-        _ = isRoot;
-        _root = Constant.RootOwnerTree;
-        Reactive.OwnerHolder[_root] = this;
-    }
-
-    public void AddMount(Action fn)
-        => AddEffect(() => ComputationNode.Untrack(fn));
-
-    public void AddCleanup(Action fn)
-    {
+        if (IsDisposed) return;
         _root.Cleanups.Add(fn);
     }
 
     public void Clean()
     {
         if (IsDisposed) return;
-        _root.Dispose();
-        // 只 Dispose 子项
-        IsDisposed = false;
-        _root.Cleanups.Add(OnDispose);
-        Reactive.OwnerHolder[_root] = this;
+        _root.DisposeChildren();
     }
 
     public void Dispose()
@@ -153,15 +122,69 @@ public class Owner : IDisposable
         _root.Dispose();
     }
 
-    private void OnDispose()
+    private void _onDispose()
     {
         IsDisposed = true;
-        Reactive.OwnerHolder.Remove(_root);
+        OwnerHolder.Remove(_root);
+    }
+
+    private Scope(bool isRoot)
+    {
+        _ = isRoot;
+        _root = Constant.RootScopeTree;
+        OwnerHolder[_root] = this;
+    }
+
+    static Scope()
+    {
+        var root = new Scope(true);
+        OwnerHolder[Constant.RootScopeTree] = root;
+    }
+
+    public static Scope RootScope
+        => OwnerHolder[Constant.RootScopeTree];
+
+    private Scope(ScopeNode scope)
+    {
+        _root = scope;
+    }
+
+    public static Scope CurrentScope
+    {
+        get
+        {
+            var currentScopeNode = ReactiveContext.CurrentScope;
+            OwnerHolder.TryGetValue(currentScopeNode, out var scope);
+            if (scope is not null) return scope;
+
+            scope = new Scope(currentScopeNode);
+            OwnerHolder[currentScopeNode] = scope;
+            if (currentScopeNode is ComputationNode)
+            {
+                // ComputationNode 每次运行时都会dispose自己，为了复用，我们绑定到 Parent Scope
+                var parent = currentScopeNode.Parent!; // 除了 RootScope 以外都有
+                parent.Cleanups.Add(() =>
+                {
+                    OwnerHolder.Remove(currentScopeNode);
+                    scope.IsDisposed = true;
+                });
+            }
+            else
+            {
+                currentScopeNode.Cleanups.Add(() =>
+                {
+                    OwnerHolder.Remove(currentScopeNode);
+                    scope.IsDisposed = true;
+                });
+            }
+
+            return scope;
+        }
     }
 
     private T _setContext<T>(Func<T> fn)
     {
-        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Owner));
+        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Scope));
         var computation = ReactiveContext.CurrentComputation;
         return ComputationNode.SetContext(fn, _root, computation);
     }
@@ -170,6 +193,15 @@ public class Owner : IDisposable
         => _setContext(() => new Effect<T>(fn, value));
 
     public Effect AddEffect(Action fn)
+        => _setContext(() => new Effect(fn));
+
+    public Effect AddEffect(Action<Scope> fn)
+        => _setContext(() => new Effect(fn));
+
+    public Effect AddEffect(Func<Scope, Action> fn)
+        => _setContext(() => new Effect(fn));
+
+    public Effect AddEffect(Func<Scope, Action<Scope>> fn)
         => _setContext(() => new Effect(fn));
 
     public Memo<T> AddMemo<T>(Func<T, T> fn, T? value = default)
@@ -183,36 +215,42 @@ public class Owner : IDisposable
         bool pure = false)
         => _setContext(() => new Computation<T>(fn, init, pure));
 
-    public T RunWithOwner<T>(Func<T> fn)
+    public T RunInScope<T>(Func<T> fn)
     {
-        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Owner));
-        return ComputationNode.RunWithOwner(_root, fn)!;
+        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Scope));
+        return ComputationNode.RunInScope(_root, fn)!;
     }
 
-    public void RunWithOwner(Action fn)
-        => RunWithOwner(Util.WrapAction(fn));
+    public void RunInScope(Action fn)
+        => RunInScope(Util.WrapAction(fn));
 }
 
 public class Computation<T> : IDisposable
 {
-    private readonly ComputationNode<T> _node;
+    private readonly ScopeNode _scope;
     public bool IsInvalid { get; private set; }
 
     public Computation(Func<T, T> fn,
         T init,
         bool pure = false)
     {
-        _node = new(fn, init, isPure: pure);
-        if (_node.Sources.Count == 0)
-            IsInvalid = true;
-        else
-            _node.Cleanups.Add(() => IsInvalid = true);
+        var current = ReactiveContext.CurrentScope;
+        _scope = new ScopeNode(
+            parent: current,
+            children: null,
+            context: current.Context,
+            cleanups: null
+        );
+        _scope.Cleanups.Add(() => IsInvalid = true);
+
+        ComputationNode.RunInScope(_scope, () =>
+            new ComputationNode<T>(fn, init, isPure: pure));
     }
 
     public void Dispose()
     {
         if (IsInvalid) return;
-        _node.Dispose();
+        _scope.Dispose();
     }
 }
 
@@ -224,47 +262,94 @@ public record struct EffectOptions<T>(
 
 public class Effect : IDisposable
 {
-    private readonly EffectNode<object> _node;
+    private readonly ScopeNode _scope;
     public bool IsInvalid { get; private set; }
 
     public Effect(Action fn)
     {
-        var owner = ReactiveContext.CurrentOwner;
-        var computation = ReactiveContext.CurrentComputation;
+        var current = ReactiveContext.CurrentScope;
 
-        _node = ComputationNode.SetContext(
-            () => new EffectNode<object>(Util.WrapActionWithArg(fn), Constant.EmptyObj),
-            owner, computation
+        _scope = new ScopeNode(
+            parent: current,
+            children: null,
+            context: current.Context,
+            cleanups: null
         );
-        if (_node.Sources.Count == 0)
-            IsInvalid = true;
-        else
-            _node.Cleanups.Add(() => IsInvalid = true);
+        _scope.Cleanups.Add(() => IsInvalid = true);
+
+        ComputationNode.RunInScope(_scope, () =>
+            new EffectNode<object>(Util.WrapActionWithArg(fn), Constant.EmptyObj)
+        );
+    }
+
+    public Effect(Action<Scope> fn) : this(_ => fn)
+    {
+    }
+
+    public Effect(Func<Scope, Action> setupFn) : this(selfScope =>
+    {
+        var executeFn = setupFn(selfScope);
+        return _ => executeFn();
+    })
+    {
+    }
+
+    public Effect(Func<Scope, Action<Scope>> setupFn)
+    {
+        var current = ReactiveContext.CurrentScope;
+
+        _scope = new ScopeNode(
+            parent: current,
+            children: null,
+            context: current.Context,
+            cleanups: null
+        );
+        _scope.Cleanups.Add(() => IsInvalid = true);
+
+        ComputationNode.RunInScope(_scope, () =>
+        {
+            var effectScope = Scope.CurrentScope;
+            var executeFn = setupFn(effectScope);
+            return new EffectNode<object>(
+                _ =>
+                {
+                    var epochScope = Scope.CurrentScope;
+                    executeFn(epochScope);
+                    return Constant.EmptyObj;
+                },
+                Constant.EmptyObj
+            );
+        });
     }
 
     public void Dispose()
     {
         if (IsInvalid) return;
-        _node.Dispose();
+        _scope.Dispose();
     }
 }
 
 public class Effect<T> : IDisposable
 {
-    private readonly EffectNode<T> _node;
+    private readonly ScopeNode _scope;
 
     public bool IsInvalid { get; private set; }
 
     public Effect(Func<T, T> fn, T value)
     {
-        var owner = ReactiveContext.CurrentOwner;
-        var computation = ReactiveContext.CurrentComputation;
+        var current = ReactiveContext.CurrentScope;
 
-        _node = ComputationNode.SetContext(
-            () => new EffectNode<T>(fn, value),
-            owner, computation
+        _scope = new ScopeNode(
+            parent: current,
+            children: null,
+            context: current.Context,
+            cleanups: null
         );
-        _afterConstructor();
+        _scope.Cleanups.Add(() => IsInvalid = true);
+
+        ComputationNode.RunInScope(_scope,
+            () => new EffectNode<T>(fn, value)
+        );
     }
 
     public Effect(EffectOptions<T> options)
@@ -284,32 +369,31 @@ public class Effect<T> : IDisposable
             return result;
         };
 
-        var owner = ReactiveContext.CurrentOwner;
-        var computation = ReactiveContext.CurrentComputation;
-        _node = ComputationNode.SetContext(
-            () => new EffectNode<T>(fn, prevInput!),
-            owner, computation
-        );
-        _afterConstructor();
-    }
+        var current = ReactiveContext.CurrentScope;
 
-    private void _afterConstructor()
-    {
-        if (_node.Sources.Count == 0)
-            IsInvalid = true;
-        else
-            _node.Cleanups.Add(() => IsInvalid = true);
+        _scope = new ScopeNode(
+            parent: current,
+            children: null,
+            context: current.Context,
+            cleanups: null
+        );
+        _scope.Cleanups.Add(() => IsInvalid = true);
+
+        ComputationNode.RunInScope(_scope,
+            () => new EffectNode<T>(fn, prevInput!)
+        );
     }
 
     public void Dispose()
     {
         if (IsInvalid) return;
-        _node.Dispose();
+        _scope.Dispose();
     }
 }
 
 public class Memo<T> : IReadOnlySignal<T>
 {
+    private readonly ScopeNode _scope;
     private readonly MemoNode<T> _memoNode;
 
     private T _value;
@@ -346,10 +430,18 @@ public class Memo<T> : IReadOnlySignal<T>
 
     public Memo(Func<T, T> fn, T? value = default)
     {
-        var owner = ReactiveContext.CurrentOwner;
-        var computation = ReactiveContext.CurrentComputation;
         _fn = fn;
-        _memoNode = ComputationNode.SetContext(() =>
+
+        var current = ReactiveContext.CurrentScope;
+        _scope = new ScopeNode(
+            parent: current,
+            children: null,
+            context: current.Context,
+            cleanups: null
+        );
+        _scope.Cleanups.Add(() => IsInvalid = true);
+
+        _memoNode = ComputationNode.RunInScope(_scope, () =>
             new MemoNode<T>(
                 fn,
                 comparator: Constant.EqualFn,
@@ -358,14 +450,12 @@ public class Memo<T> : IReadOnlySignal<T>
             {
                 Phase = ComputationPhase.Resolved,
                 Value = value!
-            }, owner, computation);
-        _memoNode.UpdateComputation();
+            });
 
+        _memoNode.UpdateComputation();
         _value = _memoNode.UntrackValue;
-        if (_memoNode.Sources.Count == 0)
-            IsInvalid = true;
-        else
-            _memoNode.Cleanups.Add(_afterDisposed);
+
+        _scope.Cleanups.Add(_afterDisposed);
     }
 
     public Memo(Func<T> fn, T? value = default)
@@ -376,7 +466,7 @@ public class Memo<T> : IReadOnlySignal<T>
     public void Dispose()
     {
         if (IsInvalid) return;
-        _memoNode.Dispose();
+        _scope.Dispose();
     }
 
     private void _afterDisposed()
@@ -436,7 +526,7 @@ public class Selector<T> where T : notnull
             _subs.Add(key, computations);
         }
 
-        Reactive.OnCleanup(() =>
+        Reactive.OnDispose(() =>
         {
             computations.Remove(currentComputation);
             if (computations.Count == 0) _subs.Remove(key);
@@ -452,7 +542,7 @@ public class Context<T>(string id = "context", T defaultValue = default!)
 
     public void Provider(T value, Action fn)
     {
-        var owner = ReactiveContext.CurrentOwner;
+        var owner = ReactiveContext.CurrentScope;
         if (owner is null) throw new Exception("CurrentOwner is None!");
         owner.Context ??= new Dictionary<object, object?>();
         owner.Context[Id] = value;
@@ -461,7 +551,7 @@ public class Context<T>(string id = "context", T defaultValue = default!)
 
     public T UseContext()
     {
-        var owner = ReactiveContext.CurrentOwner;
+        var owner = ReactiveContext.CurrentScope;
         if (owner.Context?[Id] is T value) return value;
         return DefaultValue;
     }
@@ -514,7 +604,7 @@ public class Resource<TSource, TValue, TInfo>
     private readonly Signal<TValue?> _value = new(default);
     private Task<TValue>? _task;
     private object _initTask = Constant.EmptyObj;
-    private readonly OwnerTree _owner = ReactiveContext.CurrentOwner;
+    private readonly ScopeNode _owner = ReactiveContext.CurrentScope;
     private bool _scheduled;
     private readonly IReadOnlySignal<TSource?> _source;
 
@@ -544,7 +634,7 @@ public class Resource<TSource, TValue, TInfo>
     // object 的类型为 TInfo | Task<TInfo>
     public object? Refetch(TInfo info)
     {
-        return ComputationNode.RunWithOwner(_owner, () => _load(info));
+        return ComputationNode.RunInScope(_owner, () => _load(info));
     }
 
     public void Mutate(TValue value)

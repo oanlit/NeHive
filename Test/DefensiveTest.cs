@@ -115,9 +115,9 @@ public class NestedEffectTest
         Signal<int> s = new(0);
         List<int> logs = [];
     
-        var owner = new Owner();
+        var scope = new Scope();
     
-        owner.AddEffect(() =>
+        scope.AddEffect(() =>
         {
             logs.Add(s.Value);
     
@@ -127,7 +127,7 @@ public class NestedEffectTest
         s.Value = 1;
         Assert.Equal([0, 0, 1, 10], logs);
     
-        owner.Clean();
+        scope.Clean();
     
         s.Value = 2;
     

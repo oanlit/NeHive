@@ -24,16 +24,16 @@ public class ListStoreTest
         List<List<int?>> snapshots = [];
         List<int> doubleCounts = [];
 
-        var owner = new Owner();
-        // owner.RunWithOwner(() =>
+        var scope = new Scope();
+        // scope.RunWithOwner(() =>
         // {
         //     _ = new Effect(() => { snapshots.Add(TakeSnapshot(store)); });
         //     var doubleCount = new Memo<int>(() => store.Count * 2);
         //     _ = new Effect(() => { doubleCounts.Add(doubleCount.Value); });
         // });
-        owner.AddEffect(() => { snapshots.Add(TakeSnapshot(store)); });
-        Memo<int> doubleCount = owner.AddMemo(() => store.Count * 2);
-        owner.AddEffect(() => { doubleCounts.Add(doubleCount.Value); });
+        scope.AddEffect(() => { snapshots.Add(TakeSnapshot(store)); });
+        var doubleCount = scope.AddMemo(() => store.Count * 2);
+        scope.AddEffect(() => { doubleCounts.Add(doubleCount.Value); });
 
         // 初始
         Assert.Equal([10, 20, null], snapshots[^1]);
@@ -88,7 +88,7 @@ public class ListStoreTest
         Assert.Empty(snapshots[^1]);
         Assert.Equal(0, doubleCounts[^1]);
 
-        owner.Dispose();
+        scope.Dispose();
     }
 
     [Fact]
@@ -102,8 +102,8 @@ public class ListStoreTest
         var linqSnapshots = new List<List<string>>();
         var linqRuns = 0;
 
-        var owner = new Owner();
-        owner.RunWithOwner(() =>
+        var scope = new Scope();
+        scope.RunInScope(() =>
         {
             // slot[0] & slot[4]
             _ = new Effect(() =>
@@ -199,7 +199,7 @@ public class ListStoreTest
         Assert.Empty(linqSnapshots[^1]);
         Assert.Equal(6, linqRuns);
 
-        owner.Dispose();
+        scope.Dispose();
     }
 
     [Fact]

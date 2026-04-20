@@ -95,7 +95,7 @@ public class BatchTest
     public void Memo_And_Effect_Should_Batch_Together()
     {
         var a = new Signal<int>(1);
-        using var owner = new Owner();
+        using var owner = new Scope();
 
         var m = owner.AddMemo(() => a.Value + 1);
 

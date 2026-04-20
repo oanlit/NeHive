@@ -16,28 +16,187 @@ public class LifeCycleTest
         Assert.Equal([0, 1], values);
 
         e.Dispose();
-
+        Assert.True(e.IsInvalid);
+        
         s.Value = 2;
 
         // 不应再触发
         Assert.Equal([0, 1], values);
     }
+    
+    [Fact]
+    public void OnDispose_Should_Belong_To_EffectScope_Not_EpochScope()
+    {
+        var cleaned = false;
 
+        var effect = new Effect(selfScope =>
+        {
+            selfScope.OnDispose(() => cleaned = true);
+
+            return () =>
+            {
+                // epoch 上不注册 cleanup
+            };
+        });
+
+        Assert.False(cleaned);
+
+        effect.Dispose();
+
+        Assert.True(cleaned);
+    }
+    
+    [Fact]
+    public void EpochScope_Cleanup_Should_Run_On_ReExecution()
+    {
+        var signal = new Signal<int>(0);
+
+        var cleanupCount = 0;
+
+        using var effect = new Effect(epoch =>
+        {
+            epoch.OnDispose(() => cleanupCount++);
+
+            _ = signal.Value;
+        });
+
+        Assert.Equal(0, cleanupCount);
+
+        signal.Value = 1;
+        Assert.Equal(1, cleanupCount);
+    }
+    
+    [Fact]
+    public void Setup_Should_Run_Only_Once()
+    {
+        var signal = new Signal<int>(0);
+
+        var setupCount = 0;
+        var executeCount = 0;
+
+        using var effect = new Effect(scope =>
+        {
+            setupCount++;
+
+            return epochScope =>
+            {
+                executeCount++;
+                _ = signal.Value;
+            };
+        });
+
+        Assert.Equal(1, setupCount);
+        Assert.Equal(1, executeCount);
+
+        signal.Value = 1;
+
+        Assert.Equal(1, setupCount);
+        Assert.Equal(2, executeCount);
+    }
+    
+    [Fact]
+    public void Setup_Should_Not_Track_Dependencies()
+    {
+        var signal = new Signal<int>(0);
+
+        var setupCount = 0;
+
+        using var effect = new Effect(selfScope =>
+        {
+            setupCount++;
+            
+            _ = signal.Value; // ❗如果被 tracking 就会出问题
+            
+            return () => { };
+        });
+
+        Assert.Equal(1, setupCount);
+
+        signal.Value = 1;
+
+        // 不应重新执行 setup
+        Assert.Equal(1, setupCount);
+    }
+    
+    [Fact]
+    public void Cleanup_Should_Run_Before_Next_Execution()
+    {
+        var signal = new Signal<int>(0);
+
+        var log = new List<string>();
+
+        using var effect = new Effect(selfScope =>
+        {
+            return epochScope =>
+            {
+                epochScope.OnDispose(() => log.Add("cleanup"));
+                log.Add("run");
+
+                _ = signal.Value;
+            };
+        });
+
+        Assert.Equal(["run"], log);
+
+        signal.Value = 1;
+
+        Assert.Equal(["run", "cleanup", "run"], log);
+    }
+
+    [Fact]
+    public void Cleanup_Should_Not_Accumulate()
+    {
+        var signal = new Signal<int>(0);
+        var cleanupCount = 0;
+
+        using var effect = new Effect(selfScope =>
+        {
+            return epochScope =>
+            {
+                epochScope.OnDispose(() => cleanupCount++);
+                _ = signal.Value;
+            };
+        });
+
+        signal.Value = 1;
+        Assert.Equal(1, cleanupCount);
+
+        signal.Value = 2;
+        Assert.Equal(2, cleanupCount); // 不是 3！
+    }
+    
+    [Fact]
+    public void Final_Cleanup_Should_Run_On_Dispose()
+    {
+        var cleaned = false;
+
+        var effect = new Effect(epoch =>
+        {
+            epoch.OnDispose(() => cleaned = true);
+        });
+
+        Assert.False(cleaned);
+
+        effect.Dispose();
+
+        Assert.True(cleaned);
+    }
+    
     [Fact]
     public void Cleanup_Order_Test()
     {
         List<string> logs = [];
 
-        var owner = new Owner();
+        var scope = new Scope();
 
-        owner.AddEffect(() =>
+        scope.AddEffect(() =>
         {
-            Reactive.OnCleanup(() => logs.Add("cleanup"));
+            Reactive.OnDispose(() => logs.Add("cleanup"));
 
             _ = new Effect(() =>
             {
                 logs.Add("child run");
-                Reactive.OnCleanup(() => logs.Add("child dispose"));
+                Reactive.OnDispose(() => logs.Add("child dispose"));
             });
         });
 
@@ -47,7 +206,7 @@ public class LifeCycleTest
         );
         logs.Clear();
 
-        owner.Dispose();
+        scope.Dispose();
 
         Assert.Equal(
             ["child dispose", "cleanup"],
@@ -63,9 +222,9 @@ public class LifeCycleTest
         List<int> a = [];
         List<int> b = [];
 
-        var owner = new Owner();
+        var scope = new Scope();
 
-        var e1 = owner.AddEffect(() => a.Add(s.Value));
+        var e1 = scope.AddEffect(() => a.Add(s.Value));
 
         var e2 = new Effect(() => b.Add(s.Value));
 
@@ -74,14 +233,14 @@ public class LifeCycleTest
         Assert.Equal([0, 1], a);
         Assert.Equal([0, 1], b);
 
-        owner.Dispose();
-        Assert.True(owner.IsDisposed);
+        scope.Dispose();
+        Assert.True(scope.IsDisposed);
         Assert.True(e1.IsInvalid);
         Assert.False(e2.IsInvalid);
 
         s.Value = 2;
 
-        // owner 内的停止
+        // scope 内的停止
         Assert.Equal([0, 1], a);
 
         // 独立 effect 继续
@@ -135,16 +294,16 @@ public class LifeCycleTest
         Signal<int> s = new(0);
         List<int> values = [];
 
-        using var owner = new Owner();
+        using var scope = new Scope();
 
-        var e = owner.AddEffect(() => values.Add(s.Value));
+        var e = scope.AddEffect(() => values.Add(s.Value));
         Assert.False(e.IsInvalid);
 
         s.Value = 1;
         Assert.Equal([0, 1], values);
 
-        owner.Clean();
-        Assert.False(owner.IsDisposed);
+        scope.Clean();
+        Assert.False(scope.IsDisposed);
         Assert.True(e.IsInvalid);
 
         s.Value = 2;
@@ -153,7 +312,7 @@ public class LifeCycleTest
         Assert.Equal([0, 1], values);
 
         // 重新挂
-        owner.AddEffect(() => values.Add(s.Value));
+        scope.AddEffect(() => values.Add(s.Value));
 
         s.Value = 3;
 
@@ -166,18 +325,18 @@ public class LifeCycleTest
         Signal<int> s = new(0);
         List<int> values = [];
     
-        using var owner = new Owner();
+        using var scope = new Scope();
     
-        var e1 = owner.AddEffect(() => values.Add(s.Value));
+        var e1 = scope.AddEffect(() => values.Add(s.Value));
         Assert.False(e1.IsInvalid);
     
         s.Value = 1;
         Assert.Equal([0, 1], values);
     
-        var root = Reactive.RootOwner;
+        var root = Scope.RootScope;
     
         root.Dispose();
-        Assert.True(owner.IsDisposed);
+        Assert.True(scope.IsDisposed);
         Assert.True(e1.IsInvalid);
     
         s.Value = 2;
@@ -185,26 +344,12 @@ public class LifeCycleTest
     }
 
     [Fact]
-    public void Owner_Clean_No_Double_Cleanup_Test()
-    {
-        List<int> logs = [];
-        var owner = new Owner();
-
-        owner.AddCleanup(() => logs.Add(1));
-
-        owner.Clean();
-        owner.Clean();
-
-        Assert.Equal([1], logs);
-    }
-
-    [Fact]
     public void Owner_Dispose_Should_Throw_Test()
     {
-        var owner = new Owner();
+        var scope = new Scope();
 
-        owner.Dispose();
+        scope.Dispose();
 
-        Assert.Throws<ObjectDisposedException>(() => { owner.AddEffect(() => { }); });
+        Assert.Throws<ObjectDisposedException>(() => { scope.AddEffect(() => { }); });
     }
 }

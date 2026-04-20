@@ -25,8 +25,8 @@ public class EffectTest
     public void Effect_Should_Not_Recurse_Immediately()
     {
         var a = new Signal<int>(1);
-        int depth = 0;
-        int maxDepth = 0;
+        var depth = 0;
+        var maxDepth = 0;
 
         using var effect = new Effect(() =>
         {
@@ -39,7 +39,7 @@ public class EffectTest
             depth--;
         });
 
-        Assert.Equal(2, maxDepth); // ❗ 不能递归执行
+        Assert.Equal(1, maxDepth); // ❗ 不能递归执行
     }
 
     [Fact]
