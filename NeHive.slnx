@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="NeHive.Core/NeHive.Core.csproj" />
+  <Project Path="NeHive.Demo/NeHive.Demo.csproj" />
+  <Project Path="NeHive.Generator/NeHive.Generator.csproj" />
+  <Project Path="NeHive.Test/NeHive.Test.csproj" />
+</Solution>
