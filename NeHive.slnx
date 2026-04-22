@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/samples/">
     <Project Path="samples/NeHive.Sample.Console/NeHive.Sample.Console.csproj" />
+    <Project Path="samples/NeHive.Sample.Avalonia/NeHive.Sample.Avalonia.csproj" />
   </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/NeHive.Core/" />
