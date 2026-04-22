@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\NeHive.Core\src\NeHive.Core.csproj" />
+<!--        <ProjectReference Include="..\..\src\NeHive.Generator\src\NeHive.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />-->
+    </ItemGroup>
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>NeHive.Sample.Console</RootNamespace>
+    </PropertyGroup>
+
+</Project>

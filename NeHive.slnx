@@ -1,6 +1,20 @@
 <Solution>
-  <Project Path="NeHive.Core/NeHive.Core.csproj" />
-  <Project Path="NeHive.Demo/NeHive.Demo.csproj" />
-  <Project Path="NeHive.Generator/NeHive.Generator.csproj" />
-  <Project Path="NeHive.Test/NeHive.Test.csproj" />
+  <Folder Name="/samples/">
+    <Project Path="samples/NeHive.Sample.Console/NeHive.Sample.Console.csproj" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/NeHive.Core/" />
+  <Folder Name="/src/NeHive.Core/src/">
+    <Project Path="src/NeHive.Core/src/NeHive.Core.csproj" />
+  </Folder>
+  <Folder Name="/src/NeHive.Core/tests/">
+    <Project Path="src/NeHive.Core/tests/NeHive.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/src/NeHive.Generator/" />
+  <Folder Name="/src/NeHive.Generator/src/">
+    <Project Path="src/NeHive.Generator/src/NeHive.Generator.csproj" />
+  </Folder>
+  <Folder Name="/src/NeHive.Generator/tests/">
+    <Project Path="src/NeHive.Generator/tests/NeHive.Generator.Tests.csproj" />
+  </Folder>
 </Solution>

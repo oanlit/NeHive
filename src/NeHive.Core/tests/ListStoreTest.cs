@@ -1,6 +1,4 @@
-﻿using NeHive.Core;
-
-namespace NeHive.Test;
+﻿namespace NeHive.Core.Tests;
 
 public class ListStoreTest
 {

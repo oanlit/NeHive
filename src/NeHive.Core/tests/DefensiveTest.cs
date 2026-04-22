@@ -1,6 +1,4 @@
-using NeHive.Core;
-
-namespace NeHive.Test;
+namespace NeHive.Core.Tests;
 
 public class ReactiveLoopDetectionTests
 {
@@ -8,7 +6,7 @@ public class ReactiveLoopDetectionTests
     public void Infinite_Loop_Should_Throw()
     {
         var signal = new Signal<int>(0);
-        Assert.Throws<InfiniteReactiveLoopException>(() =>
+        Assert.Throws<Core.InfiniteReactiveLoopException>(() =>
         {
             using var effect = new Effect(() =>
             {
@@ -23,7 +21,7 @@ public class ReactiveLoopDetectionTests
         var a = new Signal<int>(0);
         var b = new Signal<int>(1);
 
-        Assert.Throws<InfiniteReactiveLoopException>(() =>
+        Assert.Throws<Core.InfiniteReactiveLoopException>(() =>
         {
             using var effect = new Effect(() =>
             {
@@ -39,7 +37,7 @@ public class ReactiveLoopDetectionTests
     public void Batch_WithoutUntrack_StillTriggersLoopDetection()
     {
         var signal = new Signal<int>(0);
-        Assert.Throws<InfiniteReactiveLoopException>(() =>
+        Assert.Throws<Core.InfiniteReactiveLoopException>(() =>
         {
             using var effect = new Effect(() =>
             {

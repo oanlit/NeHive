@@ -1,67 +1,67 @@
-﻿using Demo.Store;
-using NeHive.Core;
+﻿using NeHive.Core;
+// using NeHive.Sample.Console.Store;
 
 // 创建一个 NullableListStore
-// ListStore<string?> store = ["D", "B", "C", null, "A"];
-//
-// var owner = new Owner();
-//
-// owner.RunWithOwner(() =>
-// {
-//     // 订阅 slot[0] 和 slot[4]
-//     _ = new Effect(() =>
-//     {
-//         store.TryGetValue(0, out var value1);
-//         value1 ??= "null";
-//         store.TryGetValue(4, out var value2);
-//         value2 ??= "null";
-//         Console.WriteLine($"Effect slot[0]: {value1}");
-//         Console.WriteLine($"Effect slot[4]: {value2}");
-//     });
-//
-//     _ = new Effect(() =>
-//     {
-//         store.TryGetValue(5, out var value);
-//         value ??= "null";
-//         Console.WriteLine($"Effect slot[5]: {value}");
-//     });
-//
-//     // 创建一个 effect，订阅 count
-//     _ = new Effect(() => { Console.WriteLine($"Effect Count: {store.Count}"); });
-//
-//     _ = new Effect(() =>
-//     {
-//         var query = store
-//             .Where(x => x != null)
-//             .Select((v, i) => $"{i}:{v}");
-//
-//         Console.WriteLine("LINQ 查询结果:");
-//         foreach (var s in query)
-//             Console.WriteLine(s);
-//     });
-// });
-//
-// Console.WriteLine("=== 排序 ===");
-// store.Sort((a, b) => string.Compare(a, b, StringComparison.Ordinal));
-// // slot[0] 和 slot[4] 会触发 effect，如果值变化
-//
-// Console.WriteLine("=== 反转 ===");
-// store.Reverse();
-//
-// Console.WriteLine("=== 再次批量修改 ===");
-// store.BatchModify(list =>
-// {
-//     list[0] = "Z"; // slot[0] 改变
-//     list[4] = "M"; // slot[4] 改变
-// });
-//
-// store.Add("Lin");
-//
-// store.Clear();
-//
-// owner.Clean();
+ListStore<string?> store = ["D", "B", "C", null, "A"];
 
-new StudentStore();
+var owner = new Scope();
+
+owner.RunInScope(() =>
+{
+    // 订阅 slot[0] 和 slot[4]
+    _ = new Effect(() =>
+    {
+        store.TryGetValue(0, out var value1);
+        value1 ??= "null";
+        store.TryGetValue(4, out var value2);
+        value2 ??= "null";
+        Console.WriteLine($"Effect slot[0]: {value1}");
+        Console.WriteLine($"Effect slot[4]: {value2}");
+    });
+
+    _ = new Effect(() =>
+    {
+        store.TryGetValue(5, out var value);
+        value ??= "null";
+        Console.WriteLine($"Effect slot[5]: {value}");
+    });
+
+    // 创建一个 effect，订阅 count
+    _ = new Effect(() => { Console.WriteLine($"Effect Count: {store.Count}"); });
+
+    _ = new Effect(() =>
+    {
+        var query = store
+            .Where(x => x != null)
+            .Select((v, i) => $"{i}:{v}");
+
+        Console.WriteLine("LINQ 查询结果:");
+        foreach (var s in query)
+            Console.WriteLine(s);
+    });
+});
+
+Console.WriteLine("=== 排序 ===");
+store.Sort((a, b) => string.Compare(a, b, StringComparison.Ordinal));
+// slot[0] 和 slot[4] 会触发 effect，如果值变化
+
+Console.WriteLine("=== 反转 ===");
+store.Reverse();
+
+Console.WriteLine("=== 再次批量修改 ===");
+store.BatchModify(list =>
+{
+    list[0] = "Z"; // slot[0] 改变
+    list[4] = "M"; // slot[4] 改变
+});
+
+store.Add("Lin");
+
+store.Clear();
+
+owner.Clean();
+
+// new StudentStore();
 
 // 创建一个 int 类型的 ListStore
 // ListStore<int?> store = [10, 20, null];
@@ -125,4 +125,3 @@ new StudentStore();
 // {
 //     a.Value++;
 // });
-

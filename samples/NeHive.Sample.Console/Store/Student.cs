@@ -1,6 +1,8 @@
 using NeHive.Core;
 
-namespace Demo.Store;
+namespace NeHive.Sample.Console.Store;
+
+using Console = System.Console;
 
 [Store]
 public class Student(int level = 10)
