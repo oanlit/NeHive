@@ -1,4 +1,4 @@
 <Solution>
   <Project Path="NeHive.Sample.Console/NeHive.Sample.Console.csproj" />
-  <Project Path="NeHive.Sample.Console/NeHive.Sample.Avalonia.csproj" />
+  <Project Path="NeHive.Sample.Avalonia/NeHive.Sample.Avalonia.csproj" />
 </Solution>

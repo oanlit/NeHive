@@ -1,4 +1,3 @@
-using System;
 using Avalonia.Controls;
 using NeHive.Core;
 using NeHive.Sample.Avalonia.Render;

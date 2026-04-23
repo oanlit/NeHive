@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using NeHive.Sample.Avalonia.Render;
-using System;
 
 namespace NeHive.Sample.Avalonia;
 

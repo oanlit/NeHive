@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
 using NeHive.Core;
-using System;
 
 namespace NeHive.Sample.Avalonia.Render;
 

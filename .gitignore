@@ -6,6 +6,5 @@
 bin/
 obj/
 
-global.json
 NeHive.sln.DotSettings.user
 .claudiaideconfig

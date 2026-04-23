@@ -5,7 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
-        <PackageId>NeHive.Core.Tests</PackageId>
+        <PackageId>NeHive.Generator.Tests</PackageId>
     </PropertyGroup>
 
     <ItemGroup>

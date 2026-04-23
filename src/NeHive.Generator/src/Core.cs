@@ -1,10 +1,12 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+
 
 namespace NeHive.Generator
 {
@@ -31,9 +33,8 @@ namespace NeHive.Generator
                 foreach (var classDecl in classes)
                 {
                     var semanticModel = compilation.GetSemanticModel(classDecl.SyntaxTree);
-                    if (semanticModel == null) continue;
 
-                    var classSymbol = semanticModel.GetDeclaredSymbol(classDecl) as INamedTypeSymbol;
+                    var classSymbol = semanticModel.GetDeclaredSymbol(classDecl);
                     if (classSymbol == null) continue;
 
                     // 检查是否有 [Store] 特性（已由 predicate 过滤，但保留双重保险）
@@ -58,21 +59,34 @@ namespace NeHive.Generator
 
         private static bool HasStoreAttribute(ISymbol symbol)
         {
-            return symbol.GetAttributes().Any(attr => attr.AttributeClass?.Name == "StoreAttribute");
+            return symbol.GetAttributes()
+                .Any(attr => attr.AttributeClass?.Name == "StoreAttribute");
         }
 
         // ======================================================
         // 主要代码生成逻辑
         // ======================================================
-        private string GenerateStoreClass(ClassDeclarationSyntax originalClass, SemanticModel semanticModel,
+        private string GenerateStoreClass(
+            ClassDeclarationSyntax originalClass,
+            SemanticModel semanticModel,
             INamedTypeSymbol classSymbol)
         {
             // 准备命名空间和新类名
             var namespaceName = originalClass.Parent is BaseNamespaceDeclarationSyntax ns ? ns.Name.ToString() : null;
             var className = originalClass.Identifier.Text;
             var newClassName = className + "Store";
+            var usingNamespaces = new HashSet<string>
+            {
+                "System",
+                "NeHive.Core"
+            };
+            CollectNameSpaces(classSymbol.BaseType, usingNamespaces);
+            foreach (var i in classSymbol.Interfaces)
+                CollectNameSpaces(i, usingNamespaces);
+            var walker = new TypeCollector(semanticModel, usingNamespaces);
 
             // 收集需要处理的成员信息
+
             var properties = CollectProperties(classSymbol, originalClass);
             var fields = CollectFields(classSymbol);
             var methods = CollectMethods(classSymbol, originalClass);
@@ -82,52 +96,45 @@ namespace NeHive.Generator
             var signalProps = properties.Where(p => !p.NoSignal && !p.IsDerived).ToList();
             var memoProps = properties.Where(p => p.IsMemoDerived).ToList();
             var needScope = memoProps.Count > 0;
-            var ownerName = $"_{Util.LowerFirst(newClassName)}Scope";
+            var scopeName = $"_{Util.LowerFirst(newClassName)}Scope";
 
             // 使用 SyntaxFactory 构建新类
-            var newClass = SyntaxFactory.ClassDeclaration(newClassName)
-                .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PublicKeyword)))
+            var newClass = ClassDeclaration(newClassName)
+                .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword)))
                 .WithParameterList(originalClass.ParameterList);
-
-            if (needScope)
-            {
-                newClass = newClass.AddBaseListTypes(
-                    SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName("IDisposable"))
-                );
-            }
 
             // 收集所有要添加到类中的成员
             var members = new List<MemberDeclarationSyntax>();
 
-            // owner 字段
+            // scope 字段
             if (needScope)
             {
-                var ownerType =
-                    SyntaxFactory.IdentifierName("Scope");
-                var variable = SyntaxFactory.VariableDeclarator(ownerName)
+                var scopeType =
+                    IdentifierName("Scope");
+                var variable = VariableDeclarator(scopeName)
                     .WithInitializer(
-                        SyntaxFactory.EqualsValueClause(
-                            SyntaxFactory.ObjectCreationExpression(ownerType)
+                        EqualsValueClause(
+                            ObjectCreationExpression(scopeType)
                                 .WithArgumentList(
-                                    SyntaxFactory.ArgumentList()
+                                    ArgumentList()
                                 )
                         )
                     );
 
-                var ownerField =
-                    SyntaxFactory.FieldDeclaration(
-                            SyntaxFactory.VariableDeclaration(ownerType)
+                var scopeField =
+                    FieldDeclaration(
+                            VariableDeclaration(scopeType)
                                 .WithVariables(
-                                    SyntaxFactory.SingletonSeparatedList(variable)
+                                    SingletonSeparatedList(variable)
                                 )
                         )
                         // private readonly
-                        .WithModifiers(SyntaxFactory.TokenList(
-                            SyntaxFactory.Token(SyntaxKind.PrivateKeyword),
-                            SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword)
+                        .WithModifiers(TokenList(
+                            Token(SyntaxKind.PrivateKeyword),
+                            Token(SyntaxKind.ReadOnlyKeyword)
                         ));
 
-                members.Add(ownerField);
+                members.Add(scopeField);
             }
 
             // 1. 信号字段
@@ -136,40 +143,32 @@ namespace NeHive.Generator
                 var propSyntax = originalClass.Members
                     .OfType<PropertyDeclarationSyntax>()
                     .First(p => p.Identifier.Text == prop.Name);
+                walker.Visit(propSyntax);
 
                 var signalType =
-                    SyntaxFactory.GenericName("Signal")
+                    GenericName("Signal")
                         .WithTypeArgumentList(
-                            SyntaxFactory.TypeArgumentList(
-                                SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
-                                    SyntaxFactory.ParseTypeName(prop.Type)
+                            TypeArgumentList(
+                                SingletonSeparatedList(
+                                    GetTypeSyntax(prop.Type, usingNamespaces)
                                 )
                             )
                         );
 
-                var variable = SyntaxFactory.VariableDeclarator(prop.FieldName);
-
-                ExpressionSyntax initExpr;
+                var variable = VariableDeclarator(prop.FieldName);
 
                 // 处理 initializer
                 // 优先使用属性 initializer
-                if (propSyntax.Initializer != null)
-                {
-                    initExpr = propSyntax.Initializer.Value;
-                }
-                else
-                {
-                    // fallback → default
-                    initExpr = SyntaxFactory.LiteralExpression(SyntaxKind.DefaultLiteralExpression);
-                }
+                var initExpr = propSyntax.Initializer?.Value
+                               ?? LiteralExpression(SyntaxKind.DefaultLiteralExpression);
 
                 variable = variable.WithInitializer(
-                    SyntaxFactory.EqualsValueClause(
-                        SyntaxFactory.ObjectCreationExpression(signalType)
+                    EqualsValueClause(
+                        ObjectCreationExpression(signalType)
                             .WithArgumentList(
-                                SyntaxFactory.ArgumentList(
-                                    SyntaxFactory.SingletonSeparatedList(
-                                        SyntaxFactory.Argument(initExpr)
+                                ArgumentList(
+                                    SingletonSeparatedList(
+                                        Argument(initExpr)
                                     )
                                 )
                             )
@@ -177,16 +176,16 @@ namespace NeHive.Generator
                 );
 
                 var signalField =
-                    SyntaxFactory.FieldDeclaration(
-                            SyntaxFactory.VariableDeclaration(signalType)
+                    FieldDeclaration(
+                            VariableDeclaration(signalType)
                                 .WithVariables(
-                                    SyntaxFactory.SingletonSeparatedList(variable)
+                                    SingletonSeparatedList(variable)
                                 )
                         )
                         // private readonly
-                        .WithModifiers(SyntaxFactory.TokenList(
-                            SyntaxFactory.Token(SyntaxKind.PrivateKeyword),
-                            SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword)
+                        .WithModifiers(TokenList(
+                            Token(SyntaxKind.PrivateKeyword),
+                            Token(SyntaxKind.ReadOnlyKeyword)
                         ));
 
                 members.Add(signalField);
@@ -195,24 +194,25 @@ namespace NeHive.Generator
             // Memo字段
             foreach (var prop in memoProps)
             {
-                var memoType = SyntaxFactory.GenericName("Memo")
+                CollectNameSpaces(prop.Type, usingNamespaces);
+                var memoType = GenericName("Memo")
                     .WithTypeArgumentList(
-                        SyntaxFactory.TypeArgumentList(
-                            SyntaxFactory.SingletonSeparatedList<TypeSyntax>(
-                                SyntaxFactory.ParseTypeName(prop.Type)
+                        TypeArgumentList(
+                            SingletonSeparatedList(
+                                GetTypeSyntax(prop.Type, usingNamespaces)
                             )
                         )
                     );
-                var nullableMemoType = SyntaxFactory.NullableType(memoType);
+                var nullableMemoType = NullableType(memoType);
 
-                var variable = SyntaxFactory.VariableDeclarator(prop.FieldName);
-                var memoField = SyntaxFactory.FieldDeclaration(
-                        SyntaxFactory.VariableDeclaration(nullableMemoType)
-                            .WithVariables(SyntaxFactory.SingletonSeparatedList(variable))
+                var variable = VariableDeclarator(prop.FieldName);
+                var memoField = FieldDeclaration(
+                        VariableDeclaration(nullableMemoType)
+                            .WithVariables(SingletonSeparatedList(variable))
                     )
                     // private
-                    .WithModifiers(SyntaxFactory.TokenList(
-                        SyntaxFactory.Token(SyntaxKind.PrivateKeyword)
+                    .WithModifiers(TokenList(
+                        Token(SyntaxKind.PrivateKeyword)
                     ));
 
                 members.Add(memoField);
@@ -223,8 +223,9 @@ namespace NeHive.Generator
             {
                 var fieldSyntax = originalClass.Members.OfType<FieldDeclarationSyntax>()
                     .FirstOrDefault(f => f.Declaration.Variables.First().Identifier.Text == field.Name);
-                if (fieldSyntax != null)
-                    members.Add(fieldSyntax);
+                if (fieldSyntax == null) continue;
+                walker.Visit(fieldSyntax);
+                members.Add(fieldSyntax);
             }
 
             // 3. 信号属性（转换后的）
@@ -234,11 +235,10 @@ namespace NeHive.Generator
                     .OfType<PropertyDeclarationSyntax>()
                     .First(p => p.Identifier.Text == prop.Name);
 
-                PropertyDeclarationSyntax newProp;
-
+                walker.Visit(propSyntax);
                 // 获取原属性的访问器
                 AccessorDeclarationSyntax getter;
-                AccessorDeclarationSyntax setter = null;
+                AccessorDeclarationSyntax setter;
 
                 if (prop.IsAutoGetter)
                 {
@@ -269,14 +269,14 @@ namespace NeHive.Generator
                 }
 
                 // 组装新属性
-                newProp = SyntaxFactory.PropertyDeclaration(
+                var newProp = PropertyDeclaration(
                     propSyntax.AttributeLists,
                     propSyntax.Modifiers,
                     propSyntax.Type,
                     propSyntax.ExplicitInterfaceSpecifier,
                     propSyntax.Identifier,
-                    SyntaxFactory.AccessorList(
-                        SyntaxFactory.List(new[] { getter, setter }
+                    AccessorList(
+                        List(new[] { getter, setter }
                             .Where(a => a != null)
                         )
                     )
@@ -291,6 +291,7 @@ namespace NeHive.Generator
                 var propSyntax = originalClass.Members
                     .OfType<PropertyDeclarationSyntax>()
                     .First(p => p.Identifier.Text == prop.Name);
+                walker.Visit(propSyntax);
 
                 var getter = propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
                     a.Kind() == SyntaxKind.GetAccessorDeclaration);
@@ -302,47 +303,47 @@ namespace NeHive.Generator
                         ? propSyntax.ExpressionBody?.Expression // 处理像：public int ScoreAndLevel => Score + Level; 这种情况
                         : getter.ExpressionBody
                             ?.Expression; // 处理像：public int ScoreAndLevel { get => Score + Level; } 这种情况
-                    getterBlock = SyntaxFactory.Block
+                    getterBlock = Block
                     (
-                        SyntaxFactory.ReturnStatement(exp)
+                        ReturnStatement(exp)
                     );
                 }
 
                 var assignment =
-                    SyntaxFactory.AssignmentExpression(
+                    AssignmentExpression(
                         SyntaxKind.CoalesceAssignmentExpression, // ??=
-                        SyntaxFactory.IdentifierName(prop.FieldName), // _scoreAndLevelSignal
-                        SyntaxFactory.InvocationExpression(
-                            SyntaxFactory.MemberAccessExpression(
+                        IdentifierName(prop.FieldName), // _scoreAndLevelSignal
+                        InvocationExpression(
+                            MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
-                                SyntaxFactory.IdentifierName(ownerName),
-                                SyntaxFactory.IdentifierName("AddMemo")
+                                IdentifierName(scopeName),
+                                IdentifierName("AddMemo")
                             )
                         ).WithArgumentList(
-                            SyntaxFactory.ArgumentList(
-                                SyntaxFactory.SingletonSeparatedList(
-                                    SyntaxFactory.Argument(
-                                        SyntaxFactory.ParenthesizedLambdaExpression(
-                                            SyntaxFactory.ParameterList(),
+                            ArgumentList(
+                                SingletonSeparatedList(
+                                    Argument(
+                                        ParenthesizedLambdaExpression(
+                                            ParameterList(),
                                             getterBlock
                                         )
                                     )
                                 )
                             )
-                        ) // owner.AddMemo(() => store.Count * 2);
+                        ) // scope.AddMemo(() => store.Count * 2);
                     );
 
                 var propertyGetter =
-                    SyntaxFactory.ArrowExpressionClause(
-                        SyntaxFactory.MemberAccessExpression(
+                    ArrowExpressionClause(
+                        MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
-                            SyntaxFactory.ParenthesizedExpression(assignment),
-                            SyntaxFactory.IdentifierName("Value")
+                            ParenthesizedExpression(assignment),
+                            IdentifierName("Value")
                         )
                     );
 
                 var newProp =
-                    SyntaxFactory.PropertyDeclaration(
+                    PropertyDeclaration(
                             propSyntax.Type,
                             propSyntax.Identifier
                         )
@@ -350,7 +351,7 @@ namespace NeHive.Generator
                         .WithModifiers(propSyntax.Modifiers)
                         .WithExplicitInterfaceSpecifier(propSyntax.ExplicitInterfaceSpecifier)
                         .WithExpressionBody(propertyGetter).WithSemicolonToken(
-                            SyntaxFactory.Token(SyntaxKind.SemicolonToken)
+                            Token(SyntaxKind.SemicolonToken)
                         );
 
                 members.Add(newProp);
@@ -362,8 +363,10 @@ namespace NeHive.Generator
             {
                 var propSyntax = originalClass.Members.OfType<PropertyDeclarationSyntax>()
                     .FirstOrDefault(p => p.Identifier.Text == prop.Name);
-                if (propSyntax != null)
-                    members.Add(propSyntax);
+                if (propSyntax == null) continue;
+
+                walker.Visit(propSyntax);
+                members.Add(propSyntax);
             }
 
             // 5. 非Memo派生属性（直接复制）
@@ -372,8 +375,10 @@ namespace NeHive.Generator
             {
                 var propSyntax = originalClass.Members.OfType<PropertyDeclarationSyntax>()
                     .FirstOrDefault(p => p.Identifier.Text == prop.Name);
-                if (propSyntax != null)
-                    members.Add(propSyntax);
+                if (propSyntax == null) continue;
+
+                walker.Visit(propSyntax);
+                members.Add(propSyntax);
             }
 
             // 6. 构造函数（转换后的）
@@ -381,7 +386,7 @@ namespace NeHive.Generator
             {
                 var newCtor = ctor
                     // 🔥 改类名
-                    .WithIdentifier(SyntaxFactory.Identifier(newClassName));
+                    .WithIdentifier(Identifier(newClassName));
 
                 members.Add(newCtor);
             }
@@ -392,6 +397,8 @@ namespace NeHive.Generator
                 var methodSyntax = originalClass.Members.OfType<MethodDeclarationSyntax>()
                     .FirstOrDefault(m => m.Identifier.Text == method.Name);
                 if (methodSyntax == null) continue;
+                walker.Visit(methodSyntax);
+
                 var newMethod = method.ShouldWrap
                     ? GenerateWrappedMethod(methodSyntax)
                     : methodSyntax;
@@ -401,27 +408,27 @@ namespace NeHive.Generator
             if (needScope)
             {
                 var disposeScope =
-                    SyntaxFactory.InvocationExpression(
-                        SyntaxFactory.MemberAccessExpression(
+                    InvocationExpression(
+                        MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
-                            SyntaxFactory.IdentifierName(ownerName),
-                            SyntaxFactory.IdentifierName("Dispose")
+                            IdentifierName(scopeName),
+                            IdentifierName("Dispose")
                         )
-                    ).WithArgumentList(SyntaxFactory.ArgumentList());
+                    ).WithArgumentList(ArgumentList());
 
                 var methodSyntax =
-                    SyntaxFactory.MethodDeclaration(
-                            SyntaxFactory.PredefinedType(
-                                SyntaxFactory.Token(SyntaxKind.VoidKeyword)
+                    MethodDeclaration(
+                            PredefinedType(
+                                Token(SyntaxKind.VoidKeyword)
                             ), "Dispose"
                         )
                         .AddModifiers(
-                            SyntaxFactory.Token(SyntaxKind.PublicKeyword)
+                            Token(SyntaxKind.PublicKeyword)
                         )
                         .WithBody(
-                            SyntaxFactory.Block()
+                            Block()
                                 .AddStatements(
-                                    SyntaxFactory.ExpressionStatement(disposeScope)
+                                    ExpressionStatement(disposeScope)
                                 )
                         );
 
@@ -437,26 +444,33 @@ namespace NeHive.Generator
             members.AddRange(otherMembers);
 
             // 组装类
-            newClass = newClass.WithMembers(SyntaxFactory.List(members));
+            newClass = newClass.WithMembers(List(members));
 
             // 包装到命名空间
             CompilationUnitSyntax compilationUnit;
             if (namespaceName != null)
             {
-                var namespaceDecl = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.ParseName(namespaceName))
+                var namespaceDecl = NamespaceDeclaration(ParseName(namespaceName))
                     .AddMembers(newClass);
-                compilationUnit = SyntaxFactory.CompilationUnit()
+                compilationUnit = CompilationUnit()
                     .AddMembers(namespaceDecl);
             }
             else
             {
-                compilationUnit = SyntaxFactory.CompilationUnit()
+                compilationUnit = CompilationUnit()
                     .AddMembers(newClass);
             }
 
             // 添加 using 语句
+            var currentNs = classSymbol.ContainingNamespace.ToDisplayString();
             compilationUnit = compilationUnit.AddUsings(
-                SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("NeHive.Core")));
+                usingNamespaces
+                    .Where(space => space != currentNs && !string.IsNullOrWhiteSpace(space))
+                    .Distinct()
+                    .OrderBy(space => space)
+                    .Select(spaces => UsingDirective(ParseName(spaces)))
+                    .ToArray()
+            );
 
             // 格式化并返回
             return compilationUnit.NormalizeWhitespace().ToFullString();
@@ -465,11 +479,47 @@ namespace NeHive.Generator
         // ======================================================
         // 辅助类和方法
         // ======================================================
+        private static void CollectNameSpaces(ITypeSymbol type, HashSet<string> usings)
+        {
+            if (type == null) return;
+
+            var space = type.ContainingNamespace;
+            if (space != null && !space.IsGlobalNamespace)
+                usings.Add(space.ToDisplayString());
+
+            switch (type)
+            {
+                case INamedTypeSymbol named:
+                    foreach (var arg in named.TypeArguments)
+                        CollectNameSpaces(arg, usings);
+                    break;
+
+                case IArrayTypeSymbol array:
+                    CollectNameSpaces(array.ElementType, usings);
+                    break;
+
+                case IPointerTypeSymbol pointer:
+                    CollectNameSpaces(pointer.PointedAtType, usings);
+                    break;
+            }
+        }
+
+        // 类型转换函数（智能简化）
+        private static TypeSyntax GetTypeSyntax(ITypeSymbol type, HashSet<string> usings)
+        {
+            var space = type.ContainingNamespace?.ToDisplayString();
+
+            var format = usings.Contains(space)
+                ? SymbolDisplayFormat.MinimallyQualifiedFormat
+                : SymbolDisplayFormat.FullyQualifiedFormat;
+
+            return ParseTypeName(type.ToDisplayString(format));
+        }
 
         private class PropertyInfo
         {
             public string Name;
-            public string Type;
+            public ITypeSymbol Type;
 
             public bool IsAutoGetter;
             public bool GetterHasField;
@@ -542,7 +592,7 @@ namespace NeHive.Generator
                 result.Add(new PropertyInfo
                 {
                     Name = prop.Name,
-                    Type = prop.Type.ToDisplayString(),
+                    Type = prop.Type,
                     NoSignal = noSignal,
                     IsAutoGetter = isAutoGet,
                     GetterHasField = getterHasField,
@@ -569,7 +619,8 @@ namespace NeHive.Generator
             public bool ShouldWrap { get; set; }
         }
 
-        private List<MethodInfo> CollectMethods(INamedTypeSymbol classSymbol, ClassDeclarationSyntax originalClass)
+        private static List<MethodInfo> CollectMethods(INamedTypeSymbol classSymbol,
+            ClassDeclarationSyntax originalClass)
         {
             var result = new List<MethodInfo>();
             foreach (var member in classSymbol.GetMembers())
@@ -617,7 +668,7 @@ namespace NeHive.Generator
             {
                 if (node is FieldExpressionSyntax)
                 {
-                    return SyntaxFactory.ParseExpression($"{_fieldName}.Value");
+                    return ParseExpression($"{_fieldName}.Value");
                 }
 
                 return base.Visit(node);
@@ -632,14 +683,14 @@ namespace NeHive.Generator
             if (accessor is null) return null;
             if (kind == SyntaxKind.GetAccessorDeclaration)
             {
-                return SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                return AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                     .WithModifiers(accessor.Modifiers)
-                    .WithBody(SyntaxFactory.Block(
-                        SyntaxFactory.ReturnStatement(
-                            SyntaxFactory.MemberAccessExpression(
+                    .WithBody(Block(
+                        ReturnStatement(
+                            MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
-                                SyntaxFactory.IdentifierName(fieldName),
-                                SyntaxFactory.IdentifierName("Value")
+                                IdentifierName(fieldName),
+                                IdentifierName("Value")
                             )
                         )
                     ));
@@ -647,18 +698,18 @@ namespace NeHive.Generator
 
             if (kind == SyntaxKind.SetAccessorDeclaration)
             {
-                return SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                return AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                     .WithModifiers(accessor.Modifiers)
-                    .WithBody(SyntaxFactory.Block(
-                        SyntaxFactory.ExpressionStatement(
-                            SyntaxFactory.AssignmentExpression(
+                    .WithBody(Block(
+                        ExpressionStatement(
+                            AssignmentExpression(
                                 SyntaxKind.SimpleAssignmentExpression,
-                                SyntaxFactory.MemberAccessExpression(
+                                MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
-                                    SyntaxFactory.IdentifierName(fieldName),
-                                    SyntaxFactory.IdentifierName("Value")
+                                    IdentifierName(fieldName),
+                                    IdentifierName("Value")
                                 ),
-                                SyntaxFactory.IdentifierName("value")
+                                IdentifierName("value")
                             )
                         )
                     ));
@@ -672,6 +723,9 @@ namespace NeHive.Generator
             // 保留原方法的所有修饰符、返回类型、参数、约束等
             var modifiers = originalMethod.Modifiers;
             var returnType = originalMethod.ReturnType;
+            var returnVoid = returnType is PredefinedTypeSyntax pts &&
+                             pts.Keyword.IsKind(SyntaxKind.VoidKeyword);
+
             var identifier = originalMethod.Identifier;
             var typeParams = originalMethod.TypeParameterList;
             var parameters = originalMethod.ParameterList;
@@ -686,24 +740,28 @@ namespace NeHive.Generator
             }
 
             // 构建 lambda 体
-            var lambdaBody = SyntaxFactory.Block(bodyStatements);
-            var batchInvocation = SyntaxFactory.InvocationExpression(
-                    SyntaxFactory.MemberAccessExpression(
+            var lambdaBody = Block(bodyStatements);
+            var batchInvocation = InvocationExpression(
+                    MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        SyntaxFactory.IdentifierName("Reactive"),
-                        SyntaxFactory.IdentifierName("Batch")
+                        IdentifierName("Reactive"),
+                        IdentifierName("Batch")
                     )
                 )
-                .WithArgumentList(SyntaxFactory.ArgumentList(
-                    SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(
-                        SyntaxFactory.Argument(SyntaxFactory.ParenthesizedLambdaExpression(lambdaBody))
+                .WithArgumentList(ArgumentList(
+                    SingletonSeparatedList(
+                        Argument(ParenthesizedLambdaExpression(lambdaBody))
                     )
                 ));
 
-            var newBody = SyntaxFactory.Block(SyntaxFactory.ExpressionStatement(batchInvocation));
+            StatementSyntax statement;
+            if (returnVoid) statement = ExpressionStatement(batchInvocation);
+            else statement = ReturnStatement(batchInvocation);
+
+            var newBody = Block(statement);
 
             // 构建新方法
-            var newMethod = SyntaxFactory.MethodDeclaration(
+            var newMethod = MethodDeclaration(
                 originalMethod.AttributeLists,
                 modifiers,
                 returnType,
@@ -717,6 +775,74 @@ namespace NeHive.Generator
                 originalMethod.SemicolonToken);
 
             return newMethod;
+        }
+    }
+
+    internal class TypeCollector : CSharpSyntaxWalker
+    {
+        private readonly SemanticModel _semanticModel;
+        private readonly HashSet<string> _namespaces;
+
+        public TypeCollector(SemanticModel semanticModel, HashSet<string> namespaces)
+        {
+            _semanticModel = semanticModel;
+            _namespaces = namespaces;
+        }
+
+        public override void Visit(SyntaxNode node)
+        {
+            if (node == null) return;
+
+            // 类型信息
+            var typeInfo = _semanticModel.GetTypeInfo(node).Type;
+            Add(typeInfo);
+
+            // 符号信息（方法 / 属性 / 静态调用）
+            var symbol = _semanticModel.GetSymbolInfo(node).Symbol;
+
+            switch (symbol)
+            {
+                case IMethodSymbol m:
+                    Add(m.ContainingType);
+                    break;
+
+                case IPropertySymbol p:
+                    Add(p.ContainingType);
+                    break;
+
+                case INamedTypeSymbol t:
+                    Add(t);
+                    break;
+            }
+
+            base.Visit(node);
+        }
+
+        private void Add(ITypeSymbol type)
+        {
+            if (type == null) return;
+
+            var ns = type.ContainingNamespace;
+            if (ns != null && !ns.IsGlobalNamespace)
+            {
+                _namespaces.Add(ns.ToDisplayString());
+            }
+
+            switch (type)
+            {
+                case INamedTypeSymbol named:
+                    foreach (var arg in named.TypeArguments)
+                        Add(arg);
+                    break;
+
+                case IArrayTypeSymbol array:
+                    Add(array.ElementType);
+                    break;
+
+                case IPointerTypeSymbol pointer:
+                    Add(pointer.PointedAtType);
+                    break;
+            }
         }
     }
 }

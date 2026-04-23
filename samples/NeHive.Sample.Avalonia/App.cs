@@ -1,14 +1,16 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
+using Avalonia.Themes.Fluent;
 
 namespace NeHive.Sample.Avalonia;
 
-public partial class App : Application
+public class App : Application
 {
     public override void Initialize()
     {
-        AvaloniaXamlLoader.Load(this);
+        RequestedThemeVariant = ThemeVariant.Default;
+        Styles.Add(new FluentTheme());
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -17,7 +19,7 @@ public partial class App : Application
         {
             desktop.MainWindow = new MainWindow();
         }
-
+        
         base.OnFrameworkInitializationCompleted();
     }
 }
