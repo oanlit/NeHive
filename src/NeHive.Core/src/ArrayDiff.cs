@@ -321,7 +321,7 @@ internal class DenseBuffer<T> : IReadOnlyList<T>
 public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMap>>
     where TItem : notnull where TKey : notnull
 {
-    public IReadOnlyList<TMap> Value => _mapCache.Value;
+    public IReadOnlyList<TMap> Value => _mapCache.ReadSignal();
     public IReadOnlyList<TMap> UntrackValue => _mapCache.UntrackValue;
 
     public bool IsInvalid { get; private set; }

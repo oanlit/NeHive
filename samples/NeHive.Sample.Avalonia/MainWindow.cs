@@ -9,7 +9,8 @@ public class MainWindow : Window
 
     public MainWindow()
     {
-        _counter = CounterComponent.Demo();
+        // _counter = CounterComponent.Demo();
+        _counter = CounterComponent.ForEachDemo();
         Content = _counter.Content;
     }
 

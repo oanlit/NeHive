@@ -4,7 +4,12 @@ using System.Collections;
 using System.Collections.ObjectModel;
 
 // 不要把它当成普通的集合，尤其是在Effect环境上，所以你最好知道它是响应式类型
-public class ListStore<T> : IEnumerable<T>
+public interface IReactiveCollection<out T> : IEnumerable<T>
+{
+    
+}
+
+public class ListStore<T> : IReactiveCollection<T>
 {
     private const int DefaultCapacity = 4;
 

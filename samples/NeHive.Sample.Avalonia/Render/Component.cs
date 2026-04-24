@@ -38,36 +38,8 @@ public class Component
         DisposeControl(uiOwner, control);
         return new Component(uiOwner, control);
     }
-
-    public static Component Show(
-        IReadOnlySignal<bool> when,
-        Func<Component> children)
-    {
-        return Create(uiScope =>
-        {
-            var panel = new Panel();
-
-            uiScope.AddEffect(epochScope =>
-            {
-                if (!when.Value)
-                    return;
-
-                var child = children();
-
-                panel.Children.Add(child.Content);
-
-                epochScope.OnDispose(() =>
-                {
-                    panel.Children.Remove(child.Content);
-                    child.Dispose();
-                });
-            });
-
-            return panel;
-        });
-    }
-
-    private static void DisposeControl(Scope scope, Control control)
+    
+    private static void DisposeControl(UiScope scope, Control control)
     {
         scope.OnDispose(() =>
         {
@@ -88,6 +60,71 @@ public class Component
                         decorator.Child = null;
                     break;
             }
+        });
+    }
+
+    public static Component Show(
+        IReadOnlySignal<bool> when,
+        Func<Component> children)
+    {
+        return Create(uiScope =>
+        {
+            var panel = new Panel();
+
+            uiScope.AddEffect(epochScope =>
+            {
+                if (!when.Value)
+                    return;
+
+                var child = children();
+
+                panel.Children.Add(child.Content);
+
+                epochScope.OnDispose(child.Dispose);
+            });
+
+            return panel;
+        });
+    }
+    
+    public static Component ForEach<T>(
+        IReadOnlySignal<IReadOnlyList<T>> source,
+        Func<T, Component> children)
+        where T : notnull
+    {
+        return Create(uiScope =>
+        {
+            var panel = new StackPanel();
+
+            // 用 ArrayMapMemo 做“数据层 diff + 生命周期管理”
+            var memo = new ArrayMapMemo<T, Component, T>(source, children);
+
+            uiScope.AddEffect(() =>
+            {
+                var list = memo.Value;
+
+                // —— UI 最小更新（核心）——
+                for (var i = 0; i < list.Count; i++)
+                {
+                    var childrenContent = list[i].Content;
+
+                    if (i >= panel.Children.Count)
+                    {
+                        // 追加
+                        panel.Children.Add(childrenContent);
+                    }
+                    else if (!ReferenceEquals(panel.Children[i], childrenContent))
+                    {
+                        // 位置不一致 → 移动（或替换）
+                        panel.Children.RemoveAt(i);
+                        panel.Children.Insert(i, childrenContent);
+                    }
+                }
+            });
+            
+            uiScope.OnDispose(memo.Dispose);
+
+            return panel;
         });
     }
 }

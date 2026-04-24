@@ -6,11 +6,11 @@ namespace NeHive.Sample.Avalonia;
 
 public static class CounterComponent
 {
-    public static Component Counter()
+    public static Component Counter(int id = 0)
     {
         return Component.Create(uiScope =>
         {
-            Console.WriteLine("Counter 组件已创建");
+            Console.WriteLine($"Counter{id} 组件已创建");
             var count = new Signal<int>(0);
 
             var stack = new StackPanel();
@@ -18,6 +18,10 @@ public static class CounterComponent
             var text = new TextBlock();
             var button = new Button { Content = "Add" };
 
+            stack.Children.Add(new TextBlock()
+            {
+                Text = $"Id:{id}"
+            });
             stack.Children.Add(text);
             stack.Children.Add(button);
 
@@ -26,7 +30,7 @@ public static class CounterComponent
             button.Click += (_, _) => count.Value++;
 
             uiScope.OnMount(() => { Console.WriteLine(stack.Bounds.Size); });
-            uiScope.OnDispose(() => { Console.WriteLine("Counter 组件已移除"); });
+            uiScope.OnDispose(() => { Console.WriteLine($"Counter{id} 组件已移除"); });
 
             return stack;
         });
@@ -34,8 +38,6 @@ public static class CounterComponent
 
     public static Component Demo()
     {
-        var counter = CounterComponent.Counter;
-
         return Component.Create(demoScope =>
         {
             var visible = new Signal<bool>(true);
@@ -51,11 +53,62 @@ public static class CounterComponent
 
             stack.Children.Add(toggleBtn);
 
-            var show = Component.Show(visible, counter);
+            var show = Component.Show(visible, () => Counter());
 
             stack.Children.Add(show.Content);
 
             toggleBtn.Click += (_, _) => { visible.Value = !visible.Value; };
+
+            return stack;
+        });
+    }
+
+    public static Component ForEachDemo()
+    {
+        return Component.Create(_ =>
+        {
+            var items = new Signal<IReadOnlyList<int>>([1, 2, 3]);
+
+            var stack = new StackPanel();
+
+            var addBtn = new Button { Content = "Add Item" };
+            var removeBtn = new Button { Content = "Remove Last" };
+            var removeSecBtn = new Button { Content = "Remove Second Last" };
+
+            stack.Children.Add(addBtn);
+            stack.Children.Add(removeBtn);
+            stack.Children.Add(removeSecBtn);
+
+            // 👇 关键：For
+            var list = Component.ForEach(
+                items,
+                Counter
+            );
+
+            stack.Children.Add(list.Content);
+
+            addBtn.Click += (_, _) =>
+            {
+                var arr = items.Value.ToList();
+                arr.Add(arr.Count + 1);
+                items.Value = arr;
+            };
+
+            removeBtn.Click += (_, _) =>
+            {
+                var arr = items.Value.ToList();
+                if (arr.Count > 0)
+                    arr.RemoveAt(arr.Count - 1);
+                items.Value = arr;
+            };
+
+            removeSecBtn.Click += (_, _) =>
+            {
+                var arr = items.Value.ToList();
+                if (arr.Count > 1)
+                    arr.RemoveAt(1);
+                items.Value = arr;
+            };
 
             return stack;
         });
