@@ -84,9 +84,10 @@ public static class ArrayDiffUtil
         {
             var key = keyFn(newList[newIndex]);
 
-            var lastRepeatIndex = newIndices.TryGetValue(key, out var v)
-                ? v
-                : noIndex;
+            // var lastRepeatIndex = newIndices.TryGetValue(key, out var v)
+            //     ? v
+            //     : noIndex;
+            var lastRepeatIndex = newIndices.GetValueOrDefault(key, noIndex);
 
             newIndicesNext[newIndex] = lastRepeatIndex;
 
@@ -159,13 +160,13 @@ public class ArrayMapResult<T, TU> where T : notnull
     public IReadOnlyList<TU> MapList => _mapCache;
     private IReadOnlyList<T> _sourceList;
     private readonly List<TU> _mapCache;
-    private readonly Func<T, int?, TU> _mapFn;
+    private readonly Func<T, TU> _mapFn;
     private readonly Action<TU>? _removeFn;
     private readonly Func<T, object>? _keyFn;
 
     public ArrayMapResult(
         T[] initSourceList,
-        Func<T, int?, TU> mapFn,
+        Func<T, TU> mapFn,
         Func<T, object>? keyFn = null,
         Action<TU>? removeFn = null)
     {
@@ -178,7 +179,7 @@ public class ArrayMapResult<T, TU> where T : notnull
 
         for (var i = 0; i < initSourceList.Length; i++)
         {
-            _mapCache.Add(mapFn(initSourceList[i], i));
+            _mapCache.Add(mapFn(initSourceList[i]));
         }
     }
 
@@ -220,7 +221,7 @@ public class ArrayMapResult<T, TU> where T : notnull
         foreach (var newItemIndex in diff.NewItemsIndex)
         {
             _mapCache[newItemIndex] =
-                _mapFn(newList[newItemIndex], newItemIndex);
+                _mapFn(newList[newItemIndex]);
         }
 
         _sourceList = newList;
@@ -323,8 +324,9 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
     public IReadOnlyList<TMap> Value => _mapCache.Value;
     public IReadOnlyList<TMap> UntrackValue => _mapCache.UntrackValue;
 
-    private bool _isDisposed;
-    private readonly Memo<DenseBuffer<TMap>> _mapCache;
+    public bool IsInvalid { get; private set; }
+    private readonly ScopeNode _scope;
+    private readonly MemoNode<DenseBuffer<TMap>> _mapCache;
     private readonly IReadOnlySignal<IReadOnlyList<TItem>> _sourceListSignal;
     private IReadOnlyList<TItem> _oldList = [];
     private readonly DenseBuffer<Action> _disposers = []; // _oldList的平行数组
@@ -340,8 +342,8 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         _sourceListSignal = sourceListSignal;
         _mapFn = mapFn;
         _keyFn = keyFn;
-        Reactive.OnDispose(_disposeAll);
-        _mapCache = new Memo<DenseBuffer<TMap>>(fn: _effectFn, value: []);
+        _scope = _createSelfScope();
+        _mapCache = _createMapCache();
     }
 
     public ArrayMapMemo(IReadOnlySignal<IReadOnlyList<TItem>> sourceListSignal,
@@ -352,8 +354,44 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         _mapFnWithIndex = mapFnWithIndex;
         _keyFn = keyFn;
         _indexSignals = [];
-        Reactive.OnDispose(_disposeAll);
-        _mapCache = new Memo<DenseBuffer<TMap>>(fn: _effectFn, value: []);
+        _scope = _createSelfScope();
+        _mapCache = _createMapCache();
+    }
+
+    private ScopeNode _createSelfScope()
+    {
+        var current = ReactiveContext.CurrentScope;
+
+        var scope = new ScopeNode(
+            parent: current,
+            children: null,
+            context: current.Context,
+            cleanups: null
+        );
+        scope.Cleanups.Add(() =>
+        {
+            IsInvalid = true;
+            _disposeAll();
+        });
+
+        return scope;
+    }
+    
+    private MemoNode<DenseBuffer<TMap>> _createMapCache()
+    {
+        var mapCache = ComputationNode.RunInScope(_scope, () =>
+            new MemoNode<DenseBuffer<TMap>>(
+                _effectFn,
+                comparator: Constant.EqualFn,
+                isPure: true
+            )
+            {
+                Phase = ComputationPhase.Resolved,
+                Value = []
+            });
+        mapCache.UpdateComputation();
+
+        return mapCache;
     }
 
     private void _disposeAll()
@@ -371,8 +409,14 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
 
     private TMap _mapper(IReadOnlyList<TItem> sourceList, int index)
     {
-        var scope = new Scope();
-        var result = scope.RunInScope(() =>
+        var scope = new ScopeNode(
+            parent: _scope,
+            children: null,
+            context: _scope.Context,
+            cleanups: null
+        );
+
+        var result = ComputationNode.RunInScope(scope, () =>
         {
             if (_indexSignals is not null)
             {
@@ -465,8 +509,8 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
 
     public void Dispose()
     {
-        if (_isDisposed) return;
-        _mapCache.Dispose();
-        _isDisposed = true;
+        if (IsInvalid) return;
+        _scope.Dispose();
+        IsInvalid = true;
     }
 }
