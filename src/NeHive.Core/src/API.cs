@@ -45,9 +45,10 @@ public interface IReadOnlySignal<out T>
     public T UntrackValue { get; }
 }
 
-public interface ISetOnlySignal<in T>
+public interface ISetOnlySignal<T>
 {
     public T Value { set; }
+    public void SetValue(Func<T, T> value);
 }
 
 public interface ISignal<T> : IReadOnlySignal<T>, ISetOnlySignal<T>
@@ -189,9 +190,6 @@ public class Scope : IDisposable
         return ComputationNode.SetContext(fn, _root, computation);
     }
 
-    public Effect<T> AddEffect<T>(Func<T, T> fn, T value)
-        => _setContext(() => new Effect<T>(fn, value));
-
     public Effect AddEffect(Action fn)
         => _setContext(() => new Effect(fn));
 
@@ -254,12 +252,6 @@ public class Computation<T> : IDisposable
     }
 }
 
-public record struct EffectOptions<T>(
-    Func<T, T?, T, T> Fn,
-    Func<T> Deps,
-    bool Defer = false
-);
-
 public class Effect : IDisposable
 {
     private readonly ScopeNode _scope;
@@ -320,68 +312,6 @@ public class Effect : IDisposable
                 Constant.EmptyObj
             );
         });
-    }
-
-    public void Dispose()
-    {
-        if (IsInvalid) return;
-        _scope.Dispose();
-    }
-}
-
-public class Effect<T> : IDisposable
-{
-    private readonly ScopeNode _scope;
-
-    public bool IsInvalid { get; private set; }
-
-    public Effect(Func<T, T> fn, T value)
-    {
-        var current = ReactiveContext.CurrentScope;
-
-        _scope = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        _scope.Cleanups.Add(() => IsInvalid = true);
-
-        ComputationNode.RunInScope(_scope,
-            () => new EffectNode<T>(fn, value)
-        );
-    }
-
-    public Effect(EffectOptions<T> options)
-    {
-        T? prevInput = default;
-        Func<T, T> fn = prevValue =>
-        {
-            var input = options.Deps();
-            if (options.Defer)
-            {
-                options.Defer = false;
-                return prevValue;
-            }
-
-            var result = ComputationNode.Untrack(() => options.Fn(input, prevInput, prevValue));
-            prevInput = input;
-            return result;
-        };
-
-        var current = ReactiveContext.CurrentScope;
-
-        _scope = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        _scope.Cleanups.Add(() => IsInvalid = true);
-
-        ComputationNode.RunInScope(_scope,
-            () => new EffectNode<T>(fn, prevInput!)
-        );
     }
 
     public void Dispose()
@@ -542,10 +472,10 @@ public class Context<T>(string id = "context", T defaultValue = default!)
 
     public void Provider(T value, Action fn)
     {
-        var owner = ReactiveContext.CurrentScope;
-        if (owner is null) throw new Exception("CurrentOwner is None!");
-        owner.Context ??= new Dictionary<object, object?>();
-        owner.Context[Id] = value;
+        var scope = ReactiveContext.CurrentScope;
+        if (scope is null) throw new Exception("CurrentOwner is None!");
+        scope.Context ??= new Dictionary<object, object?>();
+        scope.Context[Id] = value;
         fn();
     }
 
@@ -563,7 +493,7 @@ internal class SimpleReadOnlySignal<T>(T source) : IReadOnlySignal<T>
     public T UntrackValue { get; } = source;
 }
 
-public enum ResourcePhase
+public enum ResourceState
 {
     Unresolved,
     Pending,
@@ -572,133 +502,131 @@ public enum ResourcePhase
     Errored
 }
 
-public class Resource<TSource, TValue, TInfo>
+public class Resource<TSource, TValue, TInfo> : ISignal<TValue?>
 {
-    public ResourcePhase Phase => _state.Value;
+    private readonly Scope _scope = new();
+    private readonly IReadOnlySignal<TSource?> _source;
+    private readonly Func<TSource, TValue?, TInfo?, Task<TValue>> _fetcher;
+    private readonly Signal<TValue?> _value = new(default);
+    private readonly Signal<Exception?> _error = new(null);
+    private readonly Signal<ResourceState> _state = new(ResourceState.Unresolved);
+
+    private Task<TValue>? _result;
+    private bool _scheduled;
+    private bool _resolved;
+
+    public ResourceState State => _state.Value;
 
     public bool Loading
     {
         get
         {
-            var s = _state.Value;
-            return s == ResourcePhase.Pending || s == ResourcePhase.Refreshing;
+            var state = _state.Value;
+            return state is ResourceState.Pending or ResourceState.Refreshing;
         }
     }
 
-    public object? Error => _error.Value;
+    public TValue? Value
+    {
+        get
+        {
+            var v = _value.Value;
+            var err = _error.Value;
+            if (err is not null && _result is null) throw err;
+            return v;
+        }
+        set => _value.Value = value;
+    }
+
+    public TValue? UntrackValue
+    {
+        get
+        {
+            var v = _value.UntrackValue;
+            var err = _error.UntrackValue;
+            if (err is not null && _result is null) throw new Exception(err.ToString());
+            return v;
+        }
+    }
+
+    public void SetValue(Func<TValue?, TValue?> value)
+    {
+        _value.SetValue(value);
+    }
 
     public TValue? Latest
     {
         get
         {
-            if (!_resolved) return Read();
+            if (!_resolved) return Value;
             var err = _error.Value;
-            if (err is not null && _task is null) throw new Exception(err.ToString());
+            if (err is not null && _result is null) throw err;
             return _value.Value;
         }
     }
 
-    private readonly Signal<ResourcePhase> _state = new(ResourcePhase.Unresolved);
-    private readonly Signal<object?> _error = new(null);
-    private bool _resolved;
-    private readonly Signal<TValue?> _value = new(default);
-    private Task<TValue>? _task;
-    private object _initTask = Constant.EmptyObj;
-    private readonly ScopeNode _owner = ReactiveContext.CurrentScope;
-    private bool _scheduled;
-    private readonly IReadOnlySignal<TSource?> _source;
+    public Exception? Error => _error.Value;
 
-    // object 的类型为 TValue | Task<TValue>
-    private readonly Func<TSource, TValue?, TInfo?, object> _fetcher;
-
-    public Resource(Func<TSource, TValue?, TInfo?, object> fetcher, IReadOnlySignal<TSource> signalSource)
+    public Resource(Func<TSource, TValue?, TInfo?, Task<TValue>> fetcher, IReadOnlySignal<TSource> signalSource)
     {
         _fetcher = fetcher;
-        _source = new Memo<TSource?>(_ => signalSource.Value);
+        _source = signalSource;
+        _scope.AddEffect(() => _load());
     }
 
-    public Resource(Func<TSource, TValue?, TInfo?, object> fetcher, TSource? source = default)
+    public Resource(Func<TSource, TValue?, TInfo?, Task<TValue>> fetcher, TSource? source = default)
     {
         _fetcher = fetcher;
         _source = new SimpleReadOnlySignal<TSource?>(source);
+        _scope.AddEffect(() => _load());
     }
 
-    public TValue? Read()
+    public Task<TValue?> Refetch(TInfo info)
     {
-        var v = _value.Value;
-        var err = _error.Value;
-        if (err is not null && _task is null) throw new Exception(err.ToString());
-        return v;
+        return _scope.RunInScope(() => _load(true, info));
     }
 
-    // object 的类型为 TInfo | Task<TInfo>
-    public object? Refetch(TInfo info)
+    private Task<TValue?> _load(bool isRefetch = false, TInfo? info = default)
     {
-        return ComputationNode.RunInScope(_owner, () => _load(info));
-    }
-
-    public void Mutate(TValue value)
-    {
-        _value.SetValue(value);
-    }
-
-    public void Mutate(Func<TValue?, TValue?> value)
-    {
-        _value.SetValue(value);
-    }
-
-    private object? _load(TInfo? refetching = default, bool isRefetch = false)
-    {
-        if (isRefetch && _scheduled) return null;
+        if (isRefetch && _scheduled) return Task.FromResult<TValue?>(default);
         _scheduled = false;
-        var lookup = _source.Value;
-        if (lookup is null || lookup is false)
+        var source = _source.Value;
+        if (source is null)
         {
-            _loadEnd(_task, ComputationNode.Untrack(_value));
-            return null;
+            _loadEnd(_result, _value.UntrackValue);
+            return Task.FromResult<TValue?>(default);
         }
 
-        object? error = null;
+        Exception? error = null;
 
-        object? p;
-        if (_initTask == Constant.EmptyObj)
+        var result = ComputationNode.Untrack(() =>
         {
-            p = ComputationNode.Untrack(() =>
+            try
             {
-                try
-                {
-                    return _fetcher(lookup, _value.Value, refetching);
-                }
-                catch (Exception fetcherError)
-                {
-                    error = fetcherError;
-                }
+                return _fetcher(source, _value.Value, info);
+            }
+            catch (Exception fetcherError)
+            {
+                error = fetcherError;
+            }
 
-                return null;
-            });
-        }
-        else p = _initTask;
+            return null;
+        });
 
         if (error is not null)
         {
-            _loadEnd(_task, default, ComputationNode.CastError(error), lookup);
-            return null;
+            _loadEnd(_result, default, error, source);
+            return Task.FromResult<TValue?>(default);
         }
 
-        if (p is not Task<TValue> && p is TValue pValue)
-        {
-            _loadEnd(_task, pValue, null, lookup);
-            return p;
-        }
+        if (result is null) return Task.FromResult<TValue?>(default);
 
-        if (p is not Task<TValue> pTask) return null;
-
-        _task = pTask;
+        _result = result;
         _scheduled = true;
         _ = ResetScheduledAsync();
 
         ComputationNode.StartBatch();
-        _state.Value = _resolved ? ResourcePhase.Refreshing : ResourcePhase.Pending;
+        _state.Value = _resolved ? ResourceState.Refreshing : ResourceState.Pending;
         ComputationNode.EndBatch();
 
         return HandleAsync();
@@ -713,38 +641,37 @@ public class Resource<TSource, TValue, TInfo>
         {
             try
             {
-                var v = await pTask;
-                return _loadEnd(_task, v, null, lookup);
+                var v = await result;
+                return _loadEnd(_result, v, null, source);
             }
-            catch (Exception e)
+            catch (Exception err)
             {
-                return _loadEnd(_task, default, ComputationNode.CastError(e), lookup);
+                return _loadEnd(_result, default, err, source);
             }
         }
     }
 
-    private TValue? _loadEnd(Task<TValue>? p, TValue? v, object? error = null, TSource? key = default)
+    private TValue? _loadEnd(Task<TValue>? result, TValue? value, Exception? error = null, TSource? key = default)
     {
-        if (_task != p) return v;
-        if (_task == p)
-            _task = null;
+        if (_result != result) return value;
+        if (_result == result)
+            _result = null;
         if (key is not null) _resolved = true;
 
-        _initTask = Constant.EmptyObj;
-        _completeLoad(v, error);
+        _completeLoad(value, error);
 
-        return v;
+        return value;
     }
 
-    private void _completeLoad(TValue? v, object? err)
+    private void _completeLoad(TValue? v, Exception? err)
     {
         ComputationNode.StartBatch();
         if (err is null)
         {
             _value.Value = v;
-            _state.Value = _resolved ? ResourcePhase.Ready : ResourcePhase.Unresolved;
+            _state.Value = _resolved ? ResourceState.Ready : ResourceState.Unresolved;
         }
-        else _state.Value = ResourcePhase.Errored;
+        else _state.Value = ResourceState.Errored;
 
         _error.Value = err;
         ComputationNode.EndBatch();
