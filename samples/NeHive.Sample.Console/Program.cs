@@ -80,7 +80,7 @@ owner.Clean();
 //         }
 //     });
 //
-//     Memo<int> doubleCount = new(() => store.Count * 2);
+//     Computed<int> doubleCount = new(() => store.Count * 2);
 //     Reactive.CreateEffect(() => { Console.WriteLine($"Track DoubleCount: {doubleCount.Value}"); });
 //     Reactive.CreateEffect(() => { Console.WriteLine($"Untrack DoubleCount: {doubleCount.UntrackValue}"); });
 //

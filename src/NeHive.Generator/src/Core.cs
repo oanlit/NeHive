@@ -94,7 +94,7 @@ namespace NeHive.Generator
                 .OfType<ConstructorDeclarationSyntax>();
 
             var signalProps = properties.Where(p => !p.NoSignal && !p.IsDerived).ToList();
-            var memoProps = properties.Where(p => p.IsMemoDerived).ToList();
+            var memoProps = properties.Where(p => p.IsComputedDerived).ToList();
             var needScope = memoProps.Count > 0;
             var scopeName = $"_{Util.LowerFirst(newClassName)}Scope";
 
@@ -191,11 +191,11 @@ namespace NeHive.Generator
                 members.Add(signalField);
             }
 
-            // Memo字段
+            // Computed字段
             foreach (var prop in memoProps)
             {
                 CollectNameSpaces(prop.Type, usingNamespaces);
-                var memoType = GenericName("Memo")
+                var memoType = GenericName("Computed")
                     .WithTypeArgumentList(
                         TypeArgumentList(
                             SingletonSeparatedList(
@@ -203,11 +203,11 @@ namespace NeHive.Generator
                             )
                         )
                     );
-                var nullableMemoType = NullableType(memoType);
+                var nullableComputedType = NullableType(memoType);
 
                 var variable = VariableDeclarator(prop.FieldName);
                 var memoField = FieldDeclaration(
-                        VariableDeclaration(nullableMemoType)
+                        VariableDeclaration(nullableComputedType)
                             .WithVariables(SingletonSeparatedList(variable))
                     )
                     // private
@@ -285,7 +285,7 @@ namespace NeHive.Generator
                 members.Add(newProp);
             }
 
-            // Memo属性
+            // Computed属性
             foreach (var prop in memoProps)
             {
                 var propSyntax = originalClass.Members
@@ -317,7 +317,7 @@ namespace NeHive.Generator
                             MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 IdentifierName(scopeName),
-                                IdentifierName("AddMemo")
+                                IdentifierName("AddComputed")
                             )
                         ).WithArgumentList(
                             ArgumentList(
@@ -330,7 +330,7 @@ namespace NeHive.Generator
                                     )
                                 )
                             )
-                        ) // scope.AddMemo(() => store.Count * 2);
+                        ) // scope.AddComputed(() => store.Count * 2);
                     );
 
                 var propertyGetter =
@@ -369,8 +369,8 @@ namespace NeHive.Generator
                 members.Add(propSyntax);
             }
 
-            // 5. 非Memo派生属性（直接复制）
-            var derivedProps = properties.Where(p => p.IsDerived && !p.IsMemoDerived).ToList();
+            // 5. 非Computed派生属性（直接复制）
+            var derivedProps = properties.Where(p => p.IsDerived && !p.IsComputedDerived).ToList();
             foreach (var prop in derivedProps)
             {
                 var propSyntax = originalClass.Members.OfType<PropertyDeclarationSyntax>()
@@ -528,7 +528,7 @@ namespace NeHive.Generator
 
             public bool NoSignal;
             public bool IsDerived; // ⭐ 业务
-            public bool IsMemoDerived; // ⭐ 业务
+            public bool IsComputedDerived; // ⭐ 业务
 
             public string FieldName => $"_{Util.LowerFirst(Name)}Signal";
         }
@@ -569,10 +569,10 @@ namespace NeHive.Generator
 
                 // ✅ 派生属性
                 var isDerived = !hasBackingField;
-                var isMemo = false;
+                var isComputed = false;
                 if (isDerived)
-                    isMemo = prop.GetAttributes()
-                        .Any(a => a.AttributeClass?.Name == "MemoAttribute");
+                    isComputed = prop.GetAttributes()
+                        .Any(a => a.AttributeClass?.Name == "ComputedAttribute");
 
                 var getter =
                     propSyntax.AccessorList?.Accessors.FirstOrDefault(a =>
@@ -599,7 +599,7 @@ namespace NeHive.Generator
                     IsAutoSetter = isAutoSet,
                     SetterHasField = setterHasField,
                     IsDerived = isDerived,
-                    IsMemoDerived = isMemo
+                    IsComputedDerived = isComputed
                 });
             }
 

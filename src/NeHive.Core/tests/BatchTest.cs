@@ -95,7 +95,7 @@ public class BatchTest
         var a = new Signal<int>(1);
         using var owner = new Scope();
 
-        var m = owner.AddMemo(() => a.Value + 1);
+        var m = owner.AddComputed(() => a.Value + 1);
 
         int runs = 0;
 

@@ -15,13 +15,13 @@ public class LifeCycleTest
 
         e.Dispose();
         Assert.True(e.IsInvalid);
-        
+
         s.Value = 2;
 
         // 不应再触发
         Assert.Equal([0, 1], values);
     }
-    
+
     [Fact]
     public void OnDispose_Should_Belong_To_EffectScope_Not_EpochScope()
     {
@@ -31,7 +31,7 @@ public class LifeCycleTest
         {
             selfScope.OnDispose(() => cleaned = true);
 
-            return () =>
+            return _ =>
             {
                 // epoch 上不注册 cleanup
             };
@@ -43,7 +43,7 @@ public class LifeCycleTest
 
         Assert.True(cleaned);
     }
-    
+
     [Fact]
     public void EpochScope_Cleanup_Should_Run_On_ReExecution()
     {
@@ -53,9 +53,8 @@ public class LifeCycleTest
 
         using var effect = new Effect(epoch =>
         {
+            _ = epoch.Track(signal);
             epoch.OnDispose(() => cleanupCount++);
-
-            _ = signal.Value;
         });
 
         Assert.Equal(0, cleanupCount);
@@ -63,7 +62,7 @@ public class LifeCycleTest
         signal.Value = 1;
         Assert.Equal(1, cleanupCount);
     }
-    
+
     [Fact]
     public void Setup_Should_Run_Only_Once()
     {
@@ -78,8 +77,8 @@ public class LifeCycleTest
 
             return epochScope =>
             {
+                _ = epochScope.Track(signal);
                 executeCount++;
-                _ = signal.Value;
             };
         });
 
@@ -91,7 +90,7 @@ public class LifeCycleTest
         Assert.Equal(1, setupCount);
         Assert.Equal(2, executeCount);
     }
-    
+
     [Fact]
     public void Setup_Should_Not_Track_Dependencies()
     {
@@ -102,10 +101,10 @@ public class LifeCycleTest
         using var effect = new Effect(selfScope =>
         {
             setupCount++;
-            
+
             _ = signal.Value; // ❗如果被 tracking 就会出问题
-            
-            return () => { };
+
+            return _ => { };
         });
 
         Assert.Equal(1, setupCount);
@@ -115,7 +114,7 @@ public class LifeCycleTest
         // 不应重新执行 setup
         Assert.Equal(1, setupCount);
     }
-    
+
     [Fact]
     public void Cleanup_Should_Run_Before_Next_Execution()
     {
@@ -127,10 +126,9 @@ public class LifeCycleTest
         {
             return epochScope =>
             {
+                _ = epochScope.Track(signal);
                 epochScope.OnDispose(() => log.Add("cleanup"));
                 log.Add("run");
-
-                _ = signal.Value;
             };
         });
 
@@ -151,8 +149,8 @@ public class LifeCycleTest
         {
             return epochScope =>
             {
+                _ = epochScope.Track(signal);
                 epochScope.OnDispose(() => cleanupCount++);
-                _ = signal.Value;
             };
         });
 
@@ -162,16 +160,13 @@ public class LifeCycleTest
         signal.Value = 2;
         Assert.Equal(2, cleanupCount); // 不是 3！
     }
-    
+
     [Fact]
     public void Final_Cleanup_Should_Run_On_Dispose()
     {
         var cleaned = false;
 
-        var effect = new Effect(epoch =>
-        {
-            epoch.OnDispose(() => cleaned = true);
-        });
+        var effect = new Effect(epoch => { epoch.OnDispose(() => cleaned = true); });
 
         Assert.False(cleaned);
 
@@ -179,7 +174,7 @@ public class LifeCycleTest
 
         Assert.True(cleaned);
     }
-    
+
     [Fact]
     public void Cleanup_Order_Test()
     {
@@ -322,21 +317,21 @@ public class LifeCycleTest
     {
         Signal<int> s = new(0);
         List<int> values = [];
-    
+
         using var scope = new Scope();
-    
+
         var e1 = scope.AddEffect(() => values.Add(s.Value));
         Assert.False(e1.IsInvalid);
-    
+
         s.Value = 1;
         Assert.Equal([0, 1], values);
-    
+
         var root = Scope.RootScope;
-    
+
         root.Dispose();
         Assert.True(scope.IsDisposed);
         Assert.True(e1.IsInvalid);
-    
+
         s.Value = 2;
         Assert.Equal([0, 1], values);
     }

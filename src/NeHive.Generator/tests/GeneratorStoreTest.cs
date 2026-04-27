@@ -13,7 +13,7 @@ public class Student(int level = 10)
         set => field = value > 100 ? 100 : value;
     } = 0;
 
-    [Memo] public int ScoreAndLevel => Score + Level;
+    [Computed] public int ScoreAndLevel => Score + Level;
 
     // 🔥 2. 多次使用 field
     public int Level
@@ -160,7 +160,7 @@ public class GeneratorStoreTest
     }
 
     [Fact]
-    public void Memo_ShouldCacheAndRecompute()
+    public void Computed_ShouldCacheAndRecompute()
     {
         var store = new StudentStore();
 

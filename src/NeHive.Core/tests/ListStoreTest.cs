@@ -26,11 +26,11 @@ public class ListStoreTest
         // scope.RunWithOwner(() =>
         // {
         //     _ = new Effect(() => { snapshots.Add(TakeSnapshot(store)); });
-        //     var doubleCount = new Memo<int>(() => store.Count * 2);
+        //     var doubleCount = new Computed<int>(() => store.Count * 2);
         //     _ = new Effect(() => { doubleCounts.Add(doubleCount.Value); });
         // });
         scope.AddEffect(() => { snapshots.Add(TakeSnapshot(store)); });
-        var doubleCount = scope.AddMemo(() => store.Count * 2);
+        var doubleCount = scope.AddComputed(() => store.Count * 2);
         scope.AddEffect(() => { doubleCounts.Add(doubleCount.Value); });
 
         // 初始

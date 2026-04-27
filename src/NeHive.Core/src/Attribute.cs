@@ -11,7 +11,7 @@ public sealed class NoSignalAttribute : Attribute
 }
 
 [AttributeUsage(AttributeTargets.Property)]
-public sealed class MemoAttribute : Attribute
+public sealed class ComputedAttribute : Attribute
 {
 }
 

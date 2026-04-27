@@ -2,10 +2,10 @@
 
 internal interface ISignalState
 {
-    List<ComputationNode> Observers { get; }
+    List<ExecuteNode> Observers { get; }
     List<int> ObserverSlots { get; }
-    ComputationNode? LastObserver { get; set; }
-    internal void UpdateIfNeeded(ComputationNode? ignore = null);
+    ExecuteNode? LastTracker { get; set; }
+    internal void UpdateIfNeeded(ExecuteNode? ignore = null);
 }
 
 internal interface ISignalState<T> : ISignalState
@@ -20,21 +20,9 @@ internal static class Common
 {
     internal static T BaseReadSignal<T>(ISignalState<T> signal)
     {
-        var currentComp = ReactiveContext.CurrentComputation;
-        if (currentComp is null || signal.LastObserver == currentComp) return signal.Value;
-        signal.LastObserver = currentComp;
-
-        // 建立 Computation 与 Signal 的双向引用
-        var sSlot = signal.Observers.Count;
-        var oSlot = currentComp.Sources.Count;
-
-        currentComp.Sources.Add(signal); // 当前计算节点自动收集依赖
-        currentComp.SourceSlots.Add(sSlot);
-
-        signal.Observers.Add(currentComp);
-        signal.ObserverSlots.Add(oSlot);
-
-        return signal.Value;
+        var currentExecute = ReactiveContext.CurrentExecute;
+        if (currentExecute is null) return signal.Value;
+        return currentExecute.Track(signal);
     }
 
     internal static T WriteSignal<T>(ISignalState<T> signal, T value)
@@ -45,16 +33,16 @@ internal static class Common
         signal.Value = value;
         if (signal.Observers.Count == 0) return value;
 
-        ComputationNode.NotifyObservers(signal.Observers);
+        ExecuteNode.NotifyObservers(signal.Observers);
         return value;
     }
 }
 
 internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : ISignalState<T>
 {
-    public List<ComputationNode> Observers { get; set; } = [];
+    public List<ExecuteNode> Observers { get; set; } = [];
     public List<int> ObserverSlots { get; } = [];
-    public ComputationNode? LastObserver { get; set; } = null;
+    public ExecuteNode? LastTracker { get; set; } = null;
     public Func<T, T, bool> Comparator { get; init; } = comparator ?? Constant.EqualFn;
     public T Value { get; set; } = value;
 
@@ -64,7 +52,7 @@ internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : IS
     public T WriteSignal(T value)
         => Common.WriteSignal(this, value);
 
-    public void UpdateIfNeeded(ComputationNode? ignore = null)
+    public void UpdateIfNeeded(ExecuteNode? ignore = null)
     {
     }
 }
@@ -98,10 +86,16 @@ internal class ScopeNode
         Context = null;
     }
 
+    internal T RunInScope<T>(Func<T> fn)
+        => ReactiveContext.RunInContext(fn, this, null);
+
+    internal void RunInScope(Action fn)
+        => ReactiveContext.RunInContext(fn, this, null);
+
     internal virtual void Dispose()
     {
-        var currentComputation = ReactiveContext.CurrentComputation;
-        ReactiveContext.CurrentComputation = null;
+        var currentComputation = ReactiveContext.CurrentExecute;
+        ReactiveContext.CurrentExecute = null;
         try
         {
             DisposeChildren();
@@ -112,11 +106,11 @@ internal class ScopeNode
         }
         finally
         {
-            ReactiveContext.CurrentComputation = currentComputation;
+            ReactiveContext.CurrentExecute = currentComputation;
         }
     }
-    
-    internal virtual void DisposeChildren()
+
+    internal void DisposeChildren()
     {
         int i;
         for (i = Children.Count - 1; i >= 0; i--)
@@ -124,6 +118,7 @@ internal class ScopeNode
             var child = Children[i];
             child.Dispose();
         }
+
         Children.Clear();
     }
 }
@@ -131,34 +126,114 @@ internal class ScopeNode
 internal static class ReactiveContext
 {
     public static ScopeNode CurrentScope = Constant.RootScopeTree; // 当前正在执行的所有者
-    public static ComputationNode? CurrentComputation; // 当前计算节点
+    public static ExecuteNode? CurrentExecute; // 当前计算节点
     public static readonly Action BeforeFlush = () => { };
     public static readonly Action AfterFlush = () => { };
+
+    internal static T RunInContext<T>(Func<T> fn, ScopeNode root, ExecuteNode? node)
+    {
+        var currentComputation = CurrentExecute;
+        var currentOwner = CurrentScope;
+
+        CurrentScope = root;
+        CurrentExecute = node;
+
+        T result;
+        try
+        {
+            ExecuteNode.StartBatch();
+            result = fn();
+            ExecuteNode.EndBatch();
+        }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
+        catch (Exception err)
+        {
+            ExecuteNode.HandleError(err);
+            return default!;
+        }
+        finally
+        {
+            CurrentExecute = currentComputation;
+            CurrentScope = currentOwner;
+        }
+
+        return result;
+    }
+
+    internal static void RunInContext(Action fn, ScopeNode root, ExecuteNode? node)
+    {
+        var currentComputation = CurrentExecute;
+        var currentOwner = CurrentScope;
+
+        CurrentScope = root;
+        CurrentExecute = node;
+
+        try
+        {
+            ExecuteNode.StartBatch();
+            fn();
+            ExecuteNode.EndBatch();
+        }
+        catch (InfiniteReactiveLoopException)
+        {
+            throw;
+        }
+        catch (Exception err)
+        {
+            ExecuteNode.HandleError(err);
+        }
+        finally
+        {
+            CurrentExecute = currentComputation;
+            CurrentScope = currentOwner;
+        }
+    }
+
+    internal static T Untrack<T>(Func<T> fn)
+    {
+        return CurrentExecute is null
+            ? fn()
+            : RunInContext(fn, CurrentScope, null);
+    }
+
+    internal static void Untrack(Action fn)
+    {
+        if (CurrentExecute is null) fn();
+        RunInContext(fn, CurrentScope, null);
+    }
 }
 
-internal enum ComputationPhase
+internal enum ExecutePhase
 {
     Resolved,
     Stale,
     Pending
 }
 
-internal abstract class ComputationNode : ScopeNode
+internal interface ITrack
 {
-    internal ComputationPhase Phase;
+    T Track<T>(ISignalState<T> signal);
+    T Track<T>(Func<T> trackFn);
+    void Track(Action trackFn);
+}
+
+internal abstract class ExecuteNode : ScopeNode, ITrack
+{
+    internal ExecutePhase Phase;
     internal readonly List<ISignalState> Sources;
     internal readonly List<int> SourceSlots;
     protected long Version;
     public readonly bool IsPure;
-    public readonly bool IsUser;
 
-    protected ComputationNode(
-        ComputationPhase phase = ComputationPhase.Stale,
+    protected ExecuteNode(
+        ExecutePhase phase = ExecutePhase.Stale,
         List<ISignalState>? sources = null,
         List<int>? sourceSlots = null,
         long version = 0,
         bool isPure = false,
-        bool isUser = false,
         ScopeNode? parent = null,
         List<ScopeNode>? children = null,
         List<Action>? cleanups = null,
@@ -170,7 +245,6 @@ internal abstract class ComputationNode : ScopeNode
         SourceSlots = sourceSlots ?? [];
         Version = version;
         IsPure = isPure;
-        IsUser = isUser;
     }
 
     internal override void Dispose()
@@ -178,7 +252,7 @@ internal abstract class ComputationNode : ScopeNode
         while (Sources.Count != 0)
         {
             var source = Util.RemoveLast(Sources);
-            source.LastObserver = null;
+            source.LastTracker = null;
             var index = Util.RemoveLast(SourceSlots);
             var obs = source.Observers;
 
@@ -191,13 +265,14 @@ internal abstract class ComputationNode : ScopeNode
             obs[index] = n;
             source.ObserverSlots[index] = s;
         }
-        Phase = ComputationPhase.Resolved; // 当前及旧的子Computation 不再执行
+
+        Phase = ExecutePhase.Resolved; // 当前及旧的子Computation 不再执行
 
         base.Dispose();
     }
 
     // 核心功能入口点
-    internal static void NotifyObservers(IEnumerable<ComputationNode> observers)
+    internal static void NotifyObservers(IEnumerable<ExecuteNode> observers)
     {
         StartBatch();
         foreach (var observer in observers)
@@ -222,32 +297,55 @@ internal abstract class ComputationNode : ScopeNode
 
     private void AddQueue()
     {
-        if (Phase == ComputationPhase.Resolved)
+        if (Phase == ExecutePhase.Resolved)
         {
             if (IsPure) SchedulerContext.UpdateQueue.Add(this);
             else SchedulerContext.EffectQueue.Add(this);
 
-            // MemoNode<T> 的额外行为
+            // ComputedNode<T> 的额外行为
             MarkDownstream();
         }
 
-        Phase = ComputationPhase.Stale;
+        Phase = ExecutePhase.Stale;
     }
 
     internal virtual void MarkDownstream()
     {
     }
 
+    public T Track<T>(ISignalState<T> signal)
+    {
+        if (signal.LastTracker == this) return signal.Value;
+        signal.LastTracker = this;
+
+        // 建立 Computation 与 Signal 的双向引用
+        var sSlot = signal.Observers.Count;
+        var oSlot = Sources.Count;
+
+        Sources.Add(signal); // 当前计算节点自动收集依赖
+        SourceSlots.Add(sSlot);
+
+        signal.Observers.Add(this);
+        signal.ObserverSlots.Add(oSlot);
+        return signal.Value;
+    }
+
+    public void Track(Action trackFn)
+        => ReactiveContext.RunInContext(trackFn, this, this);
+
+    public T Track<T>(Func<T> trackFn)
+        => ReactiveContext.RunInContext(trackFn, this, this);
+
     // 调度核心
     protected struct SchedulerContext
     {
         public static int BatchCount; // Batch的重入次数
 
-        public static readonly List<ComputationNode> EffectQueue = new(256); // 执行副作用的队列
-        public static readonly List<ComputationNode> UpdateQueue = new(256); // 更新值的队列
+        public static readonly List<ExecuteNode> EffectQueue = new(256); // 执行副作用的队列
+        public static readonly List<ExecuteNode> UpdateQueue = new(256); // 更新值的队列
         public static int UpdateFromIndex; // 队列开始执行的位置
 
-        public static long ExecCount; // 执行计数器，和 ComputationNode.Version 配合使用
+        public static long ExecCount; // 执行计数器，和 ExecuteNode.Version 配合使用
         public static string? Error = null;
     }
 
@@ -360,19 +458,19 @@ internal abstract class ComputationNode : ScopeNode
 
     protected void RunTop()
     {
-        if (Phase == ComputationPhase.Resolved) return;
-        if (Phase == ComputationPhase.Pending)
+        if (Phase == ExecutePhase.Resolved) return;
+        if (Phase == ExecutePhase.Pending)
         {
             LookUpstream();
             return;
         }
 
-        List<ComputationNode> ancestors = [this];
+        List<ExecuteNode> ancestors = [this];
         var node = this;
         while (true)
         {
-            if (node.Parent is not ComputationNode parent || parent.Version > SchedulerContext.ExecCount) break;
-            if (parent.Phase != ComputationPhase.Resolved) ancestors.Add(node);
+            if (node.Parent is not ExecuteNode parent || parent.Version > SchedulerContext.ExecCount) break;
+            if (parent.Phase != ExecutePhase.Resolved) ancestors.Add(node);
             node = parent;
         }
 
@@ -381,10 +479,10 @@ internal abstract class ComputationNode : ScopeNode
         {
             node = ancestors[i];
 
-            if (node.Phase == ComputationPhase.Stale)
+            if (node.Phase == ExecutePhase.Stale)
                 node.UpdateComputation();
 
-            else if (node.Phase == ComputationPhase.Pending)
+            else if (node.Phase == ExecutePhase.Pending)
                 RunIsolatedUpdates(() => LookUpstream(ancestors[0]));
         }
     }
@@ -408,7 +506,7 @@ internal abstract class ComputationNode : ScopeNode
     internal void UpdateComputation()
     {
         Dispose(); // 动态更新依赖，先断开旧依赖
-        // 由 ComputationNode<T> 完成
+        // 由 ExecuteNode<T> 完成
         RunComputation();
     }
 
@@ -417,14 +515,14 @@ internal abstract class ComputationNode : ScopeNode
     /**
      * 在真正执行前，向上修复所有脏依赖，保证拓扑顺序正确
      */
-    protected void LookUpstream(ComputationNode? ignore = null)
+    protected void LookUpstream(ExecuteNode? ignore = null)
     {
-        Phase = ComputationPhase.Resolved;
+        Phase = ExecutePhase.Resolved;
         for (var i = 0; i < Sources.Count; i += 1)
             Sources[i].UpdateIfNeeded();
     }
 
-    protected static void HandleError(Exception err, ScopeNode? owner = null)
+    internal static void HandleError(Exception err, ScopeNode? owner = null)
     {
         owner ??= ReactiveContext.CurrentScope;
         List<Action<object>>? fns = null;
@@ -438,9 +536,13 @@ internal abstract class ComputationNode : ScopeNode
 
         if (SchedulerContext.BatchCount > 0)
         {
-            ComputationNode<object> handler = new(Util.WrapActionWithArg(() => RunErrors(error, fns, owner)),
-                Constant.EmptyObj, isPure: false, phase: ComputationPhase.Stale);
-            handler.Phase = ComputationPhase.Stale;
+            ExecuteNode<object> handler = new((_, _) =>
+                {
+                    RunErrors(error, fns, owner);
+                    return Constant.EmptyObj;
+                },
+                Constant.EmptyObj, isPure: false, phase: ExecutePhase.Stale);
+            handler.Phase = ExecutePhase.Stale;
             SchedulerContext.EffectQueue.Add(handler);
         }
         else RunErrors(error, fns, owner);
@@ -480,98 +582,25 @@ internal abstract class ComputationNode : ScopeNode
     }
 
     // 额外API，非核心算法
-    internal static T SetContext<T>(Func<T> fn, ScopeNode root, ComputationNode? node)
-    {
-        var currentComputation = ReactiveContext.CurrentComputation;
-        var currentOwner = ReactiveContext.CurrentScope;
-
-        ReactiveContext.CurrentScope = root;
-        ReactiveContext.CurrentComputation = node;
-
-        T result;
-        try
-        {
-            result = fn();
-        }
-        finally
-        {
-            ReactiveContext.CurrentComputation = currentComputation;
-            ReactiveContext.CurrentScope = currentOwner;
-        }
-
-        return result;
-    }
-
-    internal static T Untrack<T>(Func<T> fn)
-    {
-        if (ReactiveContext.CurrentComputation is null) return fn();
-
-        var currentComputation = ReactiveContext.CurrentComputation;
-        ReactiveContext.CurrentComputation = null;
-        try
-        {
-            return fn();
-        }
-        finally
-        {
-            ReactiveContext.CurrentComputation = currentComputation;
-        }
-    }
-
-    internal static void Untrack(Action fn)
-        => Untrack(Util.WrapAction(fn));
-
-    internal static T Untrack<T>(IReadOnlySignal<T> source)
-        => Untrack(() => source.Value);
-
-    internal static T RunInScope<T>(ScopeNode scope, Func<T> fn)
-    {
-        var tempOwner = ReactiveContext.CurrentScope;
-        var tempComputation = ReactiveContext.CurrentComputation;
-        ReactiveContext.CurrentScope = scope;
-        ReactiveContext.CurrentComputation = null;
-        try
-        {
-            StartBatch();
-            var result = fn();
-            EndBatch();
-            return result;
-        }
-        catch (InfiniteReactiveLoopException)
-        {
-            throw;
-        }
-        catch (Exception err)
-        {
-            HandleError(err);
-            return default!;
-        }
-        finally
-        {
-            ReactiveContext.CurrentScope = tempOwner;
-            ReactiveContext.CurrentComputation = tempComputation;
-        }
-    }
 }
 
-internal class ComputationNode<T>(
-    Func<T, T> fn,
+internal class ExecuteNode<T>(
+    Func<ExecuteNode, T, T> fn,
     T value,
-    ComputationPhase phase = ComputationPhase.Stale,
+    ExecutePhase phase = ExecutePhase.Stale,
     List<ISignalState>? sources = null,
     List<int>? sourceSlots = null,
     long version = 0,
     bool isPure = false,
-    bool isUser = false,
     ScopeNode? parent = null,
     List<ScopeNode>? children = null,
     List<Action>? cleanups = null,
     Dictionary<object, object?>? context = null
-) : ComputationNode(phase, sources, sourceSlots,
-    version, isPure, isUser,
+) : ExecuteNode(phase, sources, sourceSlots,
+    version, isPure,
     parent, children, cleanups, context)
 {
-    public readonly Func<T, T> Fn = fn;
+    public readonly Func<ExecuteNode, T, T> Fn = fn;
     public T Value { get; set; } = value;
 
     protected virtual void UpdateValue(T value) => Value = value;
@@ -580,12 +609,9 @@ internal class ComputationNode<T>(
     {
         T nextValue;
         var execCount = SchedulerContext.ExecCount;
-        var tempOwner = ReactiveContext.CurrentScope;
-        var tempComputation = ReactiveContext.CurrentComputation;
-        ReactiveContext.CurrentScope = ReactiveContext.CurrentComputation = this;
         try
         {
-            nextValue = Fn(Value);
+            nextValue = Fn(this, Value);
         }
         catch (InfiniteReactiveLoopException)
         {
@@ -595,7 +621,7 @@ internal class ComputationNode<T>(
         {
             if (IsPure)
             {
-                Phase = ComputationPhase.Stale;
+                Phase = ExecutePhase.Stale;
                 Children.ForEach(node => node.DisposeChildren());
                 Children.Clear();
             }
@@ -605,11 +631,6 @@ internal class ComputationNode<T>(
             HandleError(err);
             return;
         }
-        finally
-        {
-            ReactiveContext.CurrentComputation = tempComputation;
-            ReactiveContext.CurrentScope = tempOwner;
-        }
 
         if (Version > execCount) return;
         UpdateValue(nextValue);
@@ -617,10 +638,10 @@ internal class ComputationNode<T>(
     }
 }
 
-internal class EffectNode<T> : ComputationNode<T>
+internal class EffectNode<T> : ExecuteNode<T>
 {
-    public EffectNode(Func<T, T> fn,
-        T value) : base(fn, value, isUser: true)
+    public EffectNode(Func<ExecuteNode, T, T> fn,
+        T value) : base(fn, value)
     {
         if (SchedulerContext.BatchCount > 0)
             SchedulerContext.EffectQueue.Add(this);
@@ -629,36 +650,32 @@ internal class EffectNode<T> : ComputationNode<T>
     }
 }
 
-internal class MemoNode<T> : ComputationNode<T>,
+internal class ComputedNode<T> : ExecuteNode<T>,
     ISignalState<T>
 {
     public Func<T, T, bool> Comparator { get; }
-    public List<ComputationNode> Observers { get; }
+    public List<ExecuteNode> Observers { get; }
     public List<int> ObserverSlots { get; }
-    public ComputationNode? LastObserver { get; set; }
-
-    // private T _value;
+    public ExecuteNode? LastTracker { get; set; }
 
     protected override void UpdateValue(T value) => WriteSignal(value);
 
-    internal MemoNode(
-        Func<T, T> fn,
-        ComputationPhase phase = ComputationPhase.Resolved,
+    internal ComputedNode(
+        Func<ITrack, T, T> fn,
+        ExecutePhase phase = ExecutePhase.Resolved,
         T? value = default,
         Func<T, T, bool>? comparator = null,
-        List<ComputationNode>? observers = null,
+        List<ExecuteNode>? observers = null,
         List<int>? observerSlots = null,
         List<ISignalState>? sources = null,
         List<int>? sourceSlots = null,
         long version = 0,
-        bool isPure = true,
-        bool isUser = false,
         ScopeNode? parent = null,
         List<ScopeNode>? children = null,
         List<Action>? cleanups = null,
         Dictionary<object, object?>? context = null
     ) : base(fn, value!, phase,
-        sources, sourceSlots, version, isPure, isUser,
+        sources, sourceSlots, version, true,
         parent, children, cleanups, context)
     {
         Comparator = comparator ?? Constant.EqualFn;
@@ -675,23 +692,23 @@ internal class MemoNode<T> : ComputationNode<T>,
         for (var i = 0; i < Observers.Count; i++)
         {
             var observer = Observers[i];
-            if (observer.Phase != ComputationPhase.Resolved) continue;
-            observer.Phase = ComputationPhase.Pending;
+            if (observer.Phase != ExecutePhase.Resolved) continue;
+            observer.Phase = ExecutePhase.Pending;
             if (observer.IsPure) SchedulerContext.UpdateQueue.Add(observer);
             else SchedulerContext.EffectQueue.Add(observer);
             observer.MarkDownstream();
         }
     }
 
-    public void UpdateIfNeeded(ComputationNode? ignore = null)
+    public void UpdateIfNeeded(ExecuteNode? ignore = null)
     {
         switch (Phase)
         {
-            case ComputationPhase.Stale:
+            case ExecutePhase.Stale:
                 if (this != ignore && Version < SchedulerContext.ExecCount)
                     RunTop();
                 break;
-            case ComputationPhase.Pending:
+            case ExecutePhase.Pending:
                 LookUpstream(ignore);
                 break;
         }
@@ -699,7 +716,7 @@ internal class MemoNode<T> : ComputationNode<T>,
 
     private void FlushResult()
     {
-        if (Phase == ComputationPhase.Stale) UpdateComputation();
+        if (Phase == ExecutePhase.Stale) UpdateComputation();
         else
         {
             RunIsolatedUpdates(() => LookUpstream());

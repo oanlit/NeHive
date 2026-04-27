@@ -326,7 +326,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
 
     public bool IsInvalid { get; private set; }
     private readonly ScopeNode _scope;
-    private readonly MemoNode<DenseBuffer<TMap>> _mapCache;
+    private readonly ComputedNode<DenseBuffer<TMap>> _mapCache;
     private readonly IReadOnlySignal<IReadOnlyList<TItem>> _sourceListSignal;
     private IReadOnlyList<TItem> _oldList = [];
     private readonly DenseBuffer<Action> _disposers = []; // _oldList的平行数组
@@ -376,17 +376,16 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
 
         return scope;
     }
-    
-    private MemoNode<DenseBuffer<TMap>> _createMapCache()
+
+    private ComputedNode<DenseBuffer<TMap>> _createMapCache()
     {
-        var mapCache = ComputationNode.RunInScope(_scope, () =>
-            new MemoNode<DenseBuffer<TMap>>(
+        var mapCache = _scope.RunInScope(() =>
+            new ComputedNode<DenseBuffer<TMap>>(
                 _effectFn,
-                comparator: Constant.EqualFn,
-                isPure: true
+                comparator: Constant.EqualFn
             )
             {
-                Phase = ComputationPhase.Resolved,
+                Phase = ExecutePhase.Resolved,
                 Value = []
             });
         mapCache.UpdateComputation();
@@ -416,7 +415,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
             cleanups: null
         );
 
-        var result = ComputationNode.RunInScope(scope, () =>
+        var result = scope.RunInScope(() =>
         {
             if (_indexSignals is not null)
             {
@@ -432,12 +431,10 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         return result;
     }
 
-    private DenseBuffer<TMap> _effectFn(DenseBuffer<TMap> oldMap)
+    private DenseBuffer<TMap> _effectFn(ITrack track, DenseBuffer<TMap> oldMap)
     {
-        var newList = _sourceListSignal.Value;
-        return Reactive.Untrack(() =>
-        {
-            var newLen = newList.Count;
+        var newList = track.Track(() => _sourceListSignal.Value);
+        var newLen = newList.Count;
             var oldLen = _oldList.Count;
             var maxLen = Math.Max(oldLen, newLen);
             DenseBuffer<TMap> newMap;
@@ -504,7 +501,6 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
             newMap.Length = newLen;
 
             return newMap;
-        });
     }
 
     public void Dispose()

@@ -134,13 +134,13 @@ public class EffectTests
     }
 }
 
-public class MemoTests
+public class ComputedTests
 {
     [Fact]
     public void Memo_InitialValue_ReturnsComputedValue()
     {
         var signal = new Signal<int>(5);
-        var memo = new Memo<int>(s => signal.Value * 2 + s, 20);
+        var memo = new Computed<int>(s => signal.Value * 2 + s, 20);
         Assert.Equal(30, memo.Value);
         memo.Dispose();
     }
@@ -150,7 +150,7 @@ public class MemoTests
     {
         var signal = new Signal<int>(2);
         var computeCount = 0;
-        var memo = new Memo<int>(() =>
+        var memo = new Computed<int>(() =>
         {
             computeCount++;
             return signal.Value * 3;
@@ -174,7 +174,7 @@ public class MemoTests
     public void Memo_UntrackValue_ReturnsValueWithoutTracking()
     {
         var signal = new Signal<int>(10);
-        var memo = new Memo<int>(() => signal.Value + 1);
+        var memo = new Computed<int>(() => signal.Value + 1);
         var untracked = memo.UntrackValue;
         Assert.Equal(11, untracked);
 
@@ -192,7 +192,7 @@ public class MemoTests
     public void Memo_WithFuncOfT_T_SupportsPreviousValue()
     {
         var signal = new Signal<int>(0);
-        var memo = new Memo<int>(prev => prev + signal.Value);
+        var memo = new Computed<int>(prev => prev + signal.Value);
         Assert.Equal(0, memo.Value); // prev = 0, signal = 0 => 0
 
         signal.Value = 5;
@@ -207,7 +207,7 @@ public class MemoTests
     public void Memo_ConstructorWithFuncT_WithoutInitialValue()
     {
         var signal = new Signal<int>(3);
-        var memo = new Memo<int>(() => signal.Value * 4);
+        var memo = new Computed<int>(() => signal.Value * 4);
         Assert.Equal(12, memo.Value);
         signal.Value = 4;
         Assert.Equal(16, memo.Value);
@@ -222,7 +222,7 @@ public class IntegrationTests
     {
         var a = new Signal<int>(2);
         var b = new Signal<int>(3);
-        var memo = new Memo<int>(() => a.Value * b.Value);
+        var memo = new Computed<int>(() => a.Value * b.Value);
         var effectResult = 0;
         using var effect = new Effect(() => effectResult = memo.Value);
 
@@ -287,8 +287,8 @@ public class IntegrationTests
     public void Memo_DependencyOnMemo_WorksCorrectly()
     {
         var a = new Signal<int>(1);
-        var memo1 = new Memo<int>(() => a.Value * 2);
-        var memo2 = new Memo<int>(() => memo1.Value + 3);
+        var memo1 = new Computed<int>(() => a.Value * 2);
+        var memo2 = new Computed<int>(() => memo1.Value + 3);
 
         Assert.Equal(5, memo2.Value); // (1*2)+3 = 5
 
@@ -368,7 +368,7 @@ public class IntegrationTests
         Assert.Equal(25, lastResult); // lastResult unchanged because effect didn't run
     }
 
-    // ========== Memo + UntrackValue ==========
+    // ========== Computed + UntrackValue ==========
 
     [Fact]
     public void Memo_UsingValue_RecomputesWhenSignalChanges()
@@ -376,7 +376,7 @@ public class IntegrationTests
         var signal = new Signal<int>(1);
         var computeCount = 0;
 
-        var memo = new Memo<int>(() =>
+        var memo = new Computed<int>(() =>
         {
             computeCount++;
             return signal.Value * 10;
@@ -398,7 +398,7 @@ public class IntegrationTests
         var b = new Signal<int>(3);
         var computeCount = 0;
 
-        var memo = new Memo<int>(() =>
+        var memo = new Computed<int>(() =>
         {
             computeCount++;
             return a.Value + b.UntrackValue;
@@ -417,17 +417,17 @@ public class IntegrationTests
         memo.Dispose();
     }
 
-    // ========== Effect + Memo + UntrackValue ==========
+    // ========== Effect + Computed + UntrackValue ==========
     [Fact]
     public void Memo_TransitionsFromInvalidToValidWhenReadingValueWithDependency()
     {
-        // 验证失效 Memo 在首次读取 Value 且 fn 内使用信号 .Value 时，
+        // 验证失效 Computed 在首次读取 Value 且 fn 内使用信号 .Value 时，
         // 会建立依赖，变为有效，后续信号变化时自动更新。
         var signal = new Signal<int>(5);
         var computeCount = 0;
         var effectRunCount = 0;
 
-        var memo = new Memo<int>(() =>
+        var memo = new Computed<int>(() =>
         {
             computeCount++;
             return signal.Value * 2; // 使用 .Value，但构造时因 Untrack 不建立依赖
@@ -462,12 +462,12 @@ public class IntegrationTests
     [Fact]
     public void Memo_DisposeCausesInvalidationAndDegradation()
     {
-        // 验证 Dispose 后 Memo 失效，退化为普通函数
+        // 验证 Dispose 后 Computed 失效，退化为普通函数
         var signal = new Signal<int>(1);
         var computeCount = 0;
         var effectRunCount = 0;
 
-        var memo = new Memo<int>(() =>
+        var memo = new Computed<int>(() =>
         {
             computeCount++;
             return signal.Value * 10;
@@ -489,10 +489,10 @@ public class IntegrationTests
         Assert.Equal(2, effectRunCount); // Effect 因 memo 变化而运行
         Assert.Equal(20, memo.Value);
 
-        // Dispose Memo
+        // Dispose Computed
         memo.Dispose();
 
-        // 此时 Memo 失效，退化为普通函数，会通知effect，执行退化的普通函数，暴露函数所依赖的信号
+        // 此时 Computed 失效，退化为普通函数，会通知effect，执行退化的普通函数，暴露函数所依赖的信号
         Assert.True(memo.IsInvalid);
         Assert.Equal(3, effectRunCount);
         Assert.Equal(3, computeCount); // 重新计算
@@ -542,7 +542,7 @@ public class IntegrationTests
 
         using var scope = new Scope();
 
-        var m = scope.AddMemo(() => a.Value + 1);
+        var m = scope.AddComputed(() => a.Value + 1);
 
         int result = 0;
 
@@ -591,8 +591,8 @@ public class BaseTest
 
         using var scope = new Scope();
 
-        var m1 = scope.AddMemo(() => a.Value + 1);
-        var m2 = scope.AddMemo(() => m1.Value + 1);
+        var m1 = scope.AddComputed(() => a.Value + 1);
+        var m2 = scope.AddComputed(() => m1.Value + 1);
 
         scope.AddEffect(() => { logs.Add(m2.Value); });
 
@@ -608,8 +608,8 @@ public class BaseTest
 
         using var scope = new Scope();
 
-        var m1 = scope.AddMemo(() => a.Value + 1);
-        var m2 = scope.AddMemo(() => m1.Value + 1);
+        var m1 = scope.AddComputed(() => a.Value + 1);
+        var m2 = scope.AddComputed(() => m1.Value + 1);
 
         int observed = 0;
 

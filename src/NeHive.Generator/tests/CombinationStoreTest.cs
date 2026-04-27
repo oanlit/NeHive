@@ -76,7 +76,7 @@ public class CombinationStoreTest
         var a = new AStore();
         var b = new BStore(a);
 
-        var memo = new Memo<int>(() => a.Value + b.Double);
+        var memo = new Computed<int>(() => a.Value + b.Double);
 
         var v1 = memo.Value;
 

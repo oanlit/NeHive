@@ -46,7 +46,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     private void _subscribeSignal(int index, T? initValue)
     {
-        if (ReactiveContext.CurrentComputation is null) return;
+        if (ReactiveContext.CurrentExecute is null) return;
         if (!_oldValueSignals.TryGetValue(index, out var signal))
         {
             signal = new Signal<T?>(initValue);

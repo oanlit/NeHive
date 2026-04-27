@@ -4,16 +4,16 @@ public static partial class Reactive
 {
     public static void Batch(Action fn)
     {
-        ComputationNode.StartBatch();
+        ExecuteNode.StartBatch();
         fn();
-        ComputationNode.EndBatch();
+        ExecuteNode.EndBatch();
     }
 
     public static T Batch<T>(Func<T> fn)
     {
-        ComputationNode.StartBatch();
+        ExecuteNode.StartBatch();
         var result = fn();
-        ComputationNode.EndBatch();
+        ExecuteNode.EndBatch();
         return result;
     }
 
@@ -23,19 +23,16 @@ public static partial class Reactive
     }
 
     public static T Untrack<T>(Func<T> fn)
-        => ComputationNode.Untrack(fn);
+        => ReactiveContext.Untrack(fn);
 
     public static void Untrack(Action fn)
-        => ComputationNode.Untrack(fn);
-
-    public static T Untrack<T>(IReadOnlySignal<T> source)
-        => ComputationNode.Untrack(source);
+        => ReactiveContext.Untrack(fn);
 
     public static void BatchUntrack(Action fn)
     {
-        ComputationNode.StartBatch();
-        ComputationNode.Untrack(fn);
-        ComputationNode.EndBatch();
+        ExecuteNode.StartBatch();
+        ReactiveContext.Untrack(fn);
+        ExecuteNode.EndBatch();
     }
 }
 
@@ -58,30 +55,26 @@ public interface ISignal<T> : IReadOnlySignal<T>, ISetOnlySignal<T>
 
 public class Signal<T>(T value) : ISignal<T>
 {
-    private readonly SignalState<T> _state = new(value);
-
-#if DEBUG
-    internal SignalState<T> State => _state;
-#endif
+    internal readonly SignalState<T> State = new(value);
 
     public T Value
     {
-        get => _state.ReadSignal();
-        set => _state.WriteSignal(value);
+        get => State.ReadSignal();
+        set => State.WriteSignal(value);
     }
 
     public void SetValue(T value)
     {
-        _state.WriteSignal(value);
+        State.WriteSignal(value);
     }
 
     public void SetValue(Func<T, T> value)
     {
-        _state.WriteSignal(value(_state.Value));
+        State.WriteSignal(value(State.Value));
     }
 
-    public T UntrackValue => _state.Value;
-    internal bool HasObserver => _state.Observers.Count > 0;
+    public T UntrackValue => State.Value;
+    internal bool HasObserver => State.Observers.Count > 0;
 }
 
 public class Scope : IDisposable
@@ -145,7 +138,7 @@ public class Scope : IDisposable
     public static Scope RootScope
         => OwnerHolder[Constant.RootScopeTree];
 
-    private Scope(ScopeNode scope)
+    internal Scope(ScopeNode scope)
     {
         _root = scope;
     }
@@ -160,9 +153,9 @@ public class Scope : IDisposable
 
             scope = new Scope(currentScopeNode);
             OwnerHolder[currentScopeNode] = scope;
-            if (currentScopeNode is ComputationNode)
+            if (currentScopeNode is ExecuteNode)
             {
-                // ComputationNode 每次运行时都会dispose自己，为了复用，我们绑定到 Parent Scope
+                // ExecuteNode 每次运行时都会dispose自己，为了复用，我们绑定到 Parent Scope
                 var parent = currentScopeNode.Parent!; // 除了 RootScope 以外都有
                 parent.Cleanups.Add(() =>
                 {
@@ -186,8 +179,8 @@ public class Scope : IDisposable
     private T _setContext<T>(Func<T> fn)
     {
         ObjectDisposedException.ThrowIf(IsDisposed, nameof(Scope));
-        var computation = ReactiveContext.CurrentComputation;
-        return ComputationNode.SetContext(fn, _root, computation);
+        var computation = ReactiveContext.CurrentExecute;
+        return ReactiveContext.RunInContext(fn, _root, computation);
     }
 
     public Effect AddEffect(Action fn)
@@ -196,59 +189,47 @@ public class Scope : IDisposable
     public Effect AddEffect(Action<Scope> fn)
         => _setContext(() => new Effect(fn));
 
-    public Effect AddEffect(Func<Scope, Action> fn)
-        => _setContext(() => new Effect(fn));
-
     public Effect AddEffect(Func<Scope, Action<Scope>> fn)
         => _setContext(() => new Effect(fn));
 
-    public Memo<T> AddMemo<T>(Func<T, T> fn, T? value = default)
-        => _setContext(() => new Memo<T>(fn, value));
+    public Computed<T> AddComputed<T>(Func<T, T> fn, T? value = default)
+        => _setContext(() => new Computed<T>(fn, value));
 
-    public Memo<T> AddMemo<T>(Func<T> fn, T? value = default)
-        => _setContext(() => new Memo<T>(fn, value));
-
-    public Computation<T> AddComputation<T>(Func<T, T> fn,
-        T init,
-        bool pure = false)
-        => _setContext(() => new Computation<T>(fn, init, pure));
+    public Computed<T> AddComputed<T>(Func<T> fn, T? value = default)
+        => _setContext(() => new Computed<T>(fn, value));
 
     public T RunInScope<T>(Func<T> fn)
     {
         ObjectDisposedException.ThrowIf(IsDisposed, nameof(Scope));
-        return ComputationNode.RunInScope(_root, fn)!;
+        return _root.RunInScope(fn)!;
     }
 
     public void RunInScope(Action fn)
         => RunInScope(Util.WrapAction(fn));
 }
 
-public class Computation<T> : IDisposable
+public class EpochScope : Scope
 {
-    private readonly ScopeNode _scope;
-    public bool IsInvalid { get; private set; }
+    private readonly ExecuteNode _track;
 
-    public Computation(Func<T, T> fn,
-        T init,
-        bool pure = false)
+    internal EpochScope(ExecuteNode track) : base(track)
     {
-        var current = ReactiveContext.CurrentScope;
-        _scope = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        _scope.Cleanups.Add(() => IsInvalid = true);
-
-        ComputationNode.RunInScope(_scope, () =>
-            new ComputationNode<T>(fn, init, isPure: pure));
+        _track = track;
     }
 
-    public void Dispose()
+    public T Track<T>(Signal<T> signal)
     {
-        if (IsInvalid) return;
-        _scope.Dispose();
+        return _track.Track(signal.State);
+    }
+
+    public T Track<T>(Func<T> trackFn)
+    {
+        return _track.Track(trackFn);
+    }
+
+    public void Track(Action trackFn)
+    {
+        _track.Track(trackFn);
     }
 }
 
@@ -257,7 +238,7 @@ public class Effect : IDisposable
     private readonly ScopeNode _scope;
     public bool IsInvalid { get; private set; }
 
-    public Effect(Action fn)
+    public Effect(Action executeFn)
     {
         var current = ReactiveContext.CurrentScope;
 
@@ -269,24 +250,20 @@ public class Effect : IDisposable
         );
         _scope.Cleanups.Add(() => IsInvalid = true);
 
-        ComputationNode.RunInScope(_scope, () =>
-            new EffectNode<object>(Util.WrapActionWithArg(fn), Constant.EmptyObj)
+        _scope.RunInScope(() =>
+            new EffectNode<object>((trackScope, _) =>
+            {
+                trackScope.Track(executeFn);
+                return Constant.EmptyObj;
+            }, Constant.EmptyObj)
         );
     }
 
-    public Effect(Action<Scope> fn) : this(_ => fn)
+    public Effect(Action<EpochScope> fn) : this(_ => fn)
     {
     }
 
-    public Effect(Func<Scope, Action> setupFn) : this(selfScope =>
-    {
-        var executeFn = setupFn(selfScope);
-        return _ => executeFn();
-    })
-    {
-    }
-
-    public Effect(Func<Scope, Action<Scope>> setupFn)
+    public Effect(Func<Scope, Action<EpochScope>> setupFn)
     {
         var current = ReactiveContext.CurrentScope;
 
@@ -298,14 +275,16 @@ public class Effect : IDisposable
         );
         _scope.Cleanups.Add(() => IsInvalid = true);
 
-        ComputationNode.RunInScope(_scope, () =>
+        _scope.RunInScope(() =>
         {
             var effectScope = Scope.CurrentScope;
             var executeFn = setupFn(effectScope);
+            EpochScope? epochScope = null;
+
             return new EffectNode<object>(
-                _ =>
+                (trackScope, _) =>
                 {
-                    var epochScope = Scope.CurrentScope;
+                    epochScope ??= new EpochScope(trackScope);
                     executeFn(epochScope);
                     return Constant.EmptyObj;
                 },
@@ -321,10 +300,10 @@ public class Effect : IDisposable
     }
 }
 
-public class Memo<T> : IReadOnlySignal<T>
+public class Computed<T> : IReadOnlySignal<T>
 {
     private readonly ScopeNode _scope;
-    private readonly MemoNode<T> _memoNode;
+    private readonly ComputedNode<T> _computedNode;
 
     private T _value;
 
@@ -338,7 +317,7 @@ public class Memo<T> : IReadOnlySignal<T>
         get
         {
             if (IsInvalid) return _fn(_value);
-            _value = _memoNode.ReadSignal();
+            _value = _computedNode.ReadSignal();
             return _value;
         }
     }
@@ -353,12 +332,12 @@ public class Memo<T> : IReadOnlySignal<T>
                 return _value;
             }
 
-            _value = _memoNode.UntrackValue;
+            _value = _computedNode.UntrackValue;
             return _value;
         }
     }
 
-    public Memo(Func<T, T> fn, T? value = default)
+    public Computed(Func<T, T> fn, T? value = default)
     {
         _fn = fn;
 
@@ -371,24 +350,24 @@ public class Memo<T> : IReadOnlySignal<T>
         );
         _scope.Cleanups.Add(() => IsInvalid = true);
 
-        _memoNode = ComputationNode.RunInScope(_scope, () =>
-            new MemoNode<T>(
-                fn,
-                comparator: Constant.EqualFn,
-                isPure: true
+        _computedNode = _scope.RunInScope(() =>
+            new ComputedNode<T>(
+                (trackScope, prev) =>
+                    trackScope.Track(() => fn(prev)),
+                comparator: Constant.EqualFn
             )
             {
-                Phase = ComputationPhase.Resolved,
+                Phase = ExecutePhase.Resolved,
                 Value = value!
             });
 
-        _memoNode.UpdateComputation();
-        _value = _memoNode.UntrackValue;
+        _computedNode.UpdateComputation();
+        _value = _computedNode.UntrackValue;
 
         _scope.Cleanups.Add(_afterDisposed);
     }
 
-    public Memo(Func<T> fn, T? value = default)
+    public Computed(Func<T> fn, T? value = default)
         : this(_ => fn(), value)
     {
     }
@@ -402,17 +381,17 @@ public class Memo<T> : IReadOnlySignal<T>
     private void _afterDisposed()
     {
         IsInvalid = true;
-        var observers = _memoNode.Observers;
+        var observers = _computedNode.Observers;
         if (observers.Count == 0) return;
-        ComputationNode.NotifyObservers(observers);
-        _memoNode.Observers.Clear();
+        ExecuteNode.NotifyObservers(observers);
+        _computedNode.Observers.Clear();
     }
 }
 
 public class Selector<T> where T : notnull
 {
-    private readonly Dictionary<T, HashSet<ComputationNode>> _subs;
-    private readonly Memo<T> _memo;
+    private readonly Dictionary<T, HashSet<ExecuteNode>> _subs;
+    private readonly Computed<T> _computed;
     private readonly Signal<bool> _logicSignal = new(true);
 
     public readonly Func<T, T, bool> CompareFn;
@@ -420,9 +399,9 @@ public class Selector<T> where T : notnull
     public Selector(IReadOnlySignal<T> source, Func<T, T, bool>? compareFn = null)
     {
         CompareFn = compareFn ?? Constant.EqualFn;
-        _subs = new Dictionary<T, HashSet<ComputationNode>>();
+        _subs = new Dictionary<T, HashSet<ExecuteNode>>();
 
-        _memo = new Memo<T>(fn: ComputationFn);
+        _computed = new Computed<T>(fn: ComputationFn);
         return;
 
         T ComputationFn(T? prevValue)
@@ -432,7 +411,7 @@ public class Selector<T> where T : notnull
             {
                 // 异或比较
                 if (CompareFn(key, nextValue) == CompareFn(key, prevValue!)) continue;
-                ComputationNode.NotifyObservers(observers);
+                ExecuteNode.NotifyObservers(observers);
             }
 
             return nextValue;
@@ -443,8 +422,8 @@ public class Selector<T> where T : notnull
     {
         _ = _logicSignal.Value; // 逻辑依赖，不会导致外部观察者误以为没有信号而失效
 
-        var value = _memo.UntrackValue;
-        var currentComputation = ReactiveContext.CurrentComputation;
+        var value = _computed.UntrackValue;
+        var currentComputation = ReactiveContext.CurrentExecute;
         if (currentComputation is null) return CompareFn(key, value);
 
         // 建立一个逻辑依赖
@@ -493,7 +472,7 @@ internal class SimpleReadOnlySignal<T>(T source) : IReadOnlySignal<T>
     public T UntrackValue { get; } = source;
 }
 
-public enum ResourceState
+public enum AsyncMemoState
 {
     Unresolved,
     Pending,
@@ -502,27 +481,27 @@ public enum ResourceState
     Errored
 }
 
-public class Resource<TSource, TValue, TInfo> : ISignal<TValue?>
+public class AsyncMemo<TSource, TValue, TInfo> : ISignal<TValue?>
 {
     private readonly Scope _scope = new();
     private readonly IReadOnlySignal<TSource?> _source;
     private readonly Func<TSource, TValue?, TInfo?, Task<TValue>> _fetcher;
     private readonly Signal<TValue?> _value = new(default);
     private readonly Signal<Exception?> _error = new(null);
-    private readonly Signal<ResourceState> _state = new(ResourceState.Unresolved);
+    private readonly Signal<AsyncMemoState> _state = new(AsyncMemoState.Unresolved);
 
     private Task<TValue>? _result;
     private bool _scheduled;
     private bool _resolved;
 
-    public ResourceState State => _state.Value;
+    public AsyncMemoState State => _state.Value;
 
     public bool Loading
     {
         get
         {
             var state = _state.Value;
-            return state is ResourceState.Pending or ResourceState.Refreshing;
+            return state is AsyncMemoState.Pending or AsyncMemoState.Refreshing;
         }
     }
 
@@ -567,14 +546,14 @@ public class Resource<TSource, TValue, TInfo> : ISignal<TValue?>
 
     public Exception? Error => _error.Value;
 
-    public Resource(Func<TSource, TValue?, TInfo?, Task<TValue>> fetcher, IReadOnlySignal<TSource> signalSource)
+    public AsyncMemo(Func<TSource, TValue?, TInfo?, Task<TValue>> fetcher, IReadOnlySignal<TSource> signalSource)
     {
         _fetcher = fetcher;
         _source = signalSource;
         _scope.AddEffect(() => _load());
     }
 
-    public Resource(Func<TSource, TValue?, TInfo?, Task<TValue>> fetcher, TSource? source = default)
+    public AsyncMemo(Func<TSource, TValue?, TInfo?, Task<TValue>> fetcher, TSource? source = default)
     {
         _fetcher = fetcher;
         _source = new SimpleReadOnlySignal<TSource?>(source);
@@ -599,7 +578,7 @@ public class Resource<TSource, TValue, TInfo> : ISignal<TValue?>
 
         Exception? error = null;
 
-        var result = ComputationNode.Untrack(() =>
+        var result = ReactiveContext.Untrack(() =>
         {
             try
             {
@@ -625,9 +604,9 @@ public class Resource<TSource, TValue, TInfo> : ISignal<TValue?>
         _scheduled = true;
         _ = ResetScheduledAsync();
 
-        ComputationNode.StartBatch();
-        _state.Value = _resolved ? ResourceState.Refreshing : ResourceState.Pending;
-        ComputationNode.EndBatch();
+        ExecuteNode.StartBatch();
+        _state.Value = _resolved ? AsyncMemoState.Refreshing : AsyncMemoState.Pending;
+        ExecuteNode.EndBatch();
 
         return HandleAsync();
 
@@ -665,15 +644,15 @@ public class Resource<TSource, TValue, TInfo> : ISignal<TValue?>
 
     private void _completeLoad(TValue? v, Exception? err)
     {
-        ComputationNode.StartBatch();
+        ExecuteNode.StartBatch();
         if (err is null)
         {
             _value.Value = v;
-            _state.Value = _resolved ? ResourceState.Ready : ResourceState.Unresolved;
+            _state.Value = _resolved ? AsyncMemoState.Ready : AsyncMemoState.Unresolved;
         }
-        else _state.Value = ResourceState.Errored;
+        else _state.Value = AsyncMemoState.Errored;
 
         _error.Value = err;
-        ComputationNode.EndBatch();
+        ExecuteNode.EndBatch();
     }
 }

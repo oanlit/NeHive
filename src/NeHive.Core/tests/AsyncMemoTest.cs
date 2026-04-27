@@ -1,13 +1,13 @@
 namespace NeHive.Core.Tests;
 
-public class ResourceTest
+public class AsyncMemoTest
 {
     [Fact]
     public async Task Resource_Async_Fetch_Test()
     {
         var source = new Signal<int>(1);
 
-        var res = new Resource<int, int, int>(
+        var res = new AsyncMemo<int, int, int>(
             async (s, _, _) =>
             {
                 await Task.Delay(10);
@@ -21,7 +21,7 @@ public class ResourceTest
         await Task.Delay(20);
 
         Assert.Equal(2, res.Value);
-        Assert.Equal(ResourceState.Ready, res.State);
+        Assert.Equal(AsyncMemoState.Ready, res.State);
     }
     
     [Fact]
@@ -29,7 +29,7 @@ public class ResourceTest
     {
         var source = new Signal<int>(1);
 
-        var resource = new Resource<int, int, object>(
+        var resource = new AsyncMemo<int, int, object>(
             async (s, _, _) =>
             {
                 await Task.Delay(10);
@@ -52,7 +52,7 @@ public class ResourceTest
     {
         var source = new Signal<int>(1);
 
-        var resource = new Resource<int, int, object>(
+        var resource = new AsyncMemo<int, int, object>(
             async (s, _, _) =>
             {
                 await Task.Delay(50);
@@ -69,7 +69,7 @@ public class ResourceTest
 
         await Task.Delay(100);
 
-        Assert.Equal(ResourceState.Ready, resource.State);
+        Assert.Equal(AsyncMemoState.Ready, resource.State);
     }
     
     [Fact]
@@ -77,7 +77,7 @@ public class ResourceTest
     {
         var source = new Signal<int>(1);
 
-        var resource = new Resource<int, int, object>(
+        var resource = new AsyncMemo<int, int, object>(
             async (s, _, _) =>
             {
                 await Task.Delay(20);
@@ -87,7 +87,7 @@ public class ResourceTest
         );
 
         var runs = 0;
-        ResourceState last = default;
+        AsyncMemoState last = default;
 
         using var effect = new Effect(() =>
         {
@@ -100,6 +100,6 @@ public class ResourceTest
         await Task.Delay(100);
 
         Assert.Equal(2, runs);
-        Assert.Equal(ResourceState.Ready, last);
+        Assert.Equal(AsyncMemoState.Ready, last);
     }
 }

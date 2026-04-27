@@ -139,7 +139,7 @@ public class SelectorTests
         var selector = new Selector<int>(source);
         var memoComputeCount = 0;
 
-        var memo = new Memo<bool>(() =>
+        var memo = new Computed<bool>(() =>
         {
             memoComputeCount++;
             return selector.Select(42);
