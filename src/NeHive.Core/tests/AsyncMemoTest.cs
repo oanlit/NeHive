@@ -7,35 +7,32 @@ public class AsyncMemoTest
     {
         var source = new Signal<int>(1);
 
-        var res = new AsyncMemo<int, int, int>(
-            async (s, _, _) =>
+        var res = new AsyncMemo<int>(async () =>
             {
+                var result = source.Value * 2;
                 await Task.Delay(10);
-                return s * 2;
-            },
-            source
+                return result;
+            }
         );
 
         Assert.True(res.Loading);
 
-        await Task.Delay(20);
-
-        Assert.Equal(2, res.Value);
+        await Task.Delay(50);
+        
         Assert.Equal(AsyncMemoState.Ready, res.State);
+        Assert.Equal(2, res.Value);
     }
-    
+
     [Fact]
     public async Task Resource_Should_Reload_When_Source_Changes()
     {
         var source = new Signal<int>(1);
 
-        var resource = new AsyncMemo<int, int, object>(
-            async (s, _, _) =>
+        var resource = new AsyncMemo<int>(async epochScope =>
             {
                 await Task.Delay(10);
-                return s * 2;
-            },
-            source
+                return epochScope.Track(source) * 2;
+            }
         );
 
         await Task.Delay(50);
@@ -46,19 +43,18 @@ public class AsyncMemoTest
         await Task.Delay(50);
         Assert.Equal(4, resource.Value);
     }
-    
+
     [Fact]
     public async Task Resource_Should_Enter_Pending_When_Source_Changes()
     {
         var source = new Signal<int>(1);
 
-        var resource = new AsyncMemo<int, int, object>(
-            async (s, _, _) =>
+        var resource = new AsyncMemo<int>(async () =>
             {
+                var result = source.Value;
                 await Task.Delay(50);
-                return s;
-            },
-            source
+                return result;
+            }
         );
 
         await Task.Delay(100);
@@ -71,19 +67,17 @@ public class AsyncMemoTest
 
         Assert.Equal(AsyncMemoState.Ready, resource.State);
     }
-    
+
     [Fact]
     public async Task State_Should_Be_Reactive()
     {
         var source = new Signal<int>(1);
 
-        var resource = new AsyncMemo<int, int, object>(
-            async (s, _, _) =>
+        var resource = new AsyncMemo<int>(async () =>
             {
                 await Task.Delay(20);
-                return s;
-            },
-            source
+                return source.Value;
+            }
         );
 
         var runs = 0;

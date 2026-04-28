@@ -77,6 +77,28 @@ public class Signal<T>(T value) : ISignal<T>
     internal bool HasObserver => State.Observers.Count > 0;
 }
 
+internal class ReactiveContextHelper : IDisposable
+{
+    private readonly ExecuteNode? _currentComputation;
+    private readonly ScopeNode _currentOwner;
+
+    public ReactiveContextHelper(ScopeNode root, ExecuteNode? node)
+    {
+        _currentComputation = ReactiveContext.CurrentExecute;
+        _currentOwner = ReactiveContext.CurrentScope;
+        ReactiveContext.CurrentScope = root;
+        ReactiveContext.CurrentExecute = node;
+        ExecuteNode.StartBatch();
+    }
+
+    public void Dispose()
+    {
+        ExecuteNode.EndBatch();
+        ReactiveContext.CurrentExecute = _currentComputation;
+        ReactiveContext.CurrentScope = _currentOwner;
+    }
+}
+
 public class Scope : IDisposable
 {
     private static readonly Dictionary<ScopeNode, Scope> OwnerHolder = [];
@@ -388,6 +410,236 @@ public class Computed<T> : IReadOnlySignal<T>
     }
 }
 
+internal class SimpleReadOnlySignal<T>(T source) : IReadOnlySignal<T>
+{
+    public T Value { get; } = source;
+    public T UntrackValue { get; } = source;
+}
+
+public enum AsyncMemoState
+{
+    Unresolved,
+    Pending,
+    Ready,
+    Refreshing,
+    Errored,
+    IsInvalid
+}
+
+public class AsyncMemo<T> : ISignal<T?>
+{
+    private readonly ScopeNode _scope;
+    private EpochScope? _epochScope;
+    private readonly bool _isSimpleUse;
+    private readonly Func<EpochScope, Task<T>> _executeFn;
+    private readonly Signal<T?> _value = new(default);
+    private readonly Signal<Exception?> _error = new(null);
+    private readonly Signal<AsyncMemoState> _state = new(AsyncMemoState.Unresolved);
+
+    private Task<T>? _result;
+    private bool _scheduled;
+    private bool _resolved;
+
+    public AsyncMemoState State => _state.Value;
+
+    public bool Loading
+    {
+        get
+        {
+            var state = _state.Value;
+            return state is AsyncMemoState.Pending or AsyncMemoState.Refreshing;
+        }
+    }
+
+    public T? Value
+    {
+        get
+        {
+            var v = _value.Value;
+            var err = _error.Value;
+            if (err is not null && _result is null) throw err;
+            return v;
+        }
+        set => _value.Value = value;
+    }
+
+    public T? UntrackValue
+    {
+        get
+        {
+            var v = _value.UntrackValue;
+            var err = _error.UntrackValue;
+            if (err is not null && _result is null) throw err;
+            return v;
+        }
+    }
+
+    public void SetValue(Func<T?, T?> value)
+    {
+        _value.SetValue(value);
+    }
+
+    public T? Latest
+    {
+        get
+        {
+            if (!_resolved) return Value;
+            var err = _error.Value;
+            if (err is not null && _result is null) throw err;
+            return _value.Value;
+        }
+    }
+
+    public Exception? Error => _error.Value;
+
+    public AsyncMemo(Func<Task<T>> executeFn)
+    {
+        var current = ReactiveContext.CurrentScope;
+
+        _scope = new ScopeNode(
+            parent: current,
+            children: null,
+            context: current.Context,
+            cleanups: null
+        );
+        _scope.Cleanups.Add(() => _state.Value = AsyncMemoState.IsInvalid);
+        _isSimpleUse = true;
+
+        _executeFn = _ => executeFn();
+
+        _scope.RunInScope(() =>
+            new EffectNode<object>((trackScope, _) =>
+            {
+                _epochScope ??= new EpochScope(trackScope);
+                _load(false);
+                return Constant.EmptyObj;
+            }, Constant.EmptyObj)
+        );
+    }
+    
+    public AsyncMemo(Func<EpochScope,Task<T>> fn) : this(_ => fn)
+    {
+    }
+
+    public AsyncMemo(Func<Scope, Func<EpochScope, Task<T>>> setupFn)
+    {
+        var current = ReactiveContext.CurrentScope;
+
+        _scope = new ScopeNode(
+            parent: current,
+            children: null,
+            context: current.Context,
+            cleanups: null
+        );
+        _scope.Cleanups.Add(() => _state.Value = AsyncMemoState.IsInvalid);
+        _isSimpleUse = false;
+
+        using (new ReactiveContextHelper(_scope, null))
+        {
+            var currentScope = Scope.CurrentScope;
+            _executeFn = setupFn(currentScope);
+            _ = new EffectNode<object>(
+                (trackScope, _) =>
+                {
+                    _epochScope ??= new EpochScope(trackScope);
+                    _load(false);
+                    return Constant.EmptyObj;
+                },
+                Constant.EmptyObj
+            );
+        }
+    }
+
+    public Task<T?> Refetch()
+    {
+        return _scope.RunInScope(() => _load(true));
+    }
+
+    private Task<T?> _load(bool isRefetch)
+    {
+        if (isRefetch && _scheduled) return Task.FromResult<T?>(default);
+        _scheduled = false;
+
+        Exception? error = null;
+        Task<T>? result = null;
+        var epochScope = _epochScope!;
+
+        try
+        {
+            result = _isSimpleUse
+                ? epochScope.Track(() => _executeFn(epochScope))
+                : _executeFn(epochScope);
+        }
+        catch (Exception fetcherError)
+        {
+            error = fetcherError;
+        }
+
+        if (error is not null)
+        {
+            _loadEnd(_result, default, error);
+            return Task.FromResult<T?>(default);
+        }
+
+        if (result is null) return Task.FromResult<T?>(default);
+
+        _result = result;
+        _scheduled = true;
+        _ = ResetScheduledAsync();
+
+        ExecuteNode.StartBatch();
+        _state.Value = _resolved ? AsyncMemoState.Refreshing : AsyncMemoState.Pending;
+        ExecuteNode.EndBatch();
+
+        return HandleAsync();
+
+        async Task ResetScheduledAsync()
+        {
+            await Task.Yield();
+            _scheduled = false;
+        }
+
+        async Task<T?> HandleAsync()
+        {
+            try
+            {
+                var v = await result;
+                return _loadEnd(_result, v);
+            }
+            catch (Exception err)
+            {
+                return _loadEnd(_result, default, err);
+            }
+        }
+    }
+
+    private T? _loadEnd(Task<T>? result, T? value, Exception? error = null)
+    {
+        if (_result != result) return value;
+        if (_result == result)
+            _result = null;
+        _resolved = true;
+
+        _completeLoad(value, error);
+
+        return value;
+    }
+
+    private void _completeLoad(T? v, Exception? err)
+    {
+        ExecuteNode.StartBatch();
+        if (err is null)
+        {
+            _value.Value = v;
+            _state.Value = _resolved ? AsyncMemoState.Ready : AsyncMemoState.Unresolved;
+        }
+        else _state.Value = AsyncMemoState.Errored;
+
+        _error.Value = err;
+        ExecuteNode.EndBatch();
+    }
+}
+
 public class Selector<T> where T : notnull
 {
     private readonly Dictionary<T, HashSet<ExecuteNode>> _subs;
@@ -463,196 +715,5 @@ public class Context<T>(string id = "context", T defaultValue = default!)
         var owner = ReactiveContext.CurrentScope;
         if (owner.Context?[Id] is T value) return value;
         return DefaultValue;
-    }
-}
-
-internal class SimpleReadOnlySignal<T>(T source) : IReadOnlySignal<T>
-{
-    public T Value { get; } = source;
-    public T UntrackValue { get; } = source;
-}
-
-public enum AsyncMemoState
-{
-    Unresolved,
-    Pending,
-    Ready,
-    Refreshing,
-    Errored
-}
-
-public class AsyncMemo<TSource, TValue, TInfo> : ISignal<TValue?>
-{
-    private readonly Scope _scope = new();
-    private readonly IReadOnlySignal<TSource?> _source;
-    private readonly Func<TSource, TValue?, TInfo?, Task<TValue>> _fetcher;
-    private readonly Signal<TValue?> _value = new(default);
-    private readonly Signal<Exception?> _error = new(null);
-    private readonly Signal<AsyncMemoState> _state = new(AsyncMemoState.Unresolved);
-
-    private Task<TValue>? _result;
-    private bool _scheduled;
-    private bool _resolved;
-
-    public AsyncMemoState State => _state.Value;
-
-    public bool Loading
-    {
-        get
-        {
-            var state = _state.Value;
-            return state is AsyncMemoState.Pending or AsyncMemoState.Refreshing;
-        }
-    }
-
-    public TValue? Value
-    {
-        get
-        {
-            var v = _value.Value;
-            var err = _error.Value;
-            if (err is not null && _result is null) throw err;
-            return v;
-        }
-        set => _value.Value = value;
-    }
-
-    public TValue? UntrackValue
-    {
-        get
-        {
-            var v = _value.UntrackValue;
-            var err = _error.UntrackValue;
-            if (err is not null && _result is null) throw new Exception(err.ToString());
-            return v;
-        }
-    }
-
-    public void SetValue(Func<TValue?, TValue?> value)
-    {
-        _value.SetValue(value);
-    }
-
-    public TValue? Latest
-    {
-        get
-        {
-            if (!_resolved) return Value;
-            var err = _error.Value;
-            if (err is not null && _result is null) throw err;
-            return _value.Value;
-        }
-    }
-
-    public Exception? Error => _error.Value;
-
-    public AsyncMemo(Func<TSource, TValue?, TInfo?, Task<TValue>> fetcher, IReadOnlySignal<TSource> signalSource)
-    {
-        _fetcher = fetcher;
-        _source = signalSource;
-        _scope.AddEffect(() => _load());
-    }
-
-    public AsyncMemo(Func<TSource, TValue?, TInfo?, Task<TValue>> fetcher, TSource? source = default)
-    {
-        _fetcher = fetcher;
-        _source = new SimpleReadOnlySignal<TSource?>(source);
-        _scope.AddEffect(() => _load());
-    }
-
-    public Task<TValue?> Refetch(TInfo info)
-    {
-        return _scope.RunInScope(() => _load(true, info));
-    }
-
-    private Task<TValue?> _load(bool isRefetch = false, TInfo? info = default)
-    {
-        if (isRefetch && _scheduled) return Task.FromResult<TValue?>(default);
-        _scheduled = false;
-        var source = _source.Value;
-        if (source is null)
-        {
-            _loadEnd(_result, _value.UntrackValue);
-            return Task.FromResult<TValue?>(default);
-        }
-
-        Exception? error = null;
-
-        var result = ReactiveContext.Untrack(() =>
-        {
-            try
-            {
-                return _fetcher(source, _value.Value, info);
-            }
-            catch (Exception fetcherError)
-            {
-                error = fetcherError;
-            }
-
-            return null;
-        });
-
-        if (error is not null)
-        {
-            _loadEnd(_result, default, error, source);
-            return Task.FromResult<TValue?>(default);
-        }
-
-        if (result is null) return Task.FromResult<TValue?>(default);
-
-        _result = result;
-        _scheduled = true;
-        _ = ResetScheduledAsync();
-
-        ExecuteNode.StartBatch();
-        _state.Value = _resolved ? AsyncMemoState.Refreshing : AsyncMemoState.Pending;
-        ExecuteNode.EndBatch();
-
-        return HandleAsync();
-
-        async Task ResetScheduledAsync()
-        {
-            await Task.Yield();
-            _scheduled = false;
-        }
-
-        async Task<TValue?> HandleAsync()
-        {
-            try
-            {
-                var v = await result;
-                return _loadEnd(_result, v, null, source);
-            }
-            catch (Exception err)
-            {
-                return _loadEnd(_result, default, err, source);
-            }
-        }
-    }
-
-    private TValue? _loadEnd(Task<TValue>? result, TValue? value, Exception? error = null, TSource? key = default)
-    {
-        if (_result != result) return value;
-        if (_result == result)
-            _result = null;
-        if (key is not null) _resolved = true;
-
-        _completeLoad(value, error);
-
-        return value;
-    }
-
-    private void _completeLoad(TValue? v, Exception? err)
-    {
-        ExecuteNode.StartBatch();
-        if (err is null)
-        {
-            _value.Value = v;
-            _state.Value = _resolved ? AsyncMemoState.Ready : AsyncMemoState.Unresolved;
-        }
-        else _state.Value = AsyncMemoState.Errored;
-
-        _error.Value = err;
-        ExecuteNode.EndBatch();
     }
 }
