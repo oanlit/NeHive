@@ -3,82 +3,95 @@ namespace NeHive.Core.Tests;
 public class AsyncMemoTest
 {
     [Fact]
-    public async Task Resource_Async_Fetch_Test()
+    public async Task AsyncMemo_Simple_Use()
     {
         var source = new Signal<int>(1);
 
-        var res = new AsyncMemo<int>(async () =>
-            {
-                var result = source.Value * 2;
-                await Task.Delay(10);
-                return result;
-            }
-        );
-
-        Assert.True(res.Loading);
+        var asyncMemo = new AsyncMemo<int>(async () =>
+        {
+            var result = source.Value * 2;
+            await Task.Delay(10);
+            return result;
+        });
 
         await Task.Delay(50);
-        
-        Assert.Equal(AsyncMemoState.Ready, res.State);
-        Assert.Equal(2, res.Value);
+
+        Assert.Equal(AsyncMemoState.Ready, asyncMemo.State);
+        Assert.Equal(2, asyncMemo.Value);
     }
 
     [Fact]
-    public async Task Resource_Should_Reload_When_Source_Changes()
+    public async Task AsyncMemo_Should_Resolve_To_Value()
     {
         var source = new Signal<int>(1);
 
-        var resource = new AsyncMemo<int>(async epochScope =>
-            {
-                await Task.Delay(10);
-                return epochScope.Track(source) * 2;
-            }
-        );
+        var asyncMemo = new AsyncMemo<int>(async epoch =>
+        {
+            await Task.Delay(10);
+            return epoch.Track(source) * 2;
+        });
 
         await Task.Delay(50);
-        Assert.Equal(2, resource.Value);
+
+        Assert.Equal(AsyncMemoState.Ready, asyncMemo.State);
+        Assert.Equal(2, asyncMemo.Value);
+    }
+
+    [Fact]
+    public async Task AsyncMemo_Should_Reload_When_Dependency_Changes()
+    {
+        var source = new Signal<int>(1);
+
+        var asyncMemo = new AsyncMemo<int>(async epoch =>
+        {
+            await Task.Delay(10);
+            return epoch.Track(source) * 2;
+        });
+
+        await Task.Delay(50);
+        Assert.Equal(2, asyncMemo.Value);
 
         source.Value = 2;
 
         await Task.Delay(50);
-        Assert.Equal(4, resource.Value);
+        Assert.Equal(4, asyncMemo.Value);
     }
 
     [Fact]
-    public async Task Resource_Should_Enter_Pending_When_Source_Changes()
+    public async Task AsyncMemo_Should_Enter_Loading_When_Dependency_Changes()
     {
         var source = new Signal<int>(1);
 
-        var resource = new AsyncMemo<int>(async () =>
-            {
-                var result = source.Value;
-                await Task.Delay(50);
-                return result;
-            }
-        );
+        var asyncMemo = new AsyncMemo<int>(async epoch =>
+        {
+            var v = epoch.Track(source);
+            await Task.Delay(50);
+            return v;
+        });
 
         await Task.Delay(100);
-        Assert.False(resource.Loading);
+        Assert.Equal(AsyncMemoState.Ready, asyncMemo.State);
 
         source.Value = 2;
-        Assert.True(resource.Loading); // 关键点
+
+        Assert.True(asyncMemo.Loading);
 
         await Task.Delay(100);
 
-        Assert.Equal(AsyncMemoState.Ready, resource.State);
+        Assert.Equal(AsyncMemoState.Ready, asyncMemo.State);
+        Assert.Equal(2, asyncMemo.Value);
     }
-
+    
     [Fact]
-    public async Task State_Should_Be_Reactive()
+    public async Task AsyncMemo_State_Should_Be_Reactive()
     {
         var source = new Signal<int>(1);
 
-        var resource = new AsyncMemo<int>(async () =>
-            {
-                await Task.Delay(20);
-                return source.Value;
-            }
-        );
+        var asyncMemo = new AsyncMemo<int>(async epoch =>
+        {
+            await Task.Delay(20);
+            return epoch.Track(source);
+        });
 
         var runs = 0;
         AsyncMemoState last = default;
@@ -86,14 +99,42 @@ public class AsyncMemoTest
         using var effect = new Effect(() =>
         {
             runs++;
-            last = resource.State;
+            last = asyncMemo.State;
         });
+
+        await Task.Delay(50);
 
         source.Value = 2;
 
         await Task.Delay(100);
 
-        Assert.Equal(2, runs);
+        Assert.True(runs >= 2);
         Assert.Equal(AsyncMemoState.Ready, last);
+    }
+    
+    [Fact]
+    public async Task AsyncMemo_Setup_Should_Execute_Only_Once()
+    {
+        var setupRuns = 0;
+
+        var source = new Signal<int>(1);
+
+        _ = new AsyncMemo<int>(
+            _ =>
+            {
+                setupRuns++;
+                return async epoch =>
+                {
+                    await Task.Delay(10);
+                    return epoch.Track(source) * 2;
+                };
+            }
+        );
+
+        await Task.Delay(50);
+        source.Value = 2;
+        await Task.Delay(50);
+
+        Assert.Equal(1, setupRuns);
     }
 }

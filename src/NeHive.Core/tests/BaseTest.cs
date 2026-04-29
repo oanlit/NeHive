@@ -511,7 +511,7 @@ public class IntegrationTests
         Assert.Equal(30, memo.Value);
         Assert.Equal(6, computeCount);
     }
-    
+
     [Fact]
     public void Effect_Multiple_Writes_Should_Batch()
     {
@@ -618,5 +618,19 @@ public class BaseTest
         a.Value = 10;
 
         Assert.Equal(12, observed); // 不能出现 3、11 等中间值
+    }
+
+    void TestReadOnlySignal(Accessor<int> accessor)
+    {
+    }
+
+    [Fact]
+    public void ReadOnlySignal_Test()
+    {
+        var a = new Signal<int>(1);
+        var p = () => a.Value;
+        TestReadOnlySignal(1);
+        TestReadOnlySignal(p);
+        TestReadOnlySignal(a);
     }
 }

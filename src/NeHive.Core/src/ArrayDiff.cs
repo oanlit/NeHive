@@ -327,7 +327,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
     public bool IsInvalid { get; private set; }
     private readonly ScopeNode _scope;
     private readonly ComputedNode<DenseBuffer<TMap>> _mapCache;
-    private readonly IReadOnlySignal<IReadOnlyList<TItem>> _sourceListSignal;
+    private readonly Accessor<IReadOnlyList<TItem>> _sourceListSignal;
     private IReadOnlyList<TItem> _oldList = [];
     private readonly DenseBuffer<Action> _disposers = []; // _oldList的平行数组
     private readonly DenseBuffer<Signal<int>>? _indexSignals; // // _oldList的平行数组
@@ -336,7 +336,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
     private readonly Func<TItem, IReadOnlySignal<int>, TMap>? _mapFnWithIndex;
     private readonly Func<TItem, TKey>? _keyFn;
 
-    public ArrayMapMemo(IReadOnlySignal<IReadOnlyList<TItem>> sourceListSignal, Func<TItem, TMap>? mapFn,
+    public ArrayMapMemo(Accessor<IReadOnlyList<TItem>> sourceListSignal, Func<TItem, TMap>? mapFn,
         Func<TItem, TKey>? keyFn = null)
     {
         _sourceListSignal = sourceListSignal;
@@ -346,7 +346,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         _mapCache = _createMapCache();
     }
 
-    public ArrayMapMemo(IReadOnlySignal<IReadOnlyList<TItem>> sourceListSignal,
+    public ArrayMapMemo(Accessor<IReadOnlyList<TItem>> sourceListSignal,
         Func<TItem, IReadOnlySignal<int>, TMap>? mapFnWithIndex,
         Func<TItem, TKey>? keyFn = null)
     {
@@ -415,92 +415,100 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
             cleanups: null
         );
 
-        var result = scope.RunInScope(() =>
+        TMap result;
+
+        using (new ReactiveContextHelper(scope, null))
         {
             if (_indexSignals is not null)
             {
                 Signal<int> indexSignal = new(index);
                 _indexSignals[index] = indexSignal;
                 _disposers[index] = scope.Dispose;
-                return _mapFnWithIndex!.Invoke(sourceList[index], indexSignal);
+                result = _mapFnWithIndex!.Invoke(sourceList[index], indexSignal);
             }
+            else
+            {
+                _disposers[index] = scope.Dispose;
+                result = _mapFn!.Invoke(sourceList[index]);
+            }
+        }
 
-            _disposers[index] = scope.Dispose;
-            return _mapFn!.Invoke(sourceList[index]);
-        });
         return result;
     }
 
     private DenseBuffer<TMap> _effectFn(ITrack track, DenseBuffer<TMap> oldMap)
     {
-        var newList = track.Track(() => _sourceListSignal.Value);
+        var newList = _sourceListSignal.ValueSignal is null
+            ? track.Track(_sourceListSignal.ValueGetter)
+            : track.Track(_sourceListSignal.ValueSignal);
+
         var newLen = newList.Count;
-            var oldLen = _oldList.Count;
-            var maxLen = Math.Max(oldLen, newLen);
-            DenseBuffer<TMap> newMap;
-            if (newLen == 0 && oldLen != 0)
-            {
-                _removeAll();
-                return new DenseBuffer<TMap>();
-            }
+        var oldLen = _oldList.Count;
+        var maxLen = Math.Max(oldLen, newLen);
+        DenseBuffer<TMap> newMap;
+        if (newLen == 0 && oldLen != 0)
+        {
+            _removeAll();
+            return new DenseBuffer<TMap>();
+        }
 
-            if (oldLen == 0)
-            {
-                newMap = new DenseBuffer<TMap>(newLen);
-                _oldList = newList;
-                newMap.Length = newLen;
-                _disposers.Length = newLen;
-                _indexSignals?.Length = newLen;
-
-                for (var i = 0; i < newLen; i++)
-                {
-                    newMap[i] = _mapper(newList, i);
-                }
-
-                return newMap;
-            }
-
-            var diff = _keyFn is null
-                ? ArrayDiffUtil.ArrayDiff(newList, _oldList)
-                : ArrayDiffUtil.ArrayDiff(newList, _oldList, _keyFn);
-            foreach (var removeItemIndex in diff.RemoveItemsIndex)
-            {
-                _disposers[removeItemIndex]();
-            }
-
-            _disposers.Length = maxLen;
-            _indexSignals?.Length = maxLen;
-            newMap = oldMap.Copy(maxLen);
-            newMap.Length = maxLen;
-            var tempMap = new TMap[maxLen];
-            var tempDisposers = new Action?[maxLen];
-            var tempIndex = _indexSignals is null ? null : new Signal<int>?[maxLen];
-
-            foreach (var (oldIndex, newIndex) in diff.OldIndex2News)
-            {
-                var isOverlaid = tempDisposers[oldIndex] is not null; // 作为平行数组是通用的
-                tempMap[newIndex] = newMap[newIndex];
-                newMap[newIndex] = isOverlaid ? tempMap[oldIndex] : newMap[oldIndex];
-                tempDisposers[newIndex] = _disposers[newIndex];
-                _disposers[newIndex] = isOverlaid ? tempDisposers[oldIndex]! : _disposers[oldIndex];
-
-                if (_indexSignals is null) continue;
-                tempIndex![newIndex] = _indexSignals[newIndex];
-                _indexSignals[newIndex] = isOverlaid ? tempIndex[oldIndex]! : _indexSignals[oldIndex];
-                _indexSignals[newIndex].Value = newIndex; // 触发更新索引信号
-            }
-
-            foreach (var newItemIndex in diff.NewItemsIndex)
-            {
-                newMap[newItemIndex] = _mapper(newList, newItemIndex);
-            }
-
-            _oldList = [..newList];
+        if (oldLen == 0)
+        {
+            newMap = new DenseBuffer<TMap>(newLen);
+            _oldList = newList;
+            newMap.Length = newLen;
             _disposers.Length = newLen;
             _indexSignals?.Length = newLen;
-            newMap.Length = newLen;
+
+            for (var i = 0; i < newLen; i++)
+            {
+                newMap[i] = _mapper(newList, i);
+            }
 
             return newMap;
+        }
+
+        var diff = _keyFn is null
+            ? ArrayDiffUtil.ArrayDiff(newList, _oldList)
+            : ArrayDiffUtil.ArrayDiff(newList, _oldList, _keyFn);
+        foreach (var removeItemIndex in diff.RemoveItemsIndex)
+        {
+            _disposers[removeItemIndex]();
+        }
+
+        _disposers.Length = maxLen;
+        _indexSignals?.Length = maxLen;
+        newMap = oldMap.Copy(maxLen);
+        newMap.Length = maxLen;
+        var tempMap = new TMap[maxLen];
+        var tempDisposers = new Action?[maxLen];
+        var tempIndex = _indexSignals is null ? null : new Signal<int>?[maxLen];
+
+        foreach (var (oldIndex, newIndex) in diff.OldIndex2News)
+        {
+            var isOverlaid = tempDisposers[oldIndex] is not null; // 作为平行数组是通用的
+            tempMap[newIndex] = newMap[newIndex];
+            newMap[newIndex] = isOverlaid ? tempMap[oldIndex] : newMap[oldIndex];
+            tempDisposers[newIndex] = _disposers[newIndex];
+            _disposers[newIndex] = isOverlaid ? tempDisposers[oldIndex]! : _disposers[oldIndex];
+
+            if (_indexSignals is null) continue;
+            tempIndex![newIndex] = _indexSignals[newIndex];
+            _indexSignals[newIndex] = isOverlaid ? tempIndex[oldIndex]! : _indexSignals[oldIndex];
+            _indexSignals[newIndex].Value = newIndex; // 触发更新索引信号
+        }
+
+        foreach (var newItemIndex in diff.NewItemsIndex)
+        {
+            newMap[newItemIndex] = _mapper(newList, newItemIndex);
+        }
+
+        _oldList = [..newList];
+        _disposers.Length = newLen;
+        _indexSignals?.Length = newLen;
+        newMap.Length = newLen;
+
+        return newMap;
     }
 
     public void Dispose()

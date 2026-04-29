@@ -14,10 +14,10 @@ public class SignalTest
             }
         });
 
-        Assert.Single(a.State.Observers);
-        Assert.Single(a.State.ObserverSlots);
-        Assert.Single(a.State.Observers[0].Sources);
-        Assert.Single(a.State.Observers[0].SourceSlots);
+        Assert.Single(a.ValueSignal.Observers);
+        Assert.Single(a.ValueSignal.ObserverSlots);
+        Assert.Single(a.ValueSignal.Observers[0].Sources);
+        Assert.Single(a.ValueSignal.Observers[0].SourceSlots);
 
         effect.Dispose();
     }
@@ -37,15 +37,15 @@ public class SignalTest
             }
         });
 
-        Assert.Single(a.State.Observers);
-        Assert.Single(a.State.ObserverSlots);
-        Assert.Equal(2, a.State.Observers[0].Sources.Count);
-        Assert.Equal(2, a.State.Observers[0].SourceSlots.Count);
+        Assert.Single(a.ValueSignal.Observers);
+        Assert.Single(a.ValueSignal.ObserverSlots);
+        Assert.Equal(2, a.ValueSignal.Observers[0].Sources.Count);
+        Assert.Equal(2, a.ValueSignal.Observers[0].SourceSlots.Count);
 
-        Assert.Single(b.State.Observers);
-        Assert.Single(b.State.ObserverSlots);
-        Assert.Equal(2, b.State.Observers[0].Sources.Count);
-        Assert.Equal(2, b.State.Observers[0].SourceSlots.Count);
+        Assert.Single(b.ValueSignal.Observers);
+        Assert.Single(b.ValueSignal.ObserverSlots);
+        Assert.Equal(2, b.ValueSignal.Observers[0].Sources.Count);
+        Assert.Equal(2, b.ValueSignal.Observers[0].SourceSlots.Count);
 
         effect.Dispose();
     }

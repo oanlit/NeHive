@@ -206,6 +206,28 @@ internal static class ReactiveContext
     }
 }
 
+internal class ReactiveContextHelper : IDisposable
+{
+    private readonly ExecuteNode? _tempExecute;
+    private readonly ScopeNode _tempScope;
+
+    public ReactiveContextHelper(ScopeNode scope, ExecuteNode? tracker)
+    {
+        _tempExecute = ReactiveContext.CurrentExecute;
+        _tempScope = ReactiveContext.CurrentScope;
+        ReactiveContext.CurrentScope = scope;
+        ReactiveContext.CurrentExecute = tracker;
+        ExecuteNode.StartBatch();
+    }
+
+    public void Dispose()
+    {
+        ExecuteNode.EndBatch();
+        ReactiveContext.CurrentExecute = _tempExecute;
+        ReactiveContext.CurrentScope = _tempScope;
+    }
+}
+
 internal enum ExecutePhase
 {
     Resolved,
