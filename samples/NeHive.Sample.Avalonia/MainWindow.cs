@@ -5,7 +5,7 @@ namespace NeHive.Sample.Avalonia;
 
 public class MainWindow : Window
 {
-    private readonly Component _counter;
+    private readonly Element _counter;
 
     public MainWindow()
     {

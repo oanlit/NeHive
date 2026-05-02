@@ -4,41 +4,52 @@ using NeHive.Sample.Avalonia.Render;
 
 namespace NeHive.Sample.Avalonia;
 
+// using HStackPanelProp = Components.HStackPanelProp;
+// using HTextBlockProp = Components.HTextBlockProp;
+// using HTextButtonProp = Components.HButtonProp;
+// using HTextButtonExpose = Components.HButtonExpose;
+
 public static class CounterComponent
 {
-    public static Component Counter(int id = 0)
+    // static readonly Component<HStackPanelProp> HStackPanel = Components.HStackPanel;
+    // static readonly Component<HTextBlockProp> HTextBlock = Components.HTextBlock;
+    // static readonly Component<HTextButtonProp, HTextButtonExpose> HButton = Components.HButton;
+
+    public static readonly Component<int> Counter = new((id, uiScope) =>
     {
-        return Component.Create(uiScope =>
+        // def hStackPanel = Components.HStackPanel.Create;
+        // def hTextBlock = Components.HTextBlock.Create;
+		// def hButton = Components.HButton.Create;
+        var hStackPanel = Components.HStackPanel;
+        var hTextBlock = Components.HTextBlock;
+        var hButton = Components.HButton;
+
+        Console.WriteLine($"Counter{id} 组件已创建");
+        var count = new Signal<int>(0);
+        var countText = () => $"Count: {count.Value}";
+
+        var rootView = hStackPanel.Create(new()
         {
-            Console.WriteLine($"Counter{id} 组件已创建");
-            var count = new Signal<int>(0);
-
-            var stack = new StackPanel();
-
-            var text = new TextBlock();
-            var button = new Button { Content = "Add" };
-
-            stack.Children.Add(new TextBlock()
-            {
-                Text = $"Id:{id}"
-            });
-            stack.Children.Add(text);
-            stack.Children.Add(button);
-
-            uiScope.AddEffect(() => { text.Text = $"Count: {count.Value}"; });
-
-            button.Click += (_, _) => count.Value++;
-
-            uiScope.OnMount(() => { Console.WriteLine(stack.Bounds.Size); });
-            uiScope.OnDispose(() => { Console.WriteLine($"Counter{id} 组件已移除"); });
-
-            return stack;
+            Children =
+            [
+                hTextBlock.Create(new($"Id:{id}")),
+                hTextBlock.Create(new(countText)),
+                hButton.Create(new("Add"), out var button)
+            ]
         });
-    }
 
-    public static Component Demo()
+        button.Click += (_, _) => { count.Value++; };
+
+        uiScope.OnMount(() => { Console.WriteLine(rootView.Content.Bounds.Size); });
+        // Console.WriteLine(rootView.Content.Bounds.Size);
+        uiScope.OnDispose(() => { Console.WriteLine($"Counter{id} 组件已移除"); });
+
+        return rootView;
+    });
+
+    public static Element Demo()
     {
-        return Component.Create(demoScope =>
+        return Element.Create(demoScope =>
         {
             var visible = new Signal<bool>(true);
 
@@ -53,7 +64,7 @@ public static class CounterComponent
 
             stack.Children.Add(toggleBtn);
 
-            var show = Component.Show(visible, () => Counter());
+            var show = Element.Show(visible, new Component(() => Counter.Create(0)));
 
             stack.Children.Add(show.Content);
 
@@ -63,9 +74,9 @@ public static class CounterComponent
         });
     }
 
-    public static Component ForEachDemo()
+    public static Element ForEachDemo()
     {
-        return Component.Create(_ =>
+        return Element.Create(_ =>
         {
             var items = new Signal<IReadOnlyList<int>>([1, 2, 3]);
 
@@ -80,7 +91,7 @@ public static class CounterComponent
             stack.Children.Add(removeSecBtn);
 
             // 👇 关键：For
-            var list = Component.ForEach(
+            var list = Element.ForEach(
                 items,
                 Counter
             );
