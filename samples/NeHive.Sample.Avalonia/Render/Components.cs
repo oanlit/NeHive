@@ -6,7 +6,7 @@ namespace NeHive.Sample.Avalonia.Render;
 
 public static class Components
 {
-    public static readonly Component Empty = new(() => new Panel());
+    public static readonly Component Empty = new(uiScope => new Element(uiScope, new Panel()));
 
     public class ShowProp(Accessor<bool> when)
     {
@@ -21,7 +21,7 @@ public static class Components
         uiScope.AddEffect(epochScope =>
         {
             var when = epochScope.Track(prop.When);
-            
+
             if (!when)
                 return;
 
@@ -30,7 +30,7 @@ public static class Components
             epochScope.OnDispose(child.Dispose);
         });
 
-        return panel;
+        return new Element(uiScope, panel);
     });
 
     public class HStackPanelProp(Element[]? children = null)
@@ -38,7 +38,7 @@ public static class Components
         public Element[] Children = children ?? [];
     }
 
-    public static readonly Component<HStackPanelProp> HStackPanel = new(prop =>
+    public static readonly Component<HStackPanelProp> HStackPanel = new((prop, uiScope) =>
     {
         var stack = new StackPanel();
         foreach (var el in prop.Children)
@@ -46,7 +46,7 @@ public static class Components
             stack.Children.Add(el.Content);
         }
 
-        return stack;
+        return new Element(uiScope, stack);
     });
 
     public class HTextBlockProp(Accessor<string>? text = null)
@@ -58,10 +58,10 @@ public static class Components
     {
         var text = new TextBlock();
         uiScope.AddEffect(() => { text.Text = prop.Text.Value; });
-        return text;
+        return new Element(uiScope, text);
     });
 
-    public struct HButtonProp(Accessor<string>? text = null,EventHandler<RoutedEventArgs>? click = null)
+    public struct HButtonProp(Accessor<string>? text = null, EventHandler<RoutedEventArgs>? click = null)
     {
         public readonly Accessor<string> Text = text ?? "";
         public readonly EventHandler<RoutedEventArgs>? Click = click;
@@ -129,6 +129,6 @@ public static class Components<T> where T : notnull
 
         uiScope.OnDispose(memo.Dispose);
 
-        return panel;
+        return new Element(uiScope, panel);
     });
 }

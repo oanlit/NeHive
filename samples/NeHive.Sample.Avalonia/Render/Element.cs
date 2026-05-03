@@ -5,12 +5,12 @@ namespace NeHive.Sample.Avalonia.Render;
 
 public class Element
 {
-    private readonly UiScope _scope;
+    protected readonly UiScope Scope;
     public readonly Control Content;
 
     internal Element(UiScope scope, Control content)
     {
-        _scope = scope;
+        Scope = scope;
         Content = content;
         content.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(scope.RunMount);
         DisposeContent(content);
@@ -18,33 +18,16 @@ public class Element
 
     public void Dispose()
     {
-        _scope.Dispose();
-    }
-
-    public static Element Create(Func<UiScope, Control> builder)
-    {
-        var scope = new UiScope();
-        var content = scope.RunInScope(() => builder(scope));
-        return new Element(scope, content);
-    }
-
-    public static Element Create(Func<Control> builder)
-    {
-        return Create(_ => builder());
-    }
-
-    public static Element Create<TProp>(Func<TProp, UiScope, Control> builder, TProp props)
-    {
-        var uiScope = new UiScope();
-        var control = uiScope.RunInScope(() => builder(props, uiScope));
-        return new Element(uiScope, control);
+        Scope.Dispose();
     }
 
     public static Element Create(Func<UiScope, Element> builder)
     {
-        var scope = new UiScope();
-        var content = scope.RunInScope(() => builder(scope)).Content;
-        return new Element(scope, content);
+        var uiScope = new UiScope();
+        var element = uiScope.RunInScope(() => builder(uiScope));
+        return element.Scope == uiScope
+            ? element
+            : new Element(uiScope, element.Content);
     }
 
     public static Element Create(Func<Element> builder)
@@ -55,13 +38,15 @@ public class Element
     public static Element Create<TProp>(Func<TProp, UiScope, Element> builder, TProp props)
     {
         var uiScope = new UiScope();
-        var control = uiScope.RunInScope(() => builder(props, uiScope)).Content;
-        return new Element(uiScope, control);
+        var element = uiScope.RunInScope(() => builder(props, uiScope));
+        return element.Scope == uiScope
+            ? element
+            : new Element(uiScope, element.Content);
     }
 
     private void DisposeContent(Control control)
     {
-        _scope.OnDispose(() =>
+        Scope.OnDispose(() =>
         {
             var parent = control.Parent;
             switch (parent)
@@ -192,15 +177,6 @@ public class Component
 {
     public readonly Func<Element> Create;
 
-    public Component(Func<UiScope, Control> builder)
-    {
-        Create = () => Element.Create(builder);
-    }
-
-    public Component(Func<Control> builder) : this(_ => builder())
-    {
-    }
-
     public Component(Func<UiScope, Element> builder)
     {
         Create = () => Element.Create(builder);
@@ -209,16 +185,6 @@ public class Component
     public Component(Func<Element> builder)
     {
         Create = () => Element.Create(builder);
-    }
-
-    public static implicit operator Component(Func<UiScope, Control> builder)
-    {
-        return new Component(builder);
-    }
-
-    public static implicit operator Component(Func<Control> builder)
-    {
-        return new Component(builder);
     }
 
     public static implicit operator Component(Func<UiScope, Element> builder)
@@ -236,15 +202,6 @@ public class Component<TProp>
 {
     public readonly Func<TProp, Element> Create;
 
-    public Component(Func<TProp, UiScope, Control> builder)
-    {
-        Create = props => Element.Create(builder, props);
-    }
-
-    public Component(Func<TProp, Control> builder) : this((prop, _) => builder(prop))
-    {
-    }
-
     public Component(Func<TProp, UiScope, Element> builder)
     {
         Create = props => Element.Create(builder, props);
@@ -252,16 +209,6 @@ public class Component<TProp>
 
     public Component(Func<TProp, Element> builder) : this((prop, _) => builder(prop))
     {
-    }
-
-    public static implicit operator Component<TProp>(Func<TProp, UiScope, Control> builder)
-    {
-        return new Component<TProp>(builder);
-    }
-
-    public static implicit operator Component<TProp>(Func<TProp, Control> builder)
-    {
-        return new Component<TProp>(builder);
     }
 
     public static implicit operator Component<TProp>(Func<TProp, UiScope, Element> builder)
@@ -300,10 +247,10 @@ public class ExposeComponent<TExpose>
     {
         return _create(out expose);
     }
-    
+
     public Element<TExpose> Create(Action<TExpose> fn)
     {
-        var el =  _create(out var expose);
+        var el = _create(out var expose);
         fn(expose);
         return el;
     }
@@ -334,10 +281,10 @@ public class Component<TProp, TExpose>
     {
         return _create(props, out expose);
     }
-    
+
     public Element<TExpose> Create(TProp props, Action<TExpose> fn)
     {
-        var el =  _create(props, out var expose);
+        var el = _create(props, out var expose);
         fn(expose);
         return el;
     }
