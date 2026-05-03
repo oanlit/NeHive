@@ -6,9 +6,9 @@ namespace NeHive.Sample.Avalonia.Render;
 
 public static class Components
 {
-    public static readonly Component Empty = new(uiScope => new Element(uiScope, new Panel()));
+    public static readonly Component Empty = new(() => Element.Empty);
 
-    public class ShowProp(Accessor<bool> when)
+    public struct ShowProp(Accessor<bool> when)
     {
         public required Component Children;
         public readonly Accessor<bool> When = when;
@@ -33,17 +33,22 @@ public static class Components
         return new Element(uiScope, panel);
     });
 
-    public class HStackPanelProp(Element[]? children = null)
+    public struct HStackPanelProp(ChildElement? children = null)
     {
-        public Element[] Children = children ?? [];
+        public ChildElement? Children = children;
     }
 
     public static readonly Component<HStackPanelProp> HStackPanel = new((prop, uiScope) =>
     {
-        var stack = new StackPanel();
-        foreach (var el in prop.Children)
+        StackPanel stack;
+        if (prop.Children?.Stack is not null)
         {
-            stack.Children.Add(el.Content);
+            stack = prop.Children.Stack;
+        }
+        else
+        {
+            stack = new StackPanel();
+            stack.Children.Add(prop.Children?.Content.Content ?? new Control());
         }
 
         return new Element(uiScope, stack);
@@ -72,18 +77,22 @@ public static class Components
         public EventHandler<RoutedEventArgs> Click = (_, _) => { };
     }
 
-    public static readonly Component<HButtonProp, HButtonExpose> HButton = new((prop, out expose, uiScope) =>
+    public static readonly Component<HButtonProp, HButtonExpose> HButton = new((prop, uiScope) =>
     {
         var button = new Button();
         uiScope.AddEffect(() => { button.Content = prop.Text.Value; });
 
-        var expose1 = new HButtonExpose();
+        var expose = new HButtonExpose();
         uiScope.OnMount(() =>
         {
             button.Click += prop.Click;
-            button.Click += expose1.Click;
+            button.Click += expose.Click;
         });
-        expose = expose1;
+        uiScope.OnDispose(() =>
+        {
+            button.Click -= prop.Click;
+            button.Click -= expose.Click;
+        });
 
         return new Element<HButtonExpose>(uiScope, button, expose);
     });
@@ -104,9 +113,9 @@ public static class Components<T> where T : notnull
         // 用 ArrayMapMemo 做“数据层 diff + 生命周期管理”
         var memo = new ArrayMapMemo<T, Element, T>(prop.Each, prop.Children.Create);
 
-        uiScope.AddEffect(() =>
+        uiScope.AddEffect(epochScope =>
         {
-            var list = memo.Value;
+            var list = epochScope.Track(memo);
 
             // —— UI 最小更新（核心）——
             for (var i = 0; i < list.Count; i++)

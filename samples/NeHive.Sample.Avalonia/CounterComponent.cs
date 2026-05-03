@@ -29,8 +29,7 @@ public static class CounterComponent
 
         var rootView = hStackPanel.Create(new()
         {
-            Children =
-            [
+            Children = new([
                 hTextBlock.Create(new($"Id:{id}")),
                 hTextBlock.Create(new(countText)),
                 hButton.Create(new("Add",
@@ -39,7 +38,12 @@ public static class CounterComponent
                 hButton.Create(new("Sub",
                     click: (_, _) => count.Value--
                 )) // hButton.Create
-            ]
+            ])
+        });
+        
+        var rootView2 = hStackPanel.Create(new()
+        {
+            Children = $"Id:{id}"
         });
         uiScope.OnMount(() => { Console.WriteLine(rootView.Content.Bounds.Size); });
         // Console.WriteLine(rootView.Text.Bounds.Size);
@@ -60,8 +64,7 @@ public static class CounterComponent
 
         var rootView = hStackPanel.Create(new()
         {
-            Children =
-            [
+            Children = new([
                 hButton.Create(new(visibleText,
                     click: (_, _) => visible.Value = !visible.Value
                 )), // hButton.Create
@@ -69,7 +72,7 @@ public static class CounterComponent
                 {
                     Children = new Component(() => Counter.Create(0))
                 }) // hButton.Create
-            ] // hStackPanel.Create.Children
+            ]) // hStackPanel.Create.Children
         });
 
         return rootView;
@@ -84,8 +87,7 @@ public static class CounterComponent
 
         var rootView = hStackPanel.Create(new()
         {
-            Children =
-            [
+            Children = new([
                 hButton.Create(new("Add Item"),
                     out var addBtn
                 ), // hButton.Create
@@ -101,17 +103,17 @@ public static class CounterComponent
                         Children = Counter
                     }
                 ) // Components<int>.ForEach.Create
-            ] // hStackPanel.Create.Children
+            ]) // hStackPanel.Create.Children
         });
 
-        addBtn.Click += (_, _) =>
+        addBtn.Expose.Click += (_, _) =>
         {
             var arr = items.Value.ToList();
             arr.Add(arr.Count + 1);
             items.Value = arr;
         };
 
-        removeBtn.Click += (_, _) =>
+        removeBtn.Expose.Click += (_, _) =>
         {
             var arr = items.Value.ToList();
             if (arr.Count > 0)
@@ -119,7 +121,7 @@ public static class CounterComponent
             items.Value = arr;
         };
 
-        removeSecBtn.Click += (_, _) =>
+        removeSecBtn.Expose.Click += (_, _) =>
         {
             var arr = items.Value.ToList();
             if (arr.Count > 1)

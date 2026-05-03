@@ -318,15 +318,18 @@ internal class DenseBuffer<T> : IReadOnlyList<T>
     }
 }
 
-public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMap>>
+public class ArrayMapMemo<TItem, TMap, TKey> :
+    Accessor<IReadOnlyList<TMap>>
     where TItem : notnull where TKey : notnull
 {
-    public IReadOnlyList<TMap> Value => _mapCache.ReadSignal();
-    public IReadOnlyList<TMap> UntrackValue => _mapCache.UntrackValue;
+    // public IReadOnlyList<TMap> Value => _mapCache.ReadSignal();
+    // public IReadOnlyList<TMap> UntrackValue => _mapCache.UntrackValue;
 
     public bool IsInvalid { get; private set; }
+
     private readonly ScopeNode _scope;
-    private readonly ComputedNode<DenseBuffer<TMap>> _mapCache;
+
+    // private readonly ComputedNode<DenseBuffer<TMap>> _mapCache;
     private readonly Accessor<IReadOnlyList<TItem>> _sourceListSignal;
     private IReadOnlyList<TItem> _oldList = [];
     private readonly DenseBuffer<Action> _disposers = []; // _oldList的平行数组
@@ -343,7 +346,10 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         _mapFn = mapFn;
         _keyFn = keyFn;
         _scope = _createSelfScope();
-        _mapCache = _createMapCache();
+        // _mapCache = _createMapCache();
+        ValueSignal = _createMapCache();
+        ValueGetter = () => ValueSignal.ReadSignal();
+        UntrackValueGetter = () => ValueSignal.Value;
     }
 
     public ArrayMapMemo(Accessor<IReadOnlyList<TItem>> sourceListSignal,
@@ -355,7 +361,10 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         _keyFn = keyFn;
         _indexSignals = [];
         _scope = _createSelfScope();
-        _mapCache = _createMapCache();
+        // _mapCache = _createMapCache();
+        ValueSignal = _createMapCache();
+        ValueGetter = () => ValueSignal.ReadSignal();
+        UntrackValueGetter = () => ValueSignal.Value;
     }
 
     private ScopeNode _createSelfScope()
@@ -377,16 +386,16 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         return scope;
     }
 
-    private ComputedNode<DenseBuffer<TMap>> _createMapCache()
+    private ComputedNode<IReadOnlyList<TMap>> _createMapCache()
     {
         var mapCache = _scope.RunInScope(() =>
-            new ComputedNode<DenseBuffer<TMap>>(
+            new ComputedNode<IReadOnlyList<TMap>>(
                 _effectFn,
                 comparator: Constant.EqualFn
             )
             {
                 Phase = ExecutePhase.Resolved,
-                Value = []
+                Value = new DenseBuffer<TMap>()
             });
         mapCache.UpdateComputation();
 
@@ -436,7 +445,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
         return result;
     }
 
-    private DenseBuffer<TMap> _effectFn(ITrack track, DenseBuffer<TMap> oldMap)
+    private DenseBuffer<TMap> _effectFn(ITrack track, IReadOnlyList<TMap> oldMap)
     {
         var newList = _sourceListSignal.ValueSignal is null
             ? track.Track(_sourceListSignal.ValueGetter)
@@ -478,7 +487,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> : IReadOnlySignal<IReadOnlyList<TMa
 
         _disposers.Length = maxLen;
         _indexSignals?.Length = maxLen;
-        newMap = oldMap.Copy(maxLen);
+        newMap = ((DenseBuffer<TMap>)oldMap).Copy(maxLen);
         newMap.Length = maxLen;
         var tempMap = new TMap[maxLen];
         var tempDisposers = new Action?[maxLen];
