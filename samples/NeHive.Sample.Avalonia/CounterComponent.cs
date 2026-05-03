@@ -19,31 +19,27 @@ public static class CounterComponent
         // def hStackPanel = Components.HStackPanel.Create;
         // def hTextBlock = Components.HTextBlock.Create;
         // def hButton = Components.HButton.Create;
-        var hStackPanel = Components.HStackPanel;
-        var hTextBlock = Components.HTextBlock;
-        var hButton = Components.HButton;
+        var hStackPanel = Components.HStackPanel.Create;
+        var hTextBlock = Components.HTextBlock.Create;
+        var hButton = Components.HButton.Create;
 
         Console.WriteLine($"Counter{id} 组件已创建");
         var count = new Signal<int>(0);
         var countText = () => $"Count: {count.Value}";
 
-        var rootView = hStackPanel.Create(new()
+        var rootView = hStackPanel(new()
         {
-            Children = new([
-                hTextBlock.Create(new($"Id:{id}")),
-                hTextBlock.Create(new(countText)),
-                hButton.Create(new("Add",
+            Children =
+            [
+                hTextBlock(new($"Id:{id}")),
+                hTextBlock(new(countText)),
+                hButton(new("Add",
                     click: (_, _) => count.Value++
                 )), // hButton.Create
-                hButton.Create(new("Sub",
+                hButton(new("Sub",
                     click: (_, _) => count.Value--
                 )) // hButton.Create
-            ])
-        });
-        
-        var rootView2 = hStackPanel.Create(new()
-        {
-            Children = $"Id:{id}"
+            ] // hStackPanel.Create.Children
         });
         uiScope.OnMount(() => { Console.WriteLine(rootView.Content.Bounds.Size); });
         // Console.WriteLine(rootView.Text.Bounds.Size);
@@ -54,25 +50,26 @@ public static class CounterComponent
 
     public static Component ShowDemo = new(uiScope =>
     {
-        var hStackPanel = Components.HStackPanel;
-        var hButton = Components.HButton;
-        var show = Components.Show;
+        var hStackPanel = Components.HStackPanel.Create;
+        var hButton = Components.HButton.Create;
+        var show = Components.Show.Create;
 
         var visible = new Signal<bool>(true);
         // var visibleText = () => visible.Value ? "Visible" : "Hidden";
         var visibleText = uiScope.AddComputed(() => visible.Value ? "Visible" : "Hidden");
 
-        var rootView = hStackPanel.Create(new()
+        var rootView = hStackPanel(new()
         {
-            Children = new([
-                hButton.Create(new(visibleText,
+            Children =
+            [
+                hButton(new(visibleText,
                     click: (_, _) => visible.Value = !visible.Value
                 )), // hButton.Create
-                show.Create(new(when: visible)
+                show(new(visible)
                 {
                     Children = new Component(() => Counter.Create(0))
                 }) // hButton.Create
-            ]) // hStackPanel.Create.Children
+            ] // hStackPanel.Create.Children
         });
 
         return rootView;
@@ -80,21 +77,21 @@ public static class CounterComponent
 
     public static readonly Component ForEachDemo = new(() =>
     {
-        var hStackPanel = Components.HStackPanel;
+        var hStackPanel = Components.HStackPanel.Create;
         var hButton = Components.HButton;
 
         var items = new Signal<IReadOnlyList<int>>([1, 2, 3]);
-
-        var rootView = hStackPanel.Create(new()
+        
+        var rootView = hStackPanel(new()
         {
-            Children = new([
-                hButton.Create(new("Add Item"),
+            Children = [
+                hButton.CreateRef(new("Add Item"),
                     out var addBtn
                 ), // hButton.Create
-                hButton.Create(new("Remove Last"),
+                hButton.CreateRef(new("Remove Last"),
                     out var removeBtn
                 ), // hButton.Create
-                hButton.Create(new("Remove Second Last"),
+                hButton.CreateRef(new("Remove Second Last"),
                     out var removeSecBtn
                 ), // hButton.Create
                 Components<int>.ForEach.Create(
@@ -103,7 +100,7 @@ public static class CounterComponent
                         Children = Counter
                     }
                 ) // Components<int>.ForEach.Create
-            ]) // hStackPanel.Create.Children
+            ] // hStackPanel.Create.Children
         });
 
         addBtn.Expose.Click += (_, _) =>

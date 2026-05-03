@@ -1,13 +1,24 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
-using NeHive.Core;
 
 namespace NeHive.Sample.Avalonia.Render;
 
-public class Element
+public interface IElement
 {
-    internal readonly UiScope Scope;
-    public readonly Control Content;
+    public UiScope Scope { get; }
+    public Control Content { get; }
+    public void Dispose();
+}
+
+public interface IElement<out TExpose> : IElement
+{
+    public TExpose Expose { get; }
+}
+
+public class Element : IElement
+{
+    public UiScope Scope { get; }
+    public Control Content { get; }
 
     internal Element(UiScope scope, Control content)
     {
@@ -17,7 +28,7 @@ public class Element
         DisposeContent(content);
     }
 
-    public Element(UiScope scope, Element element) : this(scope, element.Content)
+    public Element(UiScope scope, IElement element) : this(scope, element.Content)
     {
     }
 
@@ -28,7 +39,7 @@ public class Element
         Scope.Dispose();
     }
 
-    public static Element Create(Func<UiScope, Element> builder)
+    public static IElement Create(Func<UiScope, IElement> builder)
     {
         var uiScope = new UiScope();
         var element = uiScope.RunInScope(() => builder(uiScope));
@@ -37,12 +48,12 @@ public class Element
             : new Element(uiScope, element.Content);
     }
 
-    public static Element Create(Func<Element> builder)
+    public static IElement Create(Func<IElement> builder)
     {
         return Create(_ => builder());
     }
 
-    public static Element Create<TProp>(Func<TProp, UiScope, Element> builder, TProp props)
+    public static IElement Create<TProp>(Func<TProp, UiScope, IElement> builder, TProp props)
     {
         var uiScope = new UiScope();
         var element = uiScope.RunInScope(() => builder(props, uiScope));
@@ -76,9 +87,9 @@ public class Element
     }
 }
 
-public class Element<TExpose> : Element
+public class Element<TExpose> : Element, IElement<TExpose>
 {
-    public readonly TExpose Expose;
+    public TExpose Expose { get; }
 
     internal Element(UiScope scope, Control content, TExpose expose) : base(scope, content)
     {
@@ -90,8 +101,8 @@ public class Element<TExpose> : Element
         Expose = expose;
     }
 
-    public static Element<TExpose> Create<TProp>(
-        Func<TProp, UiScope, Element<TExpose>> builder,
+    public static IElement<TExpose> Create<TProp>(
+        Func<TProp, UiScope, IElement<TExpose>> builder,
         TProp props
     )
     {
@@ -104,8 +115,8 @@ public class Element<TExpose> : Element
             : new Element<TExpose>(uiScope, element.Content, element.Expose);
     }
 
-    public static Element<TExpose> Create<TProp>(
-        Func<TProp, Element<TExpose>> builder,
+    public static IElement<TExpose> Create<TProp>(
+        Func<TProp, IElement<TExpose>> builder,
         TProp props
     )
     {
@@ -121,9 +132,9 @@ public class Element<TExpose> : Element
             : new Element<TExpose>(uiScope, element.Content, element.Expose);
     }
 
-    public static Element<TExpose> Create(
-        Func<UiScope, Element<TExpose>> builder,
-        out Element<TExpose> expose
+    public static IElement<TExpose> Create(
+        Func<UiScope, IElement<TExpose>> builder,
+        out IElement<TExpose> expose
     )
     {
         var uiScope = new UiScope();
@@ -136,9 +147,9 @@ public class Element<TExpose> : Element
             : new Element<TExpose>(uiScope, element.Content, element.Expose);
     }
 
-    public static Element<TExpose> Create(
-        Func<Element<TExpose>> builder,
-        out Element<TExpose> expose
+    public static IElement<TExpose> Create(
+        Func<IElement<TExpose>> builder,
+        out IElement<TExpose> expose
     )
     {
         var uiScope = new UiScope();
@@ -151,126 +162,134 @@ public class Element<TExpose> : Element
     }
 }
 
-public class ChildElement
-{
-    internal readonly Element Content;
-    internal StackPanel? Stack { get; private init; }
-
-    public ChildElement(Element element)
-    {
-        Content = new Element(element.Scope, element.Content);
-    }
-
-    public static implicit operator ChildElement(Element element)
-    {
-        return new(element);
-    }
-
-    public ChildElement(Component comp)
-    {
-        Content = comp.Create();
-    }
-
-    public static implicit operator ChildElement(Component comp)
-    {
-        return new(comp);
-    }
-
-    public ChildElement(Func<Element> fn)
-    {
-        Content = fn();
-    }
-
-    public static implicit operator ChildElement(Func<Element> fn)
-    {
-        return new ChildElement(fn());
-    }
-
-    public ChildElement(Element[] elements)
-    {
-        var uiScope = new UiScope();
-        var stack = new StackPanel();
-        foreach (var el in elements)
-        {
-            stack.Children.Add(el.Content);
-        }
-
-        Content = new Element(uiScope, stack);
-        Stack = stack;
-    }
-
-    public static implicit operator ChildElement(Element[] elements)
-    {
-        return new ChildElement(elements);
-    }
-
-    public ChildElement(string text)
-    {
-        var uiScope = new UiScope();
-        var textBlock = new TextBlock()
-        {
-            Text = text
-        };
-        Content = new Element(uiScope, textBlock);
-    }
-
-    public static implicit operator ChildElement(string text)
-    {
-        return new(text);
-    }
-    
-    public ChildElement(IReadOnlySignal<string> text)
-    {
-        var uiScope = new UiScope();
-        var textBlock = new TextBlock();
-        uiScope.AddEffect(() => textBlock.Text = text.Value);
-        Content = new Element(uiScope, textBlock);
-    }
-
-    public static implicit operator ChildElement(Accessor<string> text)
-    {
-        return new ChildElement(text);
-    }
-}
+// public class ChildElement : IElement
+// {
+//     public UiScope Scope { get; }
+//     public Control Content { get; }
+//     internal StackPanel? Stack { get; private init; }
+//
+//     public ChildElement(IElement element)
+//     {
+//         Scope = element.Scope;
+//         Content = element.Content;
+//     }
+//
+//     public void Dispose()
+//     {
+//         Scope.Dispose();
+//     }
+//
+//     public ChildElement(Component comp)
+//     {
+//         var element = comp.Create();
+//         Scope = element.Scope;
+//         Content = element.Content;
+//     }
+//
+//     public static implicit operator ChildElement(Component comp)
+//     {
+//         return new(comp);
+//     }
+//
+//     public ChildElement(Func<IElement> fn)
+//     {
+//         var element = fn();
+//         Scope = element.Scope;
+//         Content = element.Content;
+//     }
+//
+//     public static implicit operator ChildElement(Func<IElement> fn)
+//     {
+//         return new ChildElement(fn());
+//     }
+//
+//     public ChildElement(IEnumerable<IElement> elements)
+//     {
+//         var uiScope = new UiScope();
+//         var stack = new StackPanel();
+//         foreach (var el in elements)
+//         {
+//             stack.Children.Add(el.Content);
+//         }
+//
+//         var element = new Element(uiScope, stack);
+//         Scope = element.Scope;
+//         Content = element.Content;
+//         Stack = stack;
+//     }
+//
+//     public static implicit operator ChildElement(IElement[] elements)
+//     {
+//         return new ChildElement(elements);
+//     }
+//
+//     public ChildElement(string text)
+//     {
+//         var uiScope = new UiScope();
+//         var textBlock = new TextBlock
+//         {
+//             Text = text
+//         };
+//
+//         var element = new Element(uiScope, textBlock);
+//         Scope = element.Scope;
+//         Content = element.Content;
+//     }
+//
+//     public static implicit operator ChildElement(string text)
+//     {
+//         return new(text);
+//     }
+//
+//     public ChildElement(IReadOnlySignal<string> text)
+//     {
+//         var uiScope = new UiScope();
+//         var textBlock = new TextBlock();
+//         uiScope.AddEffect(() => textBlock.Text = text.Value);
+//
+//         var element = new Element(uiScope, textBlock);
+//         Scope = element.Scope;
+//         Content = element.Content;
+//     }
+//
+//     public static implicit operator ChildElement(Accessor<string> text)
+//     {
+//         return new ChildElement(text);
+//     }
+// }
 
 public class Component
 {
-    private readonly Func<Element> _create;
+    private readonly Func<IElement> _create;
 
-    public Component(Func<UiScope, Element> builder)
-    {
-        _create = () => Element.Create(builder);
-    }
+    public Component(Func<UiScope, IElement> builder)
+        => _create = () => Element.Create(builder);
 
-    public Component(Func<Element> builder)
-    {
-        _create = () => Element.Create(builder);
-    }
+    public Component(Func<IElement> builder)
+        => _create = () => Element.Create(builder);
 
-    public Element Create()
-    {
-        return _create();
-    }
+    public IElement Create()
+        => _create();
 
-    public Element Create(out Element expose)
+    public IElement CreateRef(out IElement expose)
     {
         expose = _create();
         return expose;
     }
 
-    public Element Create(Action<Element> fn)
+    public IElement CreateRef(Action<IElement> fn)
     {
         var element = _create();
         fn(element);
         return element;
     }
 
-    public static implicit operator Component(Func<UiScope, Element> builder)
+    public static implicit operator Component(Func<UiScope, IElement> builder)
     {
         return new Component(builder);
     }
 
-    public static implicit operator Component(Func<Element> builder)
+    public static implicit operator Component(Func<IElement> builder)
     {
         return new Component(builder);
     }
@@ -278,41 +297,41 @@ public class Component
 
 public class Component<TProp>
 {
-    private readonly Func<TProp, Element> _create;
+    private readonly Func<TProp, IElement> _create;
 
-    public Component(Func<TProp, UiScope, Element> builder)
+    public Component(Func<TProp, UiScope, IElement> builder)
     {
         _create = props => Element.Create(builder, props);
     }
 
-    public Component(Func<TProp, Element> builder) : this((prop, _) => builder(prop))
+    public Component(Func<TProp, IElement> builder) : this((prop, _) => builder(prop))
     {
     }
 
-    public Element Create(TProp props)
+    public IElement Create(TProp props)
     {
         return _create(props);
     }
 
-    public Element Create(TProp props, out Element expose)
+    public IElement CreateRef(TProp props, out IElement expose)
     {
         expose = _create(props);
         return expose;
     }
 
-    public Element Create(TProp props, Action<Element> fn)
+    public IElement CreateRef(TProp props, Action<IElement> fn)
     {
         var element = _create(props);
         fn(element);
         return element;
     }
 
-    public static implicit operator Component<TProp>(Func<TProp, UiScope, Element> builder)
+    public static implicit operator Component<TProp>(Func<TProp, UiScope, IElement> builder)
     {
         return new Component<TProp>(builder);
     }
 
-    public static implicit operator Component<TProp>(Func<TProp, Element> builder)
+    public static implicit operator Component<TProp>(Func<TProp, IElement> builder)
     {
         return new Component<TProp>(builder);
     }
@@ -320,32 +339,32 @@ public class Component<TProp>
 
 public class Component<TProp, TExpose>
 {
-    private readonly Func<TProp, Element<TExpose>> _create;
+    private readonly Func<TProp, IElement<TExpose>> _create;
 
-    public Component(Func<TProp, Element<TExpose>> builder)
+    public Component(Func<TProp, IElement<TExpose>> builder)
     {
         _create = props =>
             Element<TExpose>.Create(builder, props);
     }
 
-    public Component(Func<TProp, UiScope, Element<TExpose>> builder)
+    public Component(Func<TProp, UiScope, IElement<TExpose>> builder)
     {
         _create = props =>
             Element<TExpose>.Create(builder, props);
     }
 
-    public Element<TExpose> Create(TProp props)
+    public IElement<TExpose> Create(TProp props)
     {
         return _create(props);
     }
 
-    public Element<TExpose> Create(TProp props, out Element<TExpose> expose)
+    public IElement<TExpose> CreateRef(TProp props, out IElement<TExpose> expose)
     {
         expose = _create(props);
         return expose;
     }
 
-    public Element<TExpose> Create(TProp props, Action<Element<TExpose>> fn)
+    public IElement<TExpose> CreateRef(TProp props, Action<IElement<TExpose>> fn)
     {
         var element = _create(props);
         fn(element);
@@ -353,53 +372,53 @@ public class Component<TProp, TExpose>
     }
 }
 
-public class ChildComponent
-{
-    private readonly Component _comp;
-
-    private ChildComponent(Component comp)
-    {
-        _comp = comp;
-    }
-
-    public Element Create() => _comp.Create();
-
-    public static implicit operator ChildComponent(Component comp)
-    {
-        return new(comp);
-    }
-
-    public static implicit operator ChildComponent(Func<Element> fn)
-    {
-        return new ChildComponent(new Component(fn));
-    }
-
-    public static implicit operator ChildComponent(Element element)
-    {
-        return new ChildComponent(new Component(() => element));
-    }
-
-    public static implicit operator ChildComponent(Element[] elements)
-    {
-        return new ChildComponent(new Component(uiScope =>
-        {
-            var stack = new StackPanel();
-            foreach (var el in elements)
-            {
-                stack.Children.Add(el.Content);
-            }
-
-            return new Element(uiScope, stack);
-        }));
-    }
-
-    public static implicit operator ChildComponent(Accessor<string> text)
-    {
-        return new ChildComponent(new Component(uiScope =>
-        {
-            var textBlock = new TextBlock();
-            uiScope.AddEffect(() => { textBlock.Text = text.Value; });
-            return new Element(uiScope, textBlock);
-        }));
-    }
-}
+// public class ChildComponent
+// {
+//     private readonly Component _comp;
+//
+//     private ChildComponent(Component comp)
+//     {
+//         _comp = comp;
+//     }
+//
+//     public IElement Create() => _comp.Create();
+//
+//     public static implicit operator ChildComponent(Component comp)
+//     {
+//         return new(comp);
+//     }
+//
+//     public static implicit operator ChildComponent(Func<IElement> fn)
+//     {
+//         return new ChildComponent(new Component(fn));
+//     }
+//
+//     public static implicit operator ChildComponent(Element element)
+//     {
+//         return new ChildComponent(new Component(() => element));
+//     }
+//
+//     public static implicit operator ChildComponent(IElement[] elements)
+//     {
+//         return new ChildComponent(new Component(uiScope =>
+//         {
+//             var stack = new StackPanel();
+//             foreach (var el in elements)
+//             {
+//                 stack.Children.Add(el.Content);
+//             }
+//
+//             return new Element(uiScope, stack);
+//         }));
+//     }
+//
+//     public static implicit operator ChildComponent(Accessor<string> text)
+//     {
+//         return new ChildComponent(new Component(uiScope =>
+//         {
+//             var textBlock = new TextBlock();
+//             uiScope.AddEffect(() => { textBlock.Text = text.Value; });
+//             return new Element(uiScope, textBlock);
+//         }));
+//     }
+// }

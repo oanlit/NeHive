@@ -33,22 +33,17 @@ public static class Components
         return new Element(uiScope, panel);
     });
 
-    public struct HStackPanelProp(ChildElement? children = null)
+    public struct HStackPanelProp(IEnumerable<IElement>? children = null)
     {
-        public ChildElement? Children = children;
+        public IEnumerable<IElement> Children = children ?? [];
     }
 
     public static readonly Component<HStackPanelProp> HStackPanel = new((prop, uiScope) =>
     {
-        StackPanel stack;
-        if (prop.Children?.Stack is not null)
+        var stack = new StackPanel();
+        foreach (var el in prop.Children)
         {
-            stack = prop.Children.Stack;
-        }
-        else
-        {
-            stack = new StackPanel();
-            stack.Children.Add(prop.Children?.Content.Content ?? new Control());
+            stack.Children.Add(el.Content);
         }
 
         return new Element(uiScope, stack);
@@ -111,7 +106,7 @@ public static class Components<T> where T : notnull
         var panel = new StackPanel();
 
         // 用 ArrayMapMemo 做“数据层 diff + 生命周期管理”
-        var memo = new ArrayMapMemo<T, Element, T>(prop.Each, prop.Children.Create);
+        var memo = new ArrayMapMemo<T, IElement, T>(prop.Each, prop.Children.Create);
 
         uiScope.AddEffect(epochScope =>
         {
