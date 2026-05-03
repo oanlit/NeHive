@@ -228,10 +228,10 @@ public class Scope : IDisposable
     public Effect AddEffect(Action fn)
         => _setContext(() => new Effect(fn));
 
-    public Effect AddEffect(Action<Scope> fn)
+    public Effect AddEffect(Action<EpochScope> fn)
         => _setContext(() => new Effect(fn));
 
-    public Effect AddEffect(Func<Scope, Action<Scope>> fn)
+    public Effect AddEffect(Func<Scope, Action<EpochScope>> fn)
         => _setContext(() => new Effect(fn));
 
     public Computed<T> AddComputed<T>(Func<T, T> fn, T? value = default)

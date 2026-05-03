@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
-using NeHive.Core;
 
 namespace NeHive.Sample.Avalonia.Render;
 
@@ -13,6 +12,8 @@ public class Element
     {
         _scope = scope;
         Content = content;
+        content.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(scope.RunMount);
+        DisposeContent(content);
     }
 
     public void Dispose()
@@ -24,8 +25,6 @@ public class Element
     {
         var scope = new UiScope();
         var content = scope.RunInScope(() => builder(scope));
-        content.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(scope.RunMount);
-        DisposeControl(scope, content);
         return new Element(scope, content);
     }
 
@@ -38,8 +37,6 @@ public class Element
     {
         var uiScope = new UiScope();
         var control = uiScope.RunInScope(() => builder(props, uiScope));
-        control.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(uiScope.RunMount);
-        DisposeControl(uiScope, control);
         return new Element(uiScope, control);
     }
 
@@ -47,8 +44,6 @@ public class Element
     {
         var scope = new UiScope();
         var content = scope.RunInScope(() => builder(scope)).Content;
-        content.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(scope.RunMount);
-        DisposeControl(scope, content);
         return new Element(scope, content);
     }
 
@@ -61,14 +56,12 @@ public class Element
     {
         var uiScope = new UiScope();
         var control = uiScope.RunInScope(() => builder(props, uiScope)).Content;
-        control.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(uiScope.RunMount);
-        DisposeControl(uiScope, control);
         return new Element(uiScope, control);
     }
 
-    protected static void DisposeControl(UiScope scope, Control control)
+    private void DisposeContent(Control control)
     {
-        scope.OnDispose(() =>
+        _scope.OnDispose(() =>
         {
             var parent = control.Parent;
             switch (parent)
@@ -87,71 +80,6 @@ public class Element
                         decorator.Child = null;
                     break;
             }
-        });
-    }
-
-    public static Element Show(
-        Accessor<bool> when,
-        Component children)
-    {
-        return Create(uiScope =>
-        {
-            var panel = new Panel();
-
-            uiScope.AddEffect(epochScope =>
-            {
-                if (!when.Value)
-                    return;
-
-                var child = children.Create();
-
-                panel.Children.Add(child.Content);
-
-                epochScope.OnDispose(child.Dispose);
-            });
-
-            return panel;
-        });
-    }
-
-    public static Element ForEach<T>(
-        Accessor<IReadOnlyList<T>> source,
-        Component<T> children)
-        where T : notnull
-    {
-        return Create(uiScope =>
-        {
-            var panel = new StackPanel();
-
-            // 用 ArrayMapMemo 做“数据层 diff + 生命周期管理”
-            var memo = new ArrayMapMemo<T, Element, T>(source, children.Create);
-
-            uiScope.AddEffect(() =>
-            {
-                var list = memo.Value;
-
-                // —— UI 最小更新（核心）——
-                for (var i = 0; i < list.Count; i++)
-                {
-                    var childrenContent = list[i].Content;
-
-                    if (i >= panel.Children.Count)
-                    {
-                        // 追加
-                        panel.Children.Add(childrenContent);
-                    }
-                    else if (!ReferenceEquals(panel.Children[i], childrenContent))
-                    {
-                        // 位置不一致 → 移动（或替换）
-                        panel.Children.RemoveAt(i);
-                        panel.Children.Insert(i, childrenContent);
-                    }
-                }
-            });
-
-            uiScope.OnDispose(memo.Dispose);
-
-            return panel;
         });
     }
 }
@@ -195,8 +123,6 @@ public class Element<TExpose> : Element
         });
         var control = res.Content;
         expose = res.Exposer;
-        control.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(uiScope.RunMount);
-        DisposeControl(uiScope, control);
         return new Element<TExpose>(uiScope, control, expose);
     }
 
@@ -216,11 +142,9 @@ public class Element<TExpose> : Element
                 Exposer = expose1
             };
         });
-        var control = res.Content;
+        var content = res.Content;
         expose = res.Exposer;
-        control.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(uiScope.RunMount);
-        DisposeControl(uiScope, control);
-        return new Element<TExpose>(uiScope, control, expose);
+        return new Element<TExpose>(uiScope, content, expose);
     }
 
     public static Element<TExpose> Create(
@@ -240,8 +164,6 @@ public class Element<TExpose> : Element
         });
         var control = res.Content;
         expose = res.Exposer;
-        control.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(uiScope.RunMount);
-        DisposeControl(uiScope, control);
         return new Element<TExpose>(uiScope, control, expose);
     }
 
@@ -262,8 +184,6 @@ public class Element<TExpose> : Element
         });
         var control = res.Content;
         expose = res.Exposer;
-        control.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(uiScope.RunMount);
-        DisposeControl(uiScope, control);
         return new Element<TExpose>(uiScope, control, expose);
     }
 }
