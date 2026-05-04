@@ -271,13 +271,13 @@ public class Component
     public IElement Create()
         => _create();
 
-    public IElement CreateRef(out IElement expose)
+    public IElement Create(out IElement expose)
     {
         expose = _create();
         return expose;
     }
 
-    public IElement CreateRef(Action<IElement> fn)
+    public IElement Create(Action<IElement> fn)
     {
         var element = _create();
         fn(element);
@@ -313,13 +313,13 @@ public class Component<TProp>
         return _create(props);
     }
 
-    public IElement CreateRef(TProp props, out IElement expose)
+    public IElement Create(TProp props, out IElement expose)
     {
         expose = _create(props);
         return expose;
     }
 
-    public IElement CreateRef(TProp props, Action<IElement> fn)
+    public IElement Create(TProp props, Action<IElement> fn)
     {
         var element = _create(props);
         fn(element);
@@ -358,13 +358,13 @@ public class Component<TProp, TExpose>
         return _create(props);
     }
 
-    public IElement<TExpose> CreateRef(TProp props, out IElement<TExpose> expose)
+    public IElement<TExpose> Create(TProp props, out IElement<TExpose> expose)
     {
         expose = _create(props);
         return expose;
     }
 
-    public IElement<TExpose> CreateRef(TProp props, Action<IElement<TExpose>> fn)
+    public IElement<TExpose> Create(TProp props, Action<IElement<TExpose>> fn)
     {
         var element = _create(props);
         fn(element);
