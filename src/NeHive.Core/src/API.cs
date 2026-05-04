@@ -239,6 +239,15 @@ public class Scope : IDisposable
 
     public Computed<T> AddComputed<T>(Func<T> fn, T? value = default)
         => _setContext(() => new Computed<T>(fn, value));
+    
+    public AsyncMemo<T> AddAsyncMemo<T>(Func<Task<T>> executeFn)
+        => _setContext(() => new AsyncMemo<T>(executeFn));
+    
+    public AsyncMemo<T> AddAsyncMemo<T>(Func<EpochScope, Task<T>> executeFn)
+        => _setContext(() => new AsyncMemo<T>(executeFn));
+    
+    public AsyncMemo<T> AddAsyncMemo<T>(Func<Scope, Func<EpochScope, Task<T>>> setupFn)
+        => _setContext(() => new AsyncMemo<T>(setupFn));
 
     public T RunInScope<T>(Func<T> fn)
     {
@@ -508,7 +517,7 @@ public class AsyncMemo<T> : Accessor<T?>
         }
     }
 
-    public AsyncMemo(Func<EpochScope, Task<T>> fn) : this(_ => fn)
+    public AsyncMemo(Func<EpochScope, Task<T>> executeFn) : this(_ => executeFn)
     {
     }
 

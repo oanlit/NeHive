@@ -1,6 +1,6 @@
 using NeHive.Core;
 using NeHive.Sample.Avalonia.Render;
-using static NeHive.Sample.Avalonia.Render.Components;
+using static NeHive.Sample.Avalonia.Render.Components.Base;
 
 namespace NeHive.Sample.Avalonia;
 
@@ -14,17 +14,14 @@ public static class CounterComponent
 
         var rootView = HStackPanel(new()
         {
-            Children =
-            [
-                HTextBlock(new($"Id:{id}")),
-                HTextBlock(new(countText)),
-                HButton(new("Add",
-                    click: _ => count.Value++
-                )), // HButton
-                HButton(new("Sub",
-                    click: _ => count.Value--
-                )) // HButton
-            ] // HStackPanel.Children
+            HTextBlock(new($"Id:{id}")),
+            HTextBlock(new(countText)),
+            HButton(new("Add",
+                click: _ => count.Value++
+            )), // HButton
+            HButton(new("Sub",
+                click: _ => count.Value--
+            )) // HButton
         }); // HStackPanel
         uiScope.OnMount(() => Console.WriteLine(rootView.Content.Bounds.Size));
         // Console.WriteLine(rootView.Text.Bounds.Size);
@@ -33,57 +30,25 @@ public static class CounterComponent
         return rootView;
     });
 
-    public static IElement Counter(int prop)
-        => CompCounter.Create(prop);
-
-    private static readonly Component CompShowDemo = new(uiScope =>
-    {
-        var visible = new Signal<bool>(true);
-        // var visibleText = () => visible.Value ? "Visible" : "Hidden";
-        var visibleText = uiScope.AddComputed(() => visible.Value ? "Visible" : "Hidden");
-
-        var rootView = HStackPanel(new()
-        {
-            Children =
-            [
-                HButton(new(visibleText,
-                    click: _ => visible.Value = !visible.Value
-                )), // HButton
-                Show(new(visible)
-                {
-                    Children = new Component(() => Counter(0))
-                }) // HButton
-            ] // HStackPanel.Children
-        }); // HStackPanel
-
-        return rootView;
-    });
-
-    public static IElement ShowDemo()
-        => CompShowDemo.Create();
-
     private static readonly Component CompForEachDemo = new(() =>
     {
         var items = new Signal<IReadOnlyList<int>>([1, 2, 3]);
 
         var rootView = HStackPanel(new()
         {
-            Children =
-            [
-                HButton(new("Add Item"),
-                    out var addBtn
-                ), // HButton
-                HButton(new("Remove Last"),
-                    out var removeBtn
-                ), // HButton
-                HButton(new("Remove Second Last"),
-                    out var removeSecBtn
-                ), // HButton
-                ForEach<int>(new(items)
-                {
-                    Children = Counter
-                }) // ForEach<int>
-            ] // HStackPanel.Children
+            HButton(new("Add Item"),
+                out var addBtn
+            ), // HButton
+            HButton(new("Remove Last"),
+                out var removeBtn
+            ), // HButton
+            HButton(new("Remove Second Last"),
+                out var removeSecBtn
+            ), // HButton
+            ForEach<int>(new(items)
+            {
+                Children = Counter
+            }) // ForEach<int>
         }); // HStackPanel
 
         addBtn.Expose.Click += _ =>
@@ -114,4 +79,70 @@ public static class CounterComponent
 
     public static IElement ForEachDemo()
         => CompForEachDemo.Create();
+
+    public static IElement Counter(int prop)
+        => CompCounter.Create(prop);
+
+    private static readonly Component CompShowDemo = new(uiScope =>
+    {
+        var visible = new Signal<bool>(true);
+        // var visibleText = () => visible.Value ? "Visible" : "Hidden";
+        var visibleText = uiScope.AddComputed(() => visible.Value ? "Visible" : "Hidden");
+
+        var rootView = HStackPanel(new()
+        {
+            HButton(new(visibleText,
+                click: _ => visible.Value = !visible.Value
+            )), // HButton
+            Show(new(visible)
+            {
+                Fallback = () => Counter(0),
+                Children = ForEachDemo
+            }) // HButton
+        }); // HStackPanel
+
+        return rootView;
+    });
+
+    public static IElement ShowDemo()
+        => CompShowDemo.Create();
+
+    private static readonly Component CompLoadingDemo = new(uiScope =>
+    {
+        var userId = new Signal<int>(1);
+        var userMemo = uiScope.AddAsyncMemo<User>(async epoch =>
+        {
+            var id = epoch.Track(userId);
+            await Task.Delay(500);
+            if (id <= 0) throw new Exception("Invalid user");
+            return new User { Id = id, Name = $"User {id}" };
+        });
+
+        var rootView = HStackPanel(new()
+        {
+            HButton(new("Add User Id",
+                click: _ => userId.Value++
+            )), // HButton
+            HButton(new("Sub User Id",
+                click: _ => userId.Value--
+            )), // HButton
+            Loading<User>(new(userMemo)
+            {
+                Success = user => HChildren(
+                    HTextBlock(new($"Id: {user.Id}")),
+                    HTextBlock(new($"Hello, {user.Name}"))
+                ), // Loading<User>.Success
+                Loading = () => HTextBlock(new("Fetching user...")),
+                Error = ex =>
+                    HButton(new($"Retry: {ex.Message}", click: _ => { userMemo.Refetch(); })) // Loading<User>.Error
+            }) // Loading<User>
+        }); // HStackPanel
+
+        return rootView;
+    });
+
+    public static IElement LoadDemo()
+        => CompLoadingDemo.Create();
 }
+
+public record User(int? Id = null, string? Name = null);

@@ -1,3 +1,4 @@
+using System.Collections;
 using Avalonia;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -5,16 +6,17 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using NeHive.Core;
 
-namespace NeHive.Sample.Avalonia.Render;
+namespace NeHive.Sample.Avalonia.Render.Components;
 
-public static class Components
+public static partial class Base
 {
     public static readonly Component Empty = new(() => Element.Empty);
 
     public struct ShowProp(Accessor<bool> when)
     {
-        public required Component Children;
         public readonly Accessor<bool> When = when;
+        public required Func<IElement> Children { get; init; }
+        public Func<IElement>? Fallback { get; init; }
     }
 
     private static readonly Component<ShowProp> CompShow = new((prop, uiScope) =>
@@ -26,9 +28,15 @@ public static class Components
             var when = epochScope.Track(prop.When);
 
             if (!when)
+            {
+                if (prop.Fallback is null) return;
+                var fallback = prop.Fallback();
+                panel.Children.Add(fallback.Content);
+                epochScope.OnDispose(fallback.Dispose);
                 return;
+            }
 
-            var child = prop.Children.Create();
+            var child = prop.Children();
             panel.Children.Add(child.Content);
             epochScope.OnDispose(child.Dispose);
         });
@@ -39,18 +47,29 @@ public static class Components
     public static IElement Show(ShowProp prop)
         => CompShow.Create(prop);
 
-    public static IElement ForEach<T>(Components<T>.ForEachProp<T> prop) where T : notnull
-        => Components<T>.ForEach.Create(prop);
+    public static IElement ForEach<T>(Base<T>.ForEachProp<T> prop) where T : notnull
+        => Base<T>.ForEach.Create(prop);
 
-    public struct HStackPanelProp(IEnumerable<IElement>? children = null)
+    public struct SingleChildrenProp() : IEnumerable<IElement>
     {
-        public IEnumerable<IElement> Children = children ?? [];
+        private List<IElement> _children = [];
+
+        public IEnumerator<IElement> GetEnumerator()
+            => _children.GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => GetEnumerator();
+        
+        public void Add(IElement element)
+        {
+            _children.Add(element);
+        }
     }
 
-    private static readonly Component<HStackPanelProp> CompStackPanel = new((prop, uiScope) =>
+    private static readonly Component<SingleChildrenProp> CompStackPanel = new((prop, uiScope) =>
     {
         var stack = new StackPanel();
-        foreach (var el in prop.Children)
+        foreach (var el in prop)
         {
             stack.Children.Add(el.Content);
         }
@@ -58,7 +77,7 @@ public static class Components
         return new Element(uiScope, stack);
     });
 
-    public static IElement HStackPanel(HStackPanelProp prop)
+    public static IElement HStackPanel(SingleChildrenProp prop)
         => CompStackPanel.Create(prop);
 
     public class HTextBlockProp(Accessor<string>? text = null)
@@ -177,11 +196,11 @@ public static class Components
         => CompButton.Create(prop, out expose);
 }
 
-public static class Components<T> where T : notnull
+public static partial class Base<T> where T : notnull
 {
     public class ForEachProp<T1>(Accessor<IReadOnlyList<T1>> each)
     {
-        public required Func<T1,IElement> Children;
+        public required Func<T1, IElement> Children;
         public readonly Accessor<IReadOnlyList<T1>> Each = each;
     }
 
