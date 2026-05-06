@@ -1,7 +1,8 @@
 using Avalonia.Controls;
+
 namespace NeHive.Sample.Avalonia.Render.Components;
 
-public static partial class Base
+public static partial class BaseComponent
 {
     public static IElement HChildren(params IEnumerable<IElement> children)
     {

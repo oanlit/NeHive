@@ -1,40 +1,88 @@
 using NeHive.Core;
 using NeHive.Sample.Avalonia.Render;
-using static NeHive.Sample.Avalonia.Render.Components.Base;
+using Avalonia;
+using Avalonia.Media;
+using Avalonia.Layout;
+using NeHive.Sample.Avalonia.Render.Components;
+using static NeHive.Sample.Avalonia.Render.Components.BaseComponent;
+using static NeHive.Sample.Avalonia.Render.Components.ControlFlow;
 
 namespace NeHive.Sample.Avalonia;
 
 public static class CounterComponent
 {
-    private static readonly Component<int> CompCounter = new((id, uiScope) =>
+    private static IElement CounterComp(int id, UiScope uiScope)
     {
         Console.WriteLine($"Counter{id} 组件已创建");
         var count = new Signal<int>(0);
         var countText = () => $"Count: {count.Value}";
 
-        var rootView = HStackPanel(new()
+        var rootElement = uiScope.RootElement(new()
         {
-            HTextBlock(new($"Id:{id}")),
-            HTextBlock(new(countText)),
+            HTextBlock(new($"Id:{id}",
+                fontSize: 18,
+                fontWeight: FontWeight.Bold,
+                foreground: new(Brushes.DarkSlateBlue)
+            )), // HTextBlock
+            HTextBlock(new(countText,
+                fontSize: 24,
+                foreground: new(Brushes.DarkGreen)
+            )), // HTextBlock
             HButton(new("Add",
+                background: new(Brushes.ForestGreen),
+                foreground: new(Brushes.White),
+                cornerRadius: new CornerRadius(6),
+                padding: new Thickness(16, 8),
                 click: _ => count.Value++
             )), // HButton
             HButton(new("Sub",
+                background: new(Brushes.Crimson),
+                foreground: new(Brushes.White),
+                cornerRadius: new CornerRadius(6),
+                padding: new Thickness(16, 8),
                 click: _ => count.Value--
             )) // HButton
-        }); // HStackPanel
-        uiScope.OnMount(() => Console.WriteLine(rootView.Content.Bounds.Size));
-        // Console.WriteLine(rootView.Text.Bounds.Size);
+        }); // rootElement
+
+        uiScope.OnMount(() => Console.WriteLine(rootElement.Content.Bounds.Size));
+        // Console.WriteLine(rootElement.Text.Bounds.Size);
         uiScope.OnDispose(() => Console.WriteLine($"Counter{id} 组件已移除"));
 
-        return rootView;
-    });
+        return rootElement;
+    }
 
-    private static readonly Component CompForEachDemo = new(() =>
+    public static IElement Counter(int prop)
+        => Element.WithScope(CounterComp, prop);
+
+    private static IElement ShowDemoComp(UiScope uiScope)
+    {
+        var visible = new Signal<bool>(true);
+        // var visibleText = () => visible.Value ? "ForEachDemo" : "LoadDemo";
+        var visibleText = uiScope.AddComputed(() => visible.Value ? "ForEachDemo" : "LoadDemo");
+
+        var rootElement = uiScope.RootElement(new()
+        {
+            HButton(new(visibleText,
+                click: _ => visible.Value = !visible.Value
+            )), // HButton
+            Show(new(visible)
+            {
+                IfFalse = LoadingDemo,
+                IfTrue = ForEachDemo
+            }) // HButton
+        }); // rootElement
+
+        return rootElement;
+    }
+
+    public static IElement ShowDemo()
+        => Element.WithScope(ShowDemoComp);
+
+    private static IElement ForEachDemoComp()
     {
         var items = new Signal<IReadOnlyList<int>>([1, 2, 3]);
 
-        var rootView = HStackPanel(new()
+        var rootElement = RootElement(new()
         {
             HButton(new("Add Item"),
                 out var addBtn
@@ -47,9 +95,9 @@ public static class CounterComponent
             ), // HButton
             ForEach<int>(new(items)
             {
-                Children = Counter
+                ComponentItem = Counter
             }) // ForEach<int>
-        }); // HStackPanel
+        }); // rootElement
 
         addBtn.Expose.Click += _ =>
         {
@@ -74,40 +122,13 @@ public static class CounterComponent
             items.Value = arr;
         };
 
-        return rootView;
-    });
+        return rootElement;
+    }
 
     public static IElement ForEachDemo()
-        => CompForEachDemo.Create();
+        => Element.WithScope(ForEachDemoComp);
 
-    public static IElement Counter(int prop)
-        => CompCounter.Create(prop);
-
-    private static readonly Component CompShowDemo = new(uiScope =>
-    {
-        var visible = new Signal<bool>(true);
-        // var visibleText = () => visible.Value ? "Visible" : "Hidden";
-        var visibleText = uiScope.AddComputed(() => visible.Value ? "Visible" : "Hidden");
-
-        var rootView = HStackPanel(new()
-        {
-            HButton(new(visibleText,
-                click: _ => visible.Value = !visible.Value
-            )), // HButton
-            Show(new(visible)
-            {
-                Fallback = () => Counter(0),
-                Children = ForEachDemo
-            }) // HButton
-        }); // HStackPanel
-
-        return rootView;
-    });
-
-    public static IElement ShowDemo()
-        => CompShowDemo.Create();
-
-    private static readonly Component CompLoadingDemo = new(uiScope =>
+    private static IElement LoadingDemoComp(UiScope uiScope)
     {
         var userId = new Signal<int>(1);
         var userMemo = uiScope.AddAsyncMemo<User>(async epoch =>
@@ -118,7 +139,7 @@ public static class CounterComponent
             return new User { Id = id, Name = $"User {id}" };
         });
 
-        var rootView = HStackPanel(new()
+        var rootElement = uiScope.RootElement(new()
         {
             HButton(new("Add User Id",
                 click: _ => userId.Value++
@@ -133,16 +154,126 @@ public static class CounterComponent
                     HTextBlock(new($"Hello, {user.Name}"))
                 ), // Loading<User>.Success
                 Loading = () => HTextBlock(new("Fetching user...")),
-                Error = ex =>
-                    HButton(new($"Retry: {ex.Message}", click: _ => { userMemo.Refetch(); })) // Loading<User>.Error
+                Error = ex => HButton(
+                    new($"Retry: {ex.Message}",
+                        click: _ => userMemo.Refetch()
+                    )) // HButton
+                // Loading<User>.Error
             }) // Loading<User>
-        }); // HStackPanel
+        }); // rootElement
 
-        return rootView;
-    });
+        return rootElement;
+    }
 
-    public static IElement LoadDemo()
-        => CompLoadingDemo.Create();
+    public static IElement LoadingDemo()
+        => Element.WithScope(LoadingDemoComp);
+
+    private static IElement SwitchDemoComp(UiScope uiScope)
+    {
+        var currentView = new Signal<DemoView>(DemoView.Unknown);
+
+        var rootElement = uiScope.RootElement(new(
+            orientation: Orientation.Vertical,
+            spacing: 16,
+            background: new(Brushes.LightGray),
+            // cornerRadius: new CornerRadius(12),
+            // padding: new Thickness(16),
+            margin: new Thickness(20))
+        {
+            HStackPanel(new(
+                orientation: Orientation.Horizontal,
+                spacing: 12,
+                horizontalAlignment: HorizontalAlignment.Center)
+            {
+                HButton(new("显示简单计数器",
+                    background: new(Brushes.SteelBlue),
+                    foreground: new(Brushes.White),
+                    cornerRadius: new CornerRadius(20),
+                    padding: new Thickness(12, 6),
+                    fontSize: 14,
+                    click: _ => currentView.Value = DemoView.SimpleCounter
+                )), // HButton
+                HButton(new("显示 ForEach 示例",
+                    background: new(Brushes.SteelBlue),
+                    foreground: new(Brushes.White),
+                    cornerRadius: new CornerRadius(20),
+                    padding: new Thickness(12, 6),
+                    fontSize: 14,
+                    click: _ => currentView.Value = DemoView.ForEachDemo
+                )), // HButton
+                HButton(new("显示 Loading 示例",
+                    background: new(Brushes.SteelBlue),
+                    foreground: new(Brushes.White),
+                    cornerRadius: new CornerRadius(20),
+                    padding: new Thickness(12, 6),
+                    fontSize: 14,
+                    click: _ => currentView.Value = DemoView.LoadingDemo
+                )) // HButton
+            }), // HStackPanel
+            // 根据 currentView 切换内容
+            HStackPanel(new(
+                background: new(Brushes.White),
+                // cornerRadius: new CornerRadius(8),
+                // padding: new Thickness(16),
+                spacing: 12)
+            {
+                Switch<DemoView>(new(currentView)
+                {
+                    Cases = new()
+                    {
+                        [DemoView.SimpleCounter] = () => Counter(999), // 独立计数器，id=999
+                        [DemoView.ForEachDemo] = ForEachDemo,
+                        [DemoView.LoadingDemo] = LoadingDemo
+                    }, // Switch<DemoView>.Cases
+                    Default = () => HTextBlock(new("未知视图",
+                        foreground: new(Brushes.Gray),
+                        fontSize: 16
+                    )) // Switch<DemoView>.Default
+                }) // Switch<DemoView>
+            }) // HStackPanel
+        }); // rootElement
+
+        return rootElement;
+    }
+
+    public static IElement SwitchDemo()
+        => Element.WithScope(SwitchDemoComp);
+
+    private static IElement GridDemoComp(UiScope uiScope)
+    {
+        var rootElement = uiScope.RootElement(new()
+        {
+            HGrid(new(
+                rowDefinitions: new([HgLen.Auto, HgLen.Star()]), // 第一行高度自适应，第二行占满剩余
+                columnDefinitions: new([100, HgLen.Star()]), // 第一列固定100，第二列占满
+                rowSpacing: 12,
+                columnSpacing: 8,
+                margin: new Thickness(10),
+                background: new(Brushes.LightGray)
+            )
+            {
+                [(Row: 0, Column: 0)] = HTextBlock(new("左上", fontSize: 16)),
+                [(Row: 0, Column: 1)] = HTextBlock(new("右上", fontSize: 16)),
+                [(Row: 1, Column: 0, RowSpan: 1, ColSpan: 2)] =
+                    HButton(new("底部按钮横跨两列",
+                        click: _ => Console.WriteLine("Clicked")
+                    )) // HButton
+            }) // HGrid
+        }); // rootElement
+
+        return rootElement;
+    }
+
+    public static IElement GridDemo()
+        => Element.WithScope(GridDemoComp);
 }
 
 public record User(int? Id = null, string? Name = null);
+
+public enum DemoView
+{
+    SimpleCounter,
+    ForEachDemo,
+    LoadingDemo,
+    Unknown
+}

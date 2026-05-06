@@ -9,9 +9,10 @@ public class MainWindow : Window
 
     public MainWindow()
     {
-        _counter = CounterComponent.ShowDemo();
+        // _counter = CounterComponent.ShowDemo();
         // _counter = CounterComponent.ForEachDemo();
-        // _counter = CounterComponent.LoadDemo();
+        // _counter = CounterComponent.SwitchDemo();
+        _counter = CounterComponent.GridDemo();
         Content = _counter.Content;
     }
 

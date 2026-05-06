@@ -1,27 +1,21 @@
 using NeHive.Core;
 using Avalonia.Controls;
-using static NeHive.Sample.Avalonia.Render.Components.Base;
+using static NeHive.Sample.Avalonia.Render.Components.BaseComponent;
 
 namespace NeHive.Sample.Avalonia.Render.Components;
 
-public static partial class Base
+public struct LoadingProp<TData>(AsyncMemo<TData> dataSource)
 {
-    public struct LoadingProp<TData>(AsyncMemo<TData> dataSource)
-    {
-        public readonly AsyncMemo<TData> DataSource = dataSource;
+    public readonly AsyncMemo<TData> DataSource = dataSource;
 
-        public required Func<TData, IElement> Success { get; init; }
+    public required Func<TData, IElement> Success { get; init; }
 
-        public Func<IElement>? Loading { get; init; }
+    public Func<IElement>? Loading { get; init; }
 
-        public Func<Exception, IElement>? Error { get; init; }
-    }
-
-    public static IElement Loading<T>(LoadingProp<T> prop) where T : notnull
-        => Base<T>.CompLoading.Create(prop);
+    public Func<Exception, IElement>? Error { get; init; }
 }
 
-public static partial class Base<T> where T : notnull
+public static partial class ControlFlow
 {
     private static IElement DefaultLoading()
         => HTextBlock(new("Loading..."));
@@ -29,7 +23,7 @@ public static partial class Base<T> where T : notnull
     private static IElement DefaultError(Exception ex)
         => HTextBlock(new($"Error: {ex.Message}"));
 
-    internal static readonly Component<LoadingProp<T>> CompLoading = new((prop, uiScope) =>
+    private static Element LoadingComp<T>(LoadingProp<T> prop, UiScope uiScope) where T : notnull
     {
         var container = new Panel();
 
@@ -79,5 +73,8 @@ public static partial class Base<T> where T : notnull
         });
 
         return new Element(uiScope, container);
-    });
+    }
+
+    public static IElement Loading<T>(LoadingProp<T> prop) where T : notnull
+        => Element.WithScope(LoadingComp, prop);
 }

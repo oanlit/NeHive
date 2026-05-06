@@ -58,14 +58,14 @@ public class Accessor<T> : IReadOnlySignal<T>
 
     public T UntrackValue => UntrackValueGetter();
 
-    private Accessor(T value)
+    public Accessor(T value)
     {
         ValueSignal = null;
         ValueGetter = () => value;
         UntrackValueGetter = () => Reactive.Untrack(ValueGetter);
     }
 
-    private Accessor(Func<T> valueGetter)
+    public Accessor(Func<T> valueGetter)
     {
         ValueSignal = null;
         ValueGetter = valueGetter;
@@ -119,7 +119,13 @@ public class Signal<T>(T value) : Accessor<T>(new SignalState<T>(value)),
     internal bool HasObserver => ValueSignal!.Observers.Count > 0;
 }
 
-public class Scope : IDisposable
+public interface IScope : IDisposable
+{
+    public bool IsDisposed { get; }
+    public void OnDispose(Action fn);
+}
+
+public class Scope : IScope
 {
     private static readonly Dictionary<ScopeNode, Scope> OwnerHolder = [];
 
@@ -239,13 +245,13 @@ public class Scope : IDisposable
 
     public Computed<T> AddComputed<T>(Func<T> fn, T? value = default)
         => _setContext(() => new Computed<T>(fn, value));
-    
+
     public AsyncMemo<T> AddAsyncMemo<T>(Func<Task<T>> executeFn)
         => _setContext(() => new AsyncMemo<T>(executeFn));
-    
+
     public AsyncMemo<T> AddAsyncMemo<T>(Func<EpochScope, Task<T>> executeFn)
         => _setContext(() => new AsyncMemo<T>(executeFn));
-    
+
     public AsyncMemo<T> AddAsyncMemo<T>(Func<Scope, Func<EpochScope, Task<T>>> setupFn)
         => _setContext(() => new AsyncMemo<T>(setupFn));
 

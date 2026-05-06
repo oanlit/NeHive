@@ -1,4 +1,5 @@
 using NeHive.Core;
+using NeHive.Sample.Avalonia.Render.Components;
 
 namespace NeHive.Sample.Avalonia.Render;
 
@@ -11,7 +12,6 @@ public class UiScope(Scope? parentOwner = null) : Scope(parentOwner)
     {
         if (_mounted)
         {
-            // 已经 mounted 直接执行（符合语义）
             fn();
             return;
         }
@@ -19,6 +19,9 @@ public class UiScope(Scope? parentOwner = null) : Scope(parentOwner)
         _onMountQueue.Add(fn);
     }
 
+    public IElement RootElement(HStackPanelProp prop)
+        => BaseComponent.RootElement(prop, this);
+    
     internal void RunMount()
     {
         if (_mounted) return;
