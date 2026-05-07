@@ -23,19 +23,17 @@ public static partial class BaseComponent
     public static IElement RootElement(HStackPanelProp prop, UiScope uiScope)
     {
         var stack = new StackPanel();
-        uiScope.AddEffect(() =>
+        uiScope.AddEffect(epochScope =>
         {
-            stack.Orientation = prop.Orientation.Value;
-            stack.Spacing = prop.Spacing.Value;
-            stack.HorizontalAlignment = prop.HorizontalAlignment.Value;
-            stack.VerticalAlignment = prop.VerticalAlignment.Value;
-        });
+            if (prop.Style == null) return;
+            var s = epochScope.Track(prop.Style);
 
-        uiScope.AddEffect(() =>
-        {
-            if (prop.Background?.Value != null)
-                stack.Background = prop.Background.Value;
-            stack.Margin = prop.Margin.Value;
+            stack.Orientation = s.Orientation;
+            stack.Spacing = s.Spacing;
+            stack.HorizontalAlignment = s.HorizontalAlignment;
+            stack.VerticalAlignment = s.VerticalAlignment;
+            stack.Margin = s.Margin;
+            stack.Background = s.Background;
         });
 
         foreach (var el in prop)

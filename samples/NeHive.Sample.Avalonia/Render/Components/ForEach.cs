@@ -5,8 +5,8 @@ namespace NeHive.Sample.Avalonia.Render.Components;
 
 public struct ForEachProp<T>(Accessor<IReadOnlyList<T>> each)
 {
-    public required Func<T, IElement> ComponentItem;
     public readonly Accessor<IReadOnlyList<T>> Each = each;
+    public required Func<T, IElement> ComponentItem;
 }
 
 public static partial class ControlFlow

@@ -9,10 +9,11 @@ public class MainWindow : Window
 
     public MainWindow()
     {
-        // _counter = CounterComponent.ShowDemo();
-        // _counter = CounterComponent.ForEachDemo();
-        // _counter = CounterComponent.SwitchDemo();
-        _counter = CounterComponent.GridDemo();
+        // _counter = DemoComponent.ShowDemo();
+        // _counter = DemoComponent.ForEachDemo();
+        _counter = DemoComponent.SwitchDemo();
+        // _counter = DemoComponent.GridDemo();
+        // _counter = DemoComponent.AbsoluteDemo();
         Content = _counter.Content;
     }
 

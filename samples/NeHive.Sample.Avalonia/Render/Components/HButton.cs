@@ -7,26 +7,80 @@ using NeHive.Core;
 
 namespace NeHive.Sample.Avalonia.Render.Components;
 
-public class HButtonProp(
-    Accessor<string>? text = null,
-    Accessor<Thickness>? margin = null,
-    Accessor<Thickness>? padding = null,
-    Accessor<IBrush>? background = null,
-    Accessor<CornerRadius>? cornerRadius = null,
-    Accessor<IBrush>? foreground = null,
-    Accessor<double>? fontSize = null,
-    
-    Action<RoutedEventArgs>? click = null
+public class HButtonStyle(
+    Thickness? margin = null,
+    Thickness? padding = null,
+    IBrush? background = null,
+    IBrush? foreground = null,
+    double? fontSize = null,
+    CornerRadius? cornerRadius = null
 )
 {
-    public readonly Accessor<string> Text = text ?? "";
-    public readonly Accessor<IBrush> Background = background ?? new(Brushes.LightGray);
-    public readonly Accessor<IBrush> Foreground = foreground ?? new(Brushes.Black);
-    public readonly Accessor<CornerRadius> CornerRadius = cornerRadius ?? new CornerRadius(4);
-    public readonly Accessor<Thickness> Padding = padding ?? new Thickness(8, 4);
-    public readonly Accessor<Thickness> Margin = margin ?? new Thickness(0);
-    public readonly Accessor<double> FontSize = fontSize ?? 12;
-    public readonly Action<RoutedEventArgs>? Click = click;
+    public Thickness Margin = margin ?? new Thickness(0);
+    public Thickness Padding = padding ?? new Thickness(8, 4);
+    public IBrush Background = background ?? Brushes.LightGray;
+    public IBrush Foreground = foreground ?? Brushes.Black;
+    public double FontSize = fontSize ?? 12;
+    public CornerRadius CornerRadius = cornerRadius ?? new CornerRadius(4);
+    
+    public HButtonStyle Merge(HButtonStyle style)
+    {
+        Margin = style.Margin;
+        Padding = style.Padding;
+        Background = style.Background;
+        Foreground = style.Foreground;
+        FontSize = style.FontSize;
+        CornerRadius = style.CornerRadius;
+        return this;
+    }
+
+    public static Accessor<HButtonStyle> Parse(Accessor<string> text)
+    {
+        return new Computed<HButtonStyle>(() =>
+        {
+            var str = text.Value;
+            var result = StyleParser.Parse(str);
+            return new HButtonStyle(
+                result.Margin,
+                result.Padding,
+                result.Background,
+                result.Foreground,
+                result.FontSize,
+                result.CornerRadius
+            );
+        });
+    }
+}
+
+public class HButtonProp
+{
+    public readonly Accessor<string> Text;
+    public readonly Accessor<HButtonStyle>? Style;
+    public readonly Action<RoutedEventArgs>? Click;
+
+    public HButtonProp(
+        Accessor<string>? text = null,
+        Accessor<string>? strStyle = null,
+        Accessor<HButtonStyle>? style = null,
+        Action<RoutedEventArgs>? click = null
+    )
+    {
+        Text = text ?? "";
+        Click = click;
+        if (style != null && strStyle != null)
+        {
+            Style = new Computed<HButtonStyle>(() =>
+                HButtonStyle.Parse(strStyle).Value.Merge(style.Value));
+        }
+        else if (strStyle != null)
+        {
+            Style = HButtonStyle.Parse(strStyle);
+        }
+        else
+        {
+            Style = style;
+        }
+    }
 }
 
 public class HButtonExpose
@@ -59,17 +113,19 @@ public static partial class BaseComponent
 
         uiScope.AddEffect(() =>
         {
-            border.Background = prop.Background.Value;
-            border.Padding = prop.Padding.Value;
-            border.Margin = prop.Margin.Value;
-            border.CornerRadius = prop.CornerRadius.Value;
-        });
-
-        uiScope.AddEffect(() =>
-        {
             textBlock.Text = prop.Text.Value;
-            textBlock.Foreground = prop.Foreground.Value;
-            textBlock.FontSize = prop.FontSize.Value;
+        });
+        uiScope.AddEffect(epochScope =>
+        {
+            if (prop.Style == null) return;
+            var style = epochScope.Track(prop.Style);
+            border.Background = style.Background;
+            border.Padding = style.Padding;
+            border.Margin = style.Margin;
+            border.CornerRadius = style.CornerRadius;
+            
+            textBlock.FontSize = style.FontSize;
+            textBlock.Foreground = style.Foreground;
         });
 
         var expose = new HButtonExpose();

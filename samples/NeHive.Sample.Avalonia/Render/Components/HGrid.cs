@@ -8,8 +8,8 @@ using NeHive.Core;
 namespace NeHive.Sample.Avalonia.Render.Components;
 
 // 位置参数元组别名，便于阅读
-using GridPosition = (int Row, int Column, int RowSpan, int ColSpan);
-using SimpleGridPosition = (int Row, int Column);
+using GridPosition = (int row, int column, int rowSpan, int colSpan);
+using SimpleGridPosition = (int row, int column);
 
 public readonly struct HgLen
 {
@@ -29,48 +29,230 @@ public readonly struct HgLen
     public static HgLen Star(double value = 1) => new(new GridLength(value, GridUnitType.Star));
 }
 
-public class HGridProp(
-    Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
-    Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
-    Accessor<double>? rowSpacing = null,
-    Accessor<double>? columnSpacing = null,
-    Accessor<HorizontalAlignment>? horizontalAlignment = null,
-    Accessor<VerticalAlignment>? verticalAlignment = null,
-    Accessor<Thickness>? margin = null,
-    Accessor<IBrush>? background = null
+public class HGridStyle(
+    Thickness? margin = null,
+    double? columnSpacing = null,
+    double? rowSpacing = null,
+    HorizontalAlignment? horizontalAlignment = null,
+    VerticalAlignment? verticalAlignment = null,
+    IBrush? background = null
 )
-    : IEnumerable<KeyValuePair<GridPosition, IElement>>
+{
+    // 边距
+    public Thickness Margin { get; private set; } = margin ?? new(0);
+    public double ColumnSpacing { get; private set; } = columnSpacing ?? 0;
+    public double RowSpacing { get; private set; } = rowSpacing ?? 0;
+
+    // 对齐
+    public HorizontalAlignment HorizontalAlignment { get; private set; } =
+        horizontalAlignment ?? HorizontalAlignment.Stretch;
+
+    public VerticalAlignment VerticalAlignment { get; private set; } =
+        verticalAlignment ?? VerticalAlignment.Stretch;
+
+
+    // 背景
+    public IBrush? Background { get; private set; } = background;
+
+    // 样式默认值
+    public static HGridStyle Default => new();
+
+    public HGridStyle Merge(HGridStyle style)
+    {
+        Margin = style.Margin;
+        ColumnSpacing = style.ColumnSpacing;
+        RowSpacing = style.RowSpacing;
+        HorizontalAlignment = style.HorizontalAlignment;
+        VerticalAlignment = style.VerticalAlignment;
+        Background = style.Background ?? Background;
+        return this;
+    }
+
+    public static Accessor<HGridStyle> Parse(Accessor<string> text)
+        => new Computed<HGridStyle>(() => PureParse(text.Value));
+
+    public static HGridStyle PureParse(string text)
+    {
+        // Thickness? margin = null;
+        // double? columnSpacing = null;
+        // double? rowSpacing = null;
+        //
+        // HorizontalAlignment? horizontalAlignment = null;
+        // VerticalAlignment? verticalAlignment = null;
+        // IBrush? background = null;
+        //
+        // var tokens = text.Split(
+        //     [' ', '\n', '\r', '\t'],
+        //     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        //
+        // foreach (var token in tokens)
+        // {
+        //     // 定位
+        //
+        //     // 外边距 m-10
+        //     // if (token.StartsWith("m-"))
+        //     // {
+        //     //     var val = token["m-".Length..];
+        //     //     if (double.TryParse(val, out var m)) margin = new Thickness(m);
+        //     //     continue;
+        //     // }
+        //     //
+        //     // // 间距 spacing-8
+        //     // if (token.StartsWith("spacing-"))
+        //     // {
+        //     //     var val = token["spacing-".Length..];
+        //     //     if (val.StartsWith("x-"))
+        //     //     {
+        //     //         val = val["x-".Length..];
+        //     //         if (double.TryParse(val, out var s1))
+        //     //         {
+        //     //             rowSpacing = s1;
+        //     //             continue;
+        //     //         }
+        //     //     }
+        //     //
+        //     //     if (val.StartsWith("y-"))
+        //     //     {
+        //     //         val = val["y-".Length..];
+        //     //         if (double.TryParse(val, out var s1))
+        //     //         {
+        //     //             columnSpacing = s1;
+        //     //             continue;
+        //     //         }
+        //     //     }
+        //     //
+        //     //     if (double.TryParse(val, out var s)) rowSpacing = columnSpacing = s;
+        //     //     continue;
+        //     // }
+        //     //
+        //     // if (token.StartsWith("gap-"))
+        //     // {
+        //     //     var val = token["gap-".Length..];
+        //     //     if (val.StartsWith("x-"))
+        //     //     {
+        //     //         val = val["x-".Length..];
+        //     //         if (double.TryParse(val, out var s1))
+        //     //         {
+        //     //             columnSpacing = s1;
+        //     //             continue;
+        //     //         }
+        //     //     }
+        //     //
+        //     //     if (val.StartsWith("y-"))
+        //     //     {
+        //     //         val = val["y-".Length..];
+        //     //         if (double.TryParse(val, out var s1))
+        //     //         {
+        //     //             rowSpacing = s1;
+        //     //             continue;
+        //     //         }
+        //     //     }
+        //     //
+        //     //     if (double.TryParse(val, out var s)) rowSpacing = columnSpacing = s;
+        //     //     continue;
+        //     // }
+        //     //
+        //     // // 对齐
+        //     // if (token == "center")
+        //     // {
+        //     //     horizontalAlignment = HorizontalAlignment.Center;
+        //     //     continue;
+        //     // }
+        //     //
+        //     // if (token == "left")
+        //     // {
+        //     //     horizontalAlignment = HorizontalAlignment.Left;
+        //     //     continue;
+        //     // }
+        //     //
+        //     // if (token == "right")
+        //     // {
+        //     //     horizontalAlignment = HorizontalAlignment.Right;
+        //     //     continue;
+        //     // }
+        //     //
+        //     // if (token == "stretch")
+        //     // {
+        //     //     horizontalAlignment = HorizontalAlignment.Stretch;
+        //     //     continue;
+        //     // }
+        //     //
+        //     // if (token == "top")
+        //     // {
+        //     //     verticalAlignment = VerticalAlignment.Top;
+        //     //     continue;
+        //     // }
+        //     //
+        //     // if (token == "bottom")
+        //     // {
+        //     //     verticalAlignment = VerticalAlignment.Bottom;
+        //     //     continue;
+        //     // }
+        //     //
+        //     // // 背景 bg-gray
+        //     // if (token.StartsWith("bg-"))
+        //     // {
+        //     //     var color = token["bg-".Length..];
+        //     //     background = color.ToLowerInvariant() switch
+        //     //     {
+        //     //         "white" => Brushes.White,
+        //     //         "black" => Brushes.Black,
+        //     //         "gray" => Brushes.LightGray,
+        //     //         "lightgray" => Brushes.LightGray,
+        //     //         "darkgray" => Brushes.DarkGray,
+        //     //         _ => background
+        //     //     };
+        //     // }
+        //
+        //     // var result = StyleParser.Parse(text);
+        //     // margin =  result.Margin;
+        // }
+        var result = StyleParser.Parse(text);
+        return new HGridStyle(
+            result.Margin,
+            result.ColumnSpacing,
+            result.RowSpacing,
+            result.HorizontalAlignment,
+            result.VerticalAlignment,
+            result.Background
+        );
+    }
+}
+
+public class HGridProp : IEnumerable<KeyValuePair<GridPosition, IElement>>
 {
     private readonly Dictionary<GridPosition, IElement> _children = new();
 
     // 布局属性（响应式）
-    public readonly Accessor<IReadOnlyList<HgLen>>? RowDefinitions = rowDefinitions;
-    public readonly Accessor<IReadOnlyList<HgLen>>? ColumnDefinitions = columnDefinitions;
-    public readonly Accessor<double> RowSpacing = rowSpacing ?? 0;
-    public readonly Accessor<double> ColumnSpacing = columnSpacing ?? 0;
+    public readonly Accessor<IReadOnlyList<HgLen>>? RowDefinitions;
+    public readonly Accessor<IReadOnlyList<HgLen>>? ColumnDefinitions;
 
-    // 对齐与样式
-    public readonly Accessor<HorizontalAlignment> HorizontalAlignment =
-        horizontalAlignment ?? global::Avalonia.Layout.HorizontalAlignment.Stretch;
+    // 布局属性
+    public readonly Accessor<HGridStyle>? Style;
 
-    public readonly Accessor<VerticalAlignment> VerticalAlignment =
-        verticalAlignment ?? global::Avalonia.Layout.VerticalAlignment.Stretch;
-
-    public readonly Accessor<Thickness> Margin =
-        margin ?? new Thickness(0);
-
-    public readonly Accessor<IBrush>? Background = background;
-
-
-    // 添加子元素（支持初始化器语法）
-    public void Add(GridPosition position, IElement childElement)
+    public HGridProp(
+        Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
+        Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
+        Accessor<string>? strStyle = null,
+        Accessor<HGridStyle>? style = null
+    )
     {
-        _children.Add(position, childElement);
-    }
-
-    public void Add(SimpleGridPosition position, IElement childElement)
-    {
-        _children.Add((position.Row, position.Column, 1, 1), childElement);
+        RowDefinitions = rowDefinitions;
+        ColumnDefinitions = columnDefinitions;
+        // 自动合并规则：strStyle → style 覆盖
+        if (style != null && strStyle != null)
+        {
+            Style = new Computed<HGridStyle>(() =>
+                HGridStyle.Parse(strStyle).Value.Merge(style.Value));
+        }
+        else if (strStyle != null)
+        {
+            Style = HGridStyle.Parse(strStyle);
+        }
+        else
+        {
+            Style = style;
+        }
     }
 
     public IElement this[GridPosition key]
@@ -82,7 +264,7 @@ public class HGridProp(
     {
         set
         {
-            GridPosition pos = (key.Row, key.Column, 1, 1);
+            GridPosition pos = (key.row, key.column, 1, 1);
             _children[pos] = value;
         }
     }
@@ -102,32 +284,6 @@ public static partial class BaseComponent
         // 应用响应式属性
         uiScope.AddEffect(() =>
         {
-            // 处理行定义（字符串格式如 "Auto,*,100"）
-            // if (prop.RowDefinitions is not null)
-            // {
-            //     var rowDefs = new RowDefinitions();
-            //     var lengths = ParseGridLengths(prop.RowDefinitions.Value);
-            //     foreach (var length in lengths)
-            //     {
-            //         rowDefs.Add(new RowDefinition(length));
-            //     }
-            //
-            //     grid.RowDefinitions = rowDefs;
-            // }
-            //
-            // if (prop.ColumnDefinitions is not null)
-            // {
-            //     var colDefs = new ColumnDefinitions();
-            //     var lengths = ParseGridLengths(prop.ColumnDefinitions.Value);
-            //     foreach (var length in lengths)
-            //     {
-            //         colDefs.Add(new ColumnDefinition(length));
-            //     }
-            //
-            //     grid.ColumnDefinitions = colDefs;
-            // }
-            
-            // 设置行定义
             if (prop.RowDefinitions is not null)
             {
                 grid.RowDefinitions.Clear();
@@ -135,35 +291,38 @@ public static partial class BaseComponent
                     grid.RowDefinitions.Add(new RowDefinition(rowDef.Value));
             }
 
-            // 设置列定义
             if (prop.ColumnDefinitions is not null)
             {
                 grid.ColumnDefinitions.Clear();
                 foreach (var colDef in prop.ColumnDefinitions.Value)
                     grid.ColumnDefinitions.Add(new ColumnDefinition(colDef.Value));
             }
-
-            grid.RowSpacing = prop.RowSpacing.Value;
-            grid.ColumnSpacing = prop.ColumnSpacing.Value;
-            grid.HorizontalAlignment = prop.HorizontalAlignment.Value;
-            grid.VerticalAlignment = prop.VerticalAlignment.Value;
         });
 
-        uiScope.AddEffect(() =>
+        uiScope.AddEffect(epochScope =>
         {
-            if (prop.Background?.Value != null)
-                grid.Background = prop.Background.Value;
-            grid.Margin = prop.Margin.Value;
+            if (prop.Style == null) return;
+            var style = epochScope.Track(prop.Style);
+
+            grid.Margin = style.Margin;
+            grid.ColumnSpacing = style.ColumnSpacing;
+            grid.RowSpacing = style.RowSpacing;
+
+            grid.HorizontalAlignment = style.HorizontalAlignment;
+            grid.VerticalAlignment = style.VerticalAlignment;
+
+            if (style.Background != null)
+                grid.Background = style.Background;
         });
 
         // 添加子元素并应用附加属性
         foreach (var (position, childElement) in prop)
         {
             var child = childElement.Content; // 获取控件的根元素
-            Grid.SetRow(child, position.Row);
-            Grid.SetColumn(child, position.Column);
-            Grid.SetRowSpan(child, position.RowSpan);
-            Grid.SetColumnSpan(child, position.ColSpan);
+            Grid.SetRow(child, position.row);
+            Grid.SetColumn(child, position.column);
+            Grid.SetRowSpan(child, position.rowSpan);
+            Grid.SetColumnSpan(child, position.colSpan);
             grid.Children.Add(child);
         }
 
