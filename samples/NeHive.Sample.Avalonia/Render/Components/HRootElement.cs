@@ -23,7 +23,7 @@ public static partial class BaseComponent
     public static IElement RootElement(HStackPanelProp prop, UiScope uiScope)
     {
         var stack = new StackPanel();
-        uiScope.AddEffect(epochScope =>
+        uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style == null) return;
             var s = epochScope.Track(prop.Style);

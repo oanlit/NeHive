@@ -62,7 +62,7 @@ public static partial class BaseComponent
     {
         var canvas = new Canvas();
 
-        uiScope.AddEffect(() =>
+        uiScope.CreateEffect(() =>
         {
             if (prop.Width is not null) canvas.Width = prop.Width.Value;
             if (prop.Height is not null) canvas.Height = prop.Height.Value;
@@ -75,7 +75,7 @@ public static partial class BaseComponent
         foreach (var (pos, element) in prop)
         {
             var control = element.Content;
-            uiScope.AddEffect(() =>
+            uiScope.CreateEffect(() =>
             {
                 if (pos.Left is not null) Canvas.SetLeft(control, pos.Left.Value);
                 if (pos.Top is not null) Canvas.SetTop(control, pos.Top.Value);

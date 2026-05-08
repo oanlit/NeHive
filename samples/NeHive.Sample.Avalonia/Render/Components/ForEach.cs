@@ -18,7 +18,7 @@ public static partial class ControlFlow
         // 用 ArrayMapMemo 做“数据层 diff + 生命周期管理”
         var memo = new ArrayMapMemo<T, IElement, T>(prop.Each, prop.ComponentItem);
 
-        uiScope.AddEffect(epochScope =>
+        uiScope.CreateEffect(epochScope =>
         {
             var list = epochScope.Track(memo);
 

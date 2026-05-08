@@ -28,7 +28,7 @@ public static partial class ControlFlow
         var container = new Panel();
 
         // 使用 Effect 监听 AsyncMemo 的状态变化
-        uiScope.AddEffect(epochScope =>
+        uiScope.CreateEffect(epochScope =>
         {
             var memo = prop.DataSource;
             var state = epochScope.Track(() => memo.State); // 追踪状态

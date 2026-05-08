@@ -182,7 +182,7 @@ public class LifeCycleTest
 
         var scope = new Scope();
 
-        scope.AddEffect(() =>
+        scope.CreateEffect(() =>
         {
             Reactive.OnDispose(() => logs.Add("cleanup"));
 
@@ -217,7 +217,7 @@ public class LifeCycleTest
 
         var scope = new Scope();
 
-        var e1 = scope.AddEffect(() => a.Add(s.Value));
+        var e1 = scope.CreateEffect(() => a.Add(s.Value));
 
         var e2 = new Effect(() => b.Add(s.Value));
 
@@ -289,7 +289,7 @@ public class LifeCycleTest
 
         using var scope = new Scope();
 
-        var e = scope.AddEffect(() => values.Add(s.Value));
+        var e = scope.CreateEffect(() => values.Add(s.Value));
         Assert.False(e.IsInvalid);
 
         s.Value = 1;
@@ -305,7 +305,7 @@ public class LifeCycleTest
         Assert.Equal([0, 1], values);
 
         // 重新挂
-        scope.AddEffect(() => values.Add(s.Value));
+        scope.CreateEffect(() => values.Add(s.Value));
 
         s.Value = 3;
 
@@ -320,7 +320,7 @@ public class LifeCycleTest
 
         using var scope = new Scope();
 
-        var e1 = scope.AddEffect(() => values.Add(s.Value));
+        var e1 = scope.CreateEffect(() => values.Add(s.Value));
         Assert.False(e1.IsInvalid);
 
         s.Value = 1;
@@ -343,6 +343,6 @@ public class LifeCycleTest
 
         scope.Dispose();
 
-        Assert.Throws<ObjectDisposedException>(() => { scope.AddEffect(() => { }); });
+        Assert.Throws<ObjectDisposedException>(() => { scope.CreateEffect(() => { }); });
     }
 }

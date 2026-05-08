@@ -115,7 +115,7 @@ public class NestedEffectTest
     
         var scope = new Scope();
     
-        scope.AddEffect(() =>
+        scope.CreateEffect(() =>
         {
             logs.Add(s.Value);
     

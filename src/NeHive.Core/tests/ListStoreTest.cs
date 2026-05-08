@@ -29,9 +29,9 @@ public class ListStoreTest
         //     var doubleCount = new Computed<int>(() => store.Count * 2);
         //     _ = new Effect(() => { doubleCounts.Add(doubleCount.Value); });
         // });
-        scope.AddEffect(() => { snapshots.Add(TakeSnapshot(store)); });
-        var doubleCount = scope.AddComputed(() => store.Count * 2);
-        scope.AddEffect(() => { doubleCounts.Add(doubleCount.Value); });
+        scope.CreateEffect(() => { snapshots.Add(TakeSnapshot(store)); });
+        var doubleCount = scope.CreateComputed(() => store.Count * 2);
+        scope.CreateEffect(() => { doubleCounts.Add(doubleCount.Value); });
 
         // 初始
         Assert.Equal([10, 20, null], snapshots[^1]);

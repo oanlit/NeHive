@@ -69,153 +69,20 @@ public class HGridStyle(
     }
 
     public static Accessor<HGridStyle> Parse(Accessor<string> text)
-        => new Computed<HGridStyle>(() => PureParse(text.Value));
-
-    public static HGridStyle PureParse(string text)
     {
-        // Thickness? margin = null;
-        // double? columnSpacing = null;
-        // double? rowSpacing = null;
-        //
-        // HorizontalAlignment? horizontalAlignment = null;
-        // VerticalAlignment? verticalAlignment = null;
-        // IBrush? background = null;
-        //
-        // var tokens = text.Split(
-        //     [' ', '\n', '\r', '\t'],
-        //     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        //
-        // foreach (var token in tokens)
-        // {
-        //     // 定位
-        //
-        //     // 外边距 m-10
-        //     // if (token.StartsWith("m-"))
-        //     // {
-        //     //     var val = token["m-".Length..];
-        //     //     if (double.TryParse(val, out var m)) margin = new Thickness(m);
-        //     //     continue;
-        //     // }
-        //     //
-        //     // // 间距 spacing-8
-        //     // if (token.StartsWith("spacing-"))
-        //     // {
-        //     //     var val = token["spacing-".Length..];
-        //     //     if (val.StartsWith("x-"))
-        //     //     {
-        //     //         val = val["x-".Length..];
-        //     //         if (double.TryParse(val, out var s1))
-        //     //         {
-        //     //             rowSpacing = s1;
-        //     //             continue;
-        //     //         }
-        //     //     }
-        //     //
-        //     //     if (val.StartsWith("y-"))
-        //     //     {
-        //     //         val = val["y-".Length..];
-        //     //         if (double.TryParse(val, out var s1))
-        //     //         {
-        //     //             columnSpacing = s1;
-        //     //             continue;
-        //     //         }
-        //     //     }
-        //     //
-        //     //     if (double.TryParse(val, out var s)) rowSpacing = columnSpacing = s;
-        //     //     continue;
-        //     // }
-        //     //
-        //     // if (token.StartsWith("gap-"))
-        //     // {
-        //     //     var val = token["gap-".Length..];
-        //     //     if (val.StartsWith("x-"))
-        //     //     {
-        //     //         val = val["x-".Length..];
-        //     //         if (double.TryParse(val, out var s1))
-        //     //         {
-        //     //             columnSpacing = s1;
-        //     //             continue;
-        //     //         }
-        //     //     }
-        //     //
-        //     //     if (val.StartsWith("y-"))
-        //     //     {
-        //     //         val = val["y-".Length..];
-        //     //         if (double.TryParse(val, out var s1))
-        //     //         {
-        //     //             rowSpacing = s1;
-        //     //             continue;
-        //     //         }
-        //     //     }
-        //     //
-        //     //     if (double.TryParse(val, out var s)) rowSpacing = columnSpacing = s;
-        //     //     continue;
-        //     // }
-        //     //
-        //     // // 对齐
-        //     // if (token == "center")
-        //     // {
-        //     //     horizontalAlignment = HorizontalAlignment.Center;
-        //     //     continue;
-        //     // }
-        //     //
-        //     // if (token == "left")
-        //     // {
-        //     //     horizontalAlignment = HorizontalAlignment.Left;
-        //     //     continue;
-        //     // }
-        //     //
-        //     // if (token == "right")
-        //     // {
-        //     //     horizontalAlignment = HorizontalAlignment.Right;
-        //     //     continue;
-        //     // }
-        //     //
-        //     // if (token == "stretch")
-        //     // {
-        //     //     horizontalAlignment = HorizontalAlignment.Stretch;
-        //     //     continue;
-        //     // }
-        //     //
-        //     // if (token == "top")
-        //     // {
-        //     //     verticalAlignment = VerticalAlignment.Top;
-        //     //     continue;
-        //     // }
-        //     //
-        //     // if (token == "bottom")
-        //     // {
-        //     //     verticalAlignment = VerticalAlignment.Bottom;
-        //     //     continue;
-        //     // }
-        //     //
-        //     // // 背景 bg-gray
-        //     // if (token.StartsWith("bg-"))
-        //     // {
-        //     //     var color = token["bg-".Length..];
-        //     //     background = color.ToLowerInvariant() switch
-        //     //     {
-        //     //         "white" => Brushes.White,
-        //     //         "black" => Brushes.Black,
-        //     //         "gray" => Brushes.LightGray,
-        //     //         "lightgray" => Brushes.LightGray,
-        //     //         "darkgray" => Brushes.DarkGray,
-        //     //         _ => background
-        //     //     };
-        //     // }
-        //
-        //     // var result = StyleParser.Parse(text);
-        //     // margin =  result.Margin;
-        // }
-        var result = StyleParser.Parse(text);
-        return new HGridStyle(
-            result.Margin,
-            result.ColumnSpacing,
-            result.RowSpacing,
-            result.HorizontalAlignment,
-            result.VerticalAlignment,
-            result.Background
-        );
+        return new Computed<HGridStyle>(() =>
+        {
+            var str = text.Value;
+            var result = StyleParser.Parse(str);
+            return new HGridStyle(
+                result.Margin,
+                result.ColumnSpacing,
+                result.RowSpacing,
+                result.HorizontalAlignment,
+                result.VerticalAlignment,
+                result.Background
+            );
+        });
     }
 }
 
@@ -282,7 +149,7 @@ public static partial class BaseComponent
         var grid = new Grid();
 
         // 应用响应式属性
-        uiScope.AddEffect(() =>
+        uiScope.CreateEffect(() =>
         {
             if (prop.RowDefinitions is not null)
             {
@@ -299,7 +166,7 @@ public static partial class BaseComponent
             }
         });
 
-        uiScope.AddEffect(epochScope =>
+        uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style == null) return;
             var style = epochScope.Track(prop.Style);

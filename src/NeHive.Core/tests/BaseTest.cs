@@ -542,11 +542,11 @@ public class IntegrationTests
 
         using var scope = new Scope();
 
-        var m = scope.AddComputed(() => a.Value + 1);
+        var m = scope.CreateComputed(() => a.Value + 1);
 
         int result = 0;
 
-        scope.AddEffect(() => { result = m.Value; });
+        scope.CreateEffect(() => { result = m.Value; });
 
         a.Value = 10;
 
@@ -591,10 +591,10 @@ public class BaseTest
 
         using var scope = new Scope();
 
-        var m1 = scope.AddComputed(() => a.Value + 1);
-        var m2 = scope.AddComputed(() => m1.Value + 1);
+        var m1 = scope.CreateComputed(() => a.Value + 1);
+        var m2 = scope.CreateComputed(() => m1.Value + 1);
 
-        scope.AddEffect(() => { logs.Add(m2.Value); });
+        scope.CreateEffect(() => { logs.Add(m2.Value); });
 
         a.Value = 10;
 
@@ -608,12 +608,12 @@ public class BaseTest
 
         using var scope = new Scope();
 
-        var m1 = scope.AddComputed(() => a.Value + 1);
-        var m2 = scope.AddComputed(() => m1.Value + 1);
+        var m1 = scope.CreateComputed(() => a.Value + 1);
+        var m2 = scope.CreateComputed(() => m1.Value + 1);
 
         int observed = 0;
 
-        scope.AddEffect(() => { observed = m2.Value; });
+        scope.CreateEffect(() => { observed = m2.Value; });
 
         a.Value = 10;
 

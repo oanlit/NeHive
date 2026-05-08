@@ -72,7 +72,7 @@ public static class DemoComponent
     {
         var visible = new Signal<bool>(true);
         // var visibleText = () => visible.Value ? "ForEachDemo" : "LoadDemo";
-        var visibleText = uiScope.AddComputed(() => visible.Value ? "ForEachDemo" : "LoadDemo");
+        var visibleText = uiScope.CreateComputed(() => visible.Value ? "ForEachDemo" : "LoadDemo");
 
         var rootElement = uiScope.RootElement(new()
         {
@@ -145,7 +145,7 @@ public static class DemoComponent
     private static IElement LoadingDemoComp(UiScope uiScope)
     {
         var userId = new Signal<int>(1);
-        var userMemo = uiScope.AddAsyncMemo<User>(async epoch =>
+        var userMemo = uiScope.CreateAsyncMemo<User>(async epoch =>
         {
             var id = epoch.Track(userId);
             await Task.Delay(500);
@@ -164,7 +164,7 @@ public static class DemoComponent
                 HButton(new("Sub User Id",
                     strStyle: "ml-2 mt-2",
                     click: _ => userId.Value--
-                )), // HButton
+                )) // HButton
             }),
 
             Loading<User>(new(userMemo)

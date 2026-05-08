@@ -127,87 +127,85 @@ public interface IScope : IDisposable
 
 public class Scope : IScope
 {
-    private static readonly Dictionary<ScopeNode, Scope> OwnerHolder = [];
+    private static readonly Dictionary<ScopeNode, Scope> ScopeHolder = [];
 
-    private readonly ScopeNode _root;
+    internal readonly ScopeNode InnerScopeNode;
     public bool IsDisposed { get; private set; }
 
     public Scope(Scope? parentScope = null)
     {
         var currentScope = ReactiveContext.CurrentScope;
-        var current = parentScope?._root ?? currentScope;
-        _root = new ScopeNode(
+        var current = parentScope?.InnerScopeNode ?? currentScope;
+        InnerScopeNode = new ScopeNode(
             parent: current,
             children: null,
             context: current.Context,
             cleanups: null
         );
-        _root.Cleanups.Add(_onDispose);
-        OwnerHolder[_root] = this;
+        InnerScopeNode.Cleanups.Add(_onDispose);
+        ScopeHolder[InnerScopeNode] = this;
     }
 
     public void OnDispose(Action fn)
     {
         if (IsDisposed) return;
-        _root.Cleanups.Add(fn);
+        InnerScopeNode.Cleanups.Add(fn);
     }
 
     public void Clean()
     {
         if (IsDisposed) return;
-        _root.DisposeChildren();
+        InnerScopeNode.DisposeChildren();
     }
 
     public void Dispose()
     {
         if (IsDisposed) return;
-        _root.Dispose();
+        InnerScopeNode.Dispose();
     }
 
     private void _onDispose()
     {
         IsDisposed = true;
-        OwnerHolder.Remove(_root);
+        ScopeHolder.Remove(InnerScopeNode);
     }
 
     private Scope(bool isRoot)
     {
         _ = isRoot;
-        _root = Constant.RootScopeTree;
-        OwnerHolder[_root] = this;
+        InnerScopeNode = Constant.RootScopeTree;
+        ScopeHolder[InnerScopeNode] = this;
     }
 
     static Scope()
     {
         var root = new Scope(true);
-        OwnerHolder[Constant.RootScopeTree] = root;
+        ScopeHolder[Constant.RootScopeTree] = root;
     }
 
     public static Scope RootScope
-        => OwnerHolder[Constant.RootScopeTree];
+        => ScopeHolder[Constant.RootScopeTree];
 
     internal Scope(ScopeNode scope)
-    {
-        _root = scope;
-    }
+        => InnerScopeNode = scope;
 
     public static Scope CurrentScope
     {
         get
         {
             var currentScopeNode = ReactiveContext.CurrentScope;
-            OwnerHolder.TryGetValue(currentScopeNode, out var scope);
+            ScopeHolder.TryGetValue(currentScopeNode, out var scope);
             if (scope is not null) return scope;
 
             scope = new Scope(currentScopeNode);
-            OwnerHolder[currentScopeNode] = scope;
+            ScopeHolder[currentScopeNode] = scope;
             if (currentScopeNode is ExecuteNode)
             {
                 // ExecuteNode 每次运行时都会dispose自己，为了复用，我们绑定到 Parent Scope
                 var parent = currentScopeNode.Parent!; // 除了 RootScope 以外都有
                 parent.Cleanups.Add(() =>
                 {
-                    OwnerHolder.Remove(currentScopeNode);
+                    ScopeHolder.Remove(currentScopeNode);
                     scope.IsDisposed = true;
                 });
             }
@@ -215,7 +213,7 @@ public class Scope : IScope
             {
                 currentScopeNode.Cleanups.Add(() =>
                 {
-                    OwnerHolder.Remove(currentScopeNode);
+                    ScopeHolder.Remove(currentScopeNode);
                     scope.IsDisposed = true;
                 });
             }
@@ -224,41 +222,10 @@ public class Scope : IScope
         }
     }
 
-    private T _setContext<T>(Func<T> fn)
-    {
-        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Scope));
-        var computation = ReactiveContext.CurrentExecute;
-        return ReactiveContext.RunInContext(fn, _root, computation);
-    }
-
-    public Effect AddEffect(Action fn)
-        => _setContext(() => new Effect(fn));
-
-    public Effect AddEffect(Action<EpochScope> fn)
-        => _setContext(() => new Effect(fn));
-
-    public Effect AddEffect(Func<Scope, Action<EpochScope>> fn)
-        => _setContext(() => new Effect(fn));
-
-    public Computed<T> AddComputed<T>(Func<T, T> fn, T? value = default)
-        => _setContext(() => new Computed<T>(fn, value));
-
-    public Computed<T> AddComputed<T>(Func<T> fn, T? value = default)
-        => _setContext(() => new Computed<T>(fn, value));
-
-    public AsyncMemo<T> AddAsyncMemo<T>(Func<Task<T>> executeFn)
-        => _setContext(() => new AsyncMemo<T>(executeFn));
-
-    public AsyncMemo<T> AddAsyncMemo<T>(Func<EpochScope, Task<T>> executeFn)
-        => _setContext(() => new AsyncMemo<T>(executeFn));
-
-    public AsyncMemo<T> AddAsyncMemo<T>(Func<Scope, Func<EpochScope, Task<T>>> setupFn)
-        => _setContext(() => new AsyncMemo<T>(setupFn));
-
     public T RunInScope<T>(Func<T> fn)
     {
         ObjectDisposedException.ThrowIf(IsDisposed, nameof(Scope));
-        return _root.RunInScope(fn)!;
+        return InnerScopeNode.RunInScope(fn)!;
     }
 
     public void RunInScope(Action fn)
@@ -292,14 +259,68 @@ public class EpochScope : Scope
     }
 }
 
+public static class ReactiveExtensions
+{
+    extension(Scope scope)
+    {
+        public Effect CreateEffect(Action fn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Effect(fn, scope);
+        }
+
+        public Effect CreateEffect(Action<EpochScope> fn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Effect(fn, scope);
+        }
+
+        public Effect CreateEffect(Func<Scope, Action<EpochScope>> fn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Effect(fn, scope);
+        }
+
+        public Computed<T> CreateComputed<T>(Func<T, T> fn, T? value = default)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Computed<T>(fn, value, scope);
+        }
+
+        public Computed<T> CreateComputed<T>(Func<T> fn, T? value = default)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Computed<T>(fn, value, scope);
+        }
+
+        public AsyncMemo<T> CreateAsyncMemo<T>(Func<Task<T>> executeFn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new AsyncMemo<T>(executeFn, scope);
+        }
+
+        public AsyncMemo<T> CreateAsyncMemo<T>(Func<EpochScope, Task<T>> executeFn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new AsyncMemo<T>(executeFn, scope);
+        }
+
+        public AsyncMemo<T> CreateAsyncMemo<T>(Func<Scope, Func<EpochScope, Task<T>>> setupFn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new AsyncMemo<T>(setupFn, scope);
+        }
+    }
+}
+
 public class Effect : IDisposable
 {
     private readonly ScopeNode _scope;
     public bool IsInvalid { get; private set; }
 
-    public Effect(Action executeFn)
+    public Effect(Action executeFn, Scope? scope = null)
     {
-        var current = ReactiveContext.CurrentScope;
+        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
 
         _scope = new ScopeNode(
             parent: current,
@@ -319,13 +340,13 @@ public class Effect : IDisposable
         }
     }
 
-    public Effect(Action<EpochScope> fn) : this(_ => fn)
+    public Effect(Action<EpochScope> fn, Scope? scope = null) : this(_ => fn, scope)
     {
     }
 
-    public Effect(Func<Scope, Action<EpochScope>> setupFn)
+    public Effect(Func<Scope, Action<EpochScope>> setupFn, Scope? scope = null)
     {
-        var current = ReactiveContext.CurrentScope;
+        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
 
         _scope = new ScopeNode(
             parent: current,
@@ -371,11 +392,11 @@ public class Computed<T> : Accessor<T>
     // 缓存是否失效 (不影响依赖建立)
     public bool IsInvalid { get; private set; }
 
-    public Computed(Func<T, T> fn, T? value = default)
+    public Computed(Func<T, T> fn, T? value = default, Scope? scope = null)
     {
         _fn = fn;
 
-        var current = ReactiveContext.CurrentScope;
+        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
         _scope = new ScopeNode(
             parent: current,
             children: null,
@@ -403,8 +424,8 @@ public class Computed<T> : Accessor<T>
         _value = _computedNode.UntrackValue;
     }
 
-    public Computed(Func<T> fn, T? value = default)
-        : this(_ => fn(), value)
+    public Computed(Func<T> fn, T? value = default, Scope? scope = null)
+        : this(_ => fn(), value, scope)
     {
     }
 
@@ -463,8 +484,6 @@ public class AsyncMemo<T> : Accessor<T?>
     private readonly bool _isSimpleUse;
 
     private readonly Func<EpochScope, Task<T>> _executeFn;
-
-    // private readonly Signal<T?> _value = new(default);
     private readonly Signal<Exception?> _error = new(null);
     private readonly Signal<AsyncMemoState> _state = new(AsyncMemoState.Unresolved);
 
@@ -496,11 +515,11 @@ public class AsyncMemo<T> : Accessor<T?>
 
     public Exception? Error => _error.Value;
 
-    public AsyncMemo(Func<Task<T>> executeFn)
+    public AsyncMemo(Func<Task<T>> executeFn, Scope? scope = null)
     {
         _initSignalGetter();
 
-        var current = ReactiveContext.CurrentScope;
+        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
         _scope = new ScopeNode(
             parent: current,
             children: null,
@@ -523,15 +542,15 @@ public class AsyncMemo<T> : Accessor<T?>
         }
     }
 
-    public AsyncMemo(Func<EpochScope, Task<T>> executeFn) : this(_ => executeFn)
+    public AsyncMemo(Func<EpochScope, Task<T>> executeFn, Scope? scope = null) : this(_ => executeFn, scope)
     {
     }
 
-    public AsyncMemo(Func<Scope, Func<EpochScope, Task<T>>> setupFn)
+    public AsyncMemo(Func<Scope, Func<EpochScope, Task<T>>> setupFn, Scope? scope = null)
     {
         _initSignalGetter();
 
-        var current = ReactiveContext.CurrentScope;
+        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
         _scope = new ScopeNode(
             parent: current,
             children: null,

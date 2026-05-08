@@ -41,122 +41,20 @@ public class HPanelStyle(
     public static HPanelStyle Default => new();
 
     public static Accessor<HPanelStyle> Parse(Accessor<string> text)
-        => new Computed<HPanelStyle>(() => PureParse(text.Value));
-
-    public static HPanelStyle PureParse(string text)
     {
-        // Thickness? margin = null;
-        // Orientation? orientation = null;
-        // HorizontalAlignment? horizontalAlignment = null;
-        // VerticalAlignment? verticalAlignment = null;
-        // double? spacing = null;
-        // IBrush? background = null;
-        //
-        // var tokens = text.Split(
-        //     [' ', '\n', '\r', '\t'],
-        //     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        //
-        // foreach (var token in tokens)
-        // {
-        //     // 方向
-        //     if (token == "vertical")
-        //     {
-        //         orientation = Orientation.Vertical;
-        //         continue;
-        //     }
-        //
-        //     if (token == "horizontal")
-        //     {
-        //         orientation = Orientation.Horizontal;
-        //         continue;
-        //     }
-        //
-        //     // 对齐
-        //     if (token == "center")
-        //     {
-        //         horizontalAlignment = HorizontalAlignment.Center;
-        //         continue;
-        //     }
-        //
-        //     if (token == "left")
-        //     {
-        //         horizontalAlignment = HorizontalAlignment.Left;
-        //         continue;
-        //     }
-        //
-        //     if (token == "right")
-        //     {
-        //         horizontalAlignment = HorizontalAlignment.Right;
-        //         continue;
-        //     }
-        //
-        //     if (token == "stretch")
-        //     {
-        //         horizontalAlignment = HorizontalAlignment.Stretch;
-        //         continue;
-        //     }
-        //
-        //     if (token == "top")
-        //     {
-        //         verticalAlignment = VerticalAlignment.Top;
-        //         continue;
-        //     }
-        //
-        //     if (token == "bottom")
-        //     {
-        //         verticalAlignment = VerticalAlignment.Bottom;
-        //         continue;
-        //     }
-        //
-        //     // 间距 spacing-8
-        //     if (token.StartsWith("spacing-"))
-        //     {
-        //         var val = token["spacing-".Length..];
-        //         if (double.TryParse(val, out var s)) spacing = s;
-        //         continue;
-        //     }
-        //
-        //     if (token.StartsWith("gap-"))
-        //     {
-        //         var val = token["gap-".Length..];
-        //         if (double.TryParse(val, out var s)) spacing = s;
-        //         continue;
-        //     }
-        //
-        //     // 外边距 m-10
-        //     if (token.StartsWith("m-"))
-        //     {
-        //         var val = token["m-".Length..];
-        //         if (double.TryParse(val, out var m)) margin = new Thickness(m);
-        //         continue;
-        //     }
-        //
-        //     // 背景 bg-gray
-        //     if (token.StartsWith("bg-"))
-        //     {
-        //         var color = token["bg-".Length..];
-        //         background = color.ToLowerInvariant() switch
-        //         {
-        //             "white" => Brushes.White,
-        //             "black" => Brushes.Black,
-        //             "gray" => Brushes.LightGray,
-        //             "lightgray" => Brushes.LightGray,
-        //             "darkgray" => Brushes.DarkGray,
-        //             _ => background
-        //         };
-        //     }
-        // }
-        
-        var result = StyleParser.Parse(text);
-
-        return new HPanelStyle(
-            result.Margin,
-            result.Orientation,
-            result.HorizontalAlignment,
-            result.VerticalAlignment,
-            result.ColumnSpacing,
-            result.Background
-        );
+        return new Computed<HPanelStyle>(() =>
+        {
+            var str = text.Value;
+            var result = StyleParser.Parse(str);
+            return new HPanelStyle(
+                result.Margin,
+                result.Orientation,
+                result.HorizontalAlignment,
+                result.VerticalAlignment,
+                result.ColumnSpacing,
+                result.Background
+            );
+        });
     }
 }
 
@@ -206,7 +104,7 @@ public static partial class BaseComponent
     {
         var stack = new StackPanel();
 
-        uiScope.AddEffect(epochScope =>
+        uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style == null) return;
             var style = epochScope.Track(prop.Style);

@@ -62,126 +62,20 @@ public class HTextStyle(
     public static HTextStyle Default => new();
 
     public static Accessor<HTextStyle> Parse(Accessor<string> text)
-        => new Computed<HTextStyle>(() => Parse(text.Value));
-
-    public static Accessor<HTextStyle>? ParseNullable(Accessor<string>? text)
-        => text is null
-            ? null
-            : new Computed<HTextStyle>(() => Parse(text.Value));
-
-    private static HTextStyle Parse(string text)
     {
-        // Thickness? margin = null;
-        // TextAlignment? textAlignment = null;
-        // TextWrapping? textWrapping = null;
-        // double? fontSize = null;
-        // FontWeight? fontWeight = null;
-        // IBrush? foreground = null;
-        //
-        // var tokens = text.Split(
-        //     [' ', '\n', '\r', '\t'],
-        //     StringSplitOptions.RemoveEmptyEntries |
-        //     StringSplitOptions.TrimEntries);
-        //
-        // foreach (var token in tokens)
-        // {
-        //     // text-18
-        //     if (token.StartsWith("text-"))
-        //     {
-        //         var value = token["text-".Length..];
-        //
-        //         // text-center
-        //         textAlignment = value switch
-        //         {
-        //             "left" => TextAlignment.Left,
-        //             "center" => TextAlignment.Center,
-        //             "right" => TextAlignment.Right,
-        //             "justify" => TextAlignment.Justify,
-        //             _ => textAlignment
-        //         };
-        //
-        //         // text-18
-        //         if (double.TryParse(value, out var fs))
-        //         {
-        //             fontSize = fs;
-        //         }
-        //
-        //         continue;
-        //     }
-        //
-        //     // font-bold
-        //     if (token.StartsWith("font-"))
-        //     {
-        //         var value = token["font-".Length..];
-        //
-        //         fontWeight = value switch
-        //         {
-        //             "bold" => global::Avalonia.Media.FontWeight.Bold,
-        //             "light" => global::Avalonia.Media.FontWeight.Light,
-        //             "normal" => global::Avalonia.Media.FontWeight.Normal,
-        //             _ => fontWeight
-        //         };
-        //
-        //         continue;
-        //     }
-        //
-        //     // fg-red
-        //     if (token.StartsWith("fg-"))
-        //     {
-        //         var value = token["fg-".Length..];
-        //
-        //         foreground = value switch
-        //         {
-        //             "red" => Brushes.Red,
-        //             "green" => Brushes.Green,
-        //             "blue" => Brushes.Blue,
-        //             "white" => Brushes.White,
-        //             "black" => Brushes.Black,
-        //             "gray" => Brushes.Gray,
-        //             "darkslateblue" => Brushes.DarkSlateBlue,
-        //             "darkgreen" => Brushes.DarkGreen,
-        //             _ => foreground
-        //         };
-        //
-        //         continue;
-        //     }
-        //
-        //     // wrap
-        //     if (token == "wrap")
-        //     {
-        //         textWrapping = TextWrapping.Wrap;
-        //         continue;
-        //     }
-        //
-        //     // nowrap
-        //     if (token == "nowrap")
-        //     {
-        //         textWrapping = TextWrapping.NoWrap;
-        //         continue;
-        //     }
-        //
-        //     // m-12
-        //     if (token.StartsWith("m-"))
-        //     {
-        //         var value = token["m-".Length..];
-        //
-        //         if (double.TryParse(value, out var m))
-        //         {
-        //             margin = new Thickness(m);
-        //         }
-        //     }
-        // }
-        
-        var result = StyleParser.Parse(text);
-
-        return new HTextStyle(
-            result.Margin,
-            result.TextAlignment,
-            result.TextWrapping,
-            result.FontSize,
-            result.FontWeight,
-            result.Foreground
-        );
+        return new Computed<HTextStyle>(() =>
+        {
+            var str = text.Value;
+            var result = StyleParser.Parse(str);
+            return new HTextStyle(
+                result.Margin,
+                result.TextAlignment,
+                result.TextWrapping,
+                result.FontSize,
+                result.FontWeight,
+                result.Foreground
+            );
+        });
     }
 }
 
@@ -222,8 +116,8 @@ public static partial class BaseComponent
     {
         var tb = new TextBlock();
 
-        uiScope.AddEffect(() => tb.Text = prop.Text.Value);
-        uiScope.AddEffect(epochScope =>
+        uiScope.CreateEffect(() => tb.Text = prop.Text.Value);
+        uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style is null) return;
             var style = epochScope.Track(prop.Style);

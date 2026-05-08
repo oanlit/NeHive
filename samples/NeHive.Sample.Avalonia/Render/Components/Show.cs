@@ -16,7 +16,7 @@ public static partial class ControlFlow
     {
         var panel = new Panel();
 
-        uiScope.AddEffect(epochScope =>
+        uiScope.CreateEffect(epochScope =>
         {
             var when = epochScope.Track(prop.When);
 

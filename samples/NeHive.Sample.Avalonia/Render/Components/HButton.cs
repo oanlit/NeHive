@@ -111,11 +111,11 @@ public static partial class BaseComponent
         };
         border.Child = textBlock;
 
-        uiScope.AddEffect(() =>
+        uiScope.CreateEffect(() =>
         {
             textBlock.Text = prop.Text.Value;
         });
-        uiScope.AddEffect(epochScope =>
+        uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style == null) return;
             var style = epochScope.Track(prop.Style);

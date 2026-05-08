@@ -17,7 +17,7 @@ public static partial class ControlFlow
     {
         var container = new Panel();
 
-        uiScope.AddEffect(epochScope =>
+        uiScope.CreateEffect(epochScope =>
         {
             var currentKey = epochScope.Track(prop.Key);
 
