@@ -34,6 +34,57 @@ public static partial class Reactive
         ReactiveContext.Untrack(fn);
         ExecuteNode.EndBatch();
     }
+
+    extension(Scope scope)
+    {
+        public Effect CreateEffect(Action fn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Effect(fn, scope);
+        }
+
+        public Effect CreateEffect(Action<EpochScope> fn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Effect(fn, scope);
+        }
+
+        public Effect CreateEffect(Func<Scope, Action<EpochScope>> fn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Effect(fn, scope);
+        }
+
+        public Computed<T> CreateComputed<T>(Func<T, T> fn, T? value = default)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Computed<T>(fn, value, scope);
+        }
+
+        public Computed<T> CreateComputed<T>(Func<T> fn, T? value = default)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new Computed<T>(fn, value, scope);
+        }
+
+        public AsyncMemo<T> CreateAsyncMemo<T>(Func<Task<T>> executeFn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new AsyncMemo<T>(executeFn, scope);
+        }
+
+        public AsyncMemo<T> CreateAsyncMemo<T>(Func<EpochScope, Task<T>> executeFn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new AsyncMemo<T>(executeFn, scope);
+        }
+
+        public AsyncMemo<T> CreateAsyncMemo<T>(Func<Scope, Func<EpochScope, Task<T>>> setupFn)
+        {
+            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
+            return new AsyncMemo<T>(setupFn, scope);
+        }
+    }
 }
 
 public interface IReadOnlySignal<out T>
@@ -256,60 +307,6 @@ public class EpochScope : Scope
     public void Track(Action trackFn)
     {
         _tracker.Track(trackFn);
-    }
-}
-
-public static class ReactiveExtensions
-{
-    extension(Scope scope)
-    {
-        public Effect CreateEffect(Action fn)
-        {
-            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
-            return new Effect(fn, scope);
-        }
-
-        public Effect CreateEffect(Action<EpochScope> fn)
-        {
-            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
-            return new Effect(fn, scope);
-        }
-
-        public Effect CreateEffect(Func<Scope, Action<EpochScope>> fn)
-        {
-            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
-            return new Effect(fn, scope);
-        }
-
-        public Computed<T> CreateComputed<T>(Func<T, T> fn, T? value = default)
-        {
-            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
-            return new Computed<T>(fn, value, scope);
-        }
-
-        public Computed<T> CreateComputed<T>(Func<T> fn, T? value = default)
-        {
-            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
-            return new Computed<T>(fn, value, scope);
-        }
-
-        public AsyncMemo<T> CreateAsyncMemo<T>(Func<Task<T>> executeFn)
-        {
-            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
-            return new AsyncMemo<T>(executeFn, scope);
-        }
-
-        public AsyncMemo<T> CreateAsyncMemo<T>(Func<EpochScope, Task<T>> executeFn)
-        {
-            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
-            return new AsyncMemo<T>(executeFn, scope);
-        }
-
-        public AsyncMemo<T> CreateAsyncMemo<T>(Func<Scope, Func<EpochScope, Task<T>>> setupFn)
-        {
-            ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
-            return new AsyncMemo<T>(setupFn, scope);
-        }
     }
 }
 

@@ -45,15 +45,15 @@ public static class DemoComponent
             //     background: new(Brushes.ForestGreen),
             //     foreground: new(Brushes.White),
             //     cornerRadius: new CornerRadius(8),
-            //     padding: new Thickness(16, 8),
+            //     padding: new Thickness(8, 4),
             //     click: _ => count.Value++
             // )), // HButton
             HButton(new("Add",
-                strStyle: "px-2 py-1 mt-1 ml-2 bg-forestgreen fg-white rounded-lg",
+                strStyle: "mt-1 ml-2 px-2 py-1 bg-forestgreen fg-white rounded-lg",
                 click: _ => count.Value++
             )), // HButton
             HButton(new("Sub",
-                strStyle: "px-2 py-1 mt-1 ml-2 bg-crimson fg-white rounded-lg",
+                strStyle: "mt-1 ml-2 px-2 py-1 bg-crimson fg-white rounded-lg",
                 click: _ => count.Value--
             )) // HButton
         }); // rootElement
@@ -83,7 +83,7 @@ public static class DemoComponent
             {
                 IfFalse = LoadingDemo,
                 IfTrue = ForEachDemo
-            }) // HButton
+            }) // Show
         }); // rootElement
 
         return rootElement;
@@ -145,17 +145,27 @@ public static class DemoComponent
     private static IElement LoadingDemoComp(UiScope uiScope)
     {
         var userId = new Signal<int>(1);
-        var userMemo = uiScope.CreateAsyncMemo<User>(async epoch =>
-        {
-            var id = epoch.Track(userId);
-            await Task.Delay(500);
-            if (id <= 0) throw new Exception("Invalid user");
-            return new User { Id = id, Name = $"User {id}" };
-        });
+        // var userMemo = uiScope.CreateAsyncMemo<User>(async epoch =>
+        // {
+        //     var id = epoch.Track(userId);
+        //     await Task.Delay(500);
+        //     if (id <= 0) throw new Exception("Invalid user");
+        //     return new User { Id = id, Name = $"User {id}" };
+        // });
+        var userMemo = uiScope.CreateReactiveFlow(userId)
+            .Debounce(500)
+            // .ThrottleLatest(500)
+            .Filter(id => id > 0)
+            .Map(id => new User { Id = id, Name = $"User {id}" })
+            .PushAsyncMemo(async user =>
+            {
+                await Task.Delay(500);
+                return user;
+            }, initValue: new User(0, "Unknown"));
 
         var rootElement = uiScope.RootElement(new()
         {
-            HStackPanel(new(strStyle:"flex-row mb-2")
+            HStackPanel(new(strStyle: "flex-row mb-2")
             {
                 HButton(new("Add User Id",
                     strStyle: "ml-2 mt-2",
@@ -165,7 +175,7 @@ public static class DemoComponent
                     strStyle: "ml-2 mt-2",
                     click: _ => userId.Value--
                 )) // HButton
-            }),
+            }), // HStackPanel
 
             Loading<User>(new(userMemo)
             {
@@ -176,8 +186,8 @@ public static class DemoComponent
                 Loading = () => HTextBlock(new("Fetching user...")),
                 Error = ex =>
                     HButton(new($"Retry: {ex.Message}",
-                        click: _ => userMemo.Refetch())
-                    ) // HButton
+                        click: _ => userMemo.Refetch()
+                    )) // HButton
                 // Loading<User>.Error
             }) // Loading<User>
         }); // rootElement

@@ -1,65 +1,66 @@
 ﻿using NeHive.Core;
+
 // using NeHive.Sample.Console.Store;
 
 // 创建一个 NullableListStore
-ListStore<string?> store = ["D", "B", "C", null, "A"];
+// ListStore<string?> store = ["D", "B", "C", null, "A"];
 
-var owner = new Scope();
-
-owner.RunInScope(() =>
-{
-    // 订阅 slot[0] 和 slot[4]
-    _ = new Effect(() =>
-    {
-        store.TryGetValue(0, out var value1);
-        value1 ??= "null";
-        store.TryGetValue(4, out var value2);
-        value2 ??= "null";
-        Console.WriteLine($"Effect slot[0]: {value1}");
-        Console.WriteLine($"Effect slot[4]: {value2}");
-    });
-
-    _ = new Effect(() =>
-    {
-        store.TryGetValue(5, out var value);
-        value ??= "null";
-        Console.WriteLine($"Effect slot[5]: {value}");
-    });
-
-    // 创建一个 effect，订阅 count
-    _ = new Effect(() => { Console.WriteLine($"Effect Count: {store.Count}"); });
-
-    _ = new Effect(() =>
-    {
-        var query = store
-            .Where(x => x != null)
-            .Select((v, i) => $"{i}:{v}");
-
-        Console.WriteLine("LINQ 查询结果:");
-        foreach (var s in query)
-            Console.WriteLine(s);
-    });
-});
-
-Console.WriteLine("=== 排序 ===");
-store.Sort((a, b) => string.Compare(a, b, StringComparison.Ordinal));
-// slot[0] 和 slot[4] 会触发 effect，如果值变化
-
-Console.WriteLine("=== 反转 ===");
-store.Reverse();
-
-Console.WriteLine("=== 再次批量修改 ===");
-store.BatchModify(list =>
-{
-    list[0] = "Z"; // slot[0] 改变
-    list[4] = "M"; // slot[4] 改变
-});
-
-store.Add("Lin");
-
-store.Clear();
-
-owner.Clean();
+// var scope = new Scope();
+//
+// scope.RunInScope(() =>
+// {
+//     // 订阅 slot[0] 和 slot[4]
+//     _ = new Effect(() =>
+//     {
+//         store.TryGetValue(0, out var value1);
+//         value1 ??= "null";
+//         store.TryGetValue(4, out var value2);
+//         value2 ??= "null";
+//         Console.WriteLine($"Effect slot[0]: {value1}");
+//         Console.WriteLine($"Effect slot[4]: {value2}");
+//     });
+//
+//     _ = new Effect(() =>
+//     {
+//         store.TryGetValue(5, out var value);
+//         value ??= "null";
+//         Console.WriteLine($"Effect slot[5]: {value}");
+//     });
+//
+//     // 创建一个 effect，订阅 count
+//     _ = new Effect(() => { Console.WriteLine($"Effect Count: {store.Count}"); });
+//
+//     _ = new Effect(() =>
+//     {
+//         var query = store
+//             .Where(x => x != null)
+//             .Select((v, i) => $"{i}:{v}");
+//
+//         Console.WriteLine("LINQ 查询结果:");
+//         foreach (var s in query)
+//             Console.WriteLine(s);
+//     });
+// });
+//
+// Console.WriteLine("=== 排序 ===");
+// store.Sort((a, b) => string.Compare(a, b, StringComparison.Ordinal));
+// // slot[0] 和 slot[4] 会触发 effect，如果值变化
+//
+// Console.WriteLine("=== 反转 ===");
+// store.Reverse();
+//
+// Console.WriteLine("=== 再次批量修改 ===");
+// store.BatchModify(list =>
+// {
+//     list[0] = "Z"; // slot[0] 改变
+//     list[4] = "M"; // slot[4] 改变
+// });
+//
+// store.Add("Lin");
+//
+// store.Clear();
+//
+// scope.Clean();
 
 // new StudentStore();
 
@@ -125,3 +126,45 @@ owner.Clean();
 // {
 //     a.Value++;
 // });
+
+// using var scope = new Scope();
+// var signal = new Signal<int>(100);
+//
+// // ACT
+// var e = scope.CreateReactiveFlow(signal)
+//     .Filter(v => v > 101)
+//     .Map(v => v * 10)
+//     .PushEffect(v => Console.WriteLine($"signal: {v}"));
+//
+// signal.Value++;
+// signal.Value++;
+// signal.Value++;
+// e.Dispose();
+// signal.Value++;
+// signal.Value++;
+// signal.Value++;
+
+using var scope = new Scope();
+
+var signal = new Signal<int>(0);
+
+var effect = scope.CreateReactiveFlow(signal)
+    // .ThrottleLatest(TimeSpan.FromMilliseconds(500))
+    .ThrottleLatest(500)
+    .Map(v => v * 2)
+    .PushEffect(v =>
+    {
+        Console.WriteLine(
+            $"{DateTime.Now:HH:mm:ss.fff} -> {v}");
+    });
+
+for (var i = 1; i <= 10; i++)
+{
+    signal.Value = i;
+
+    await Task.Delay(100);
+}
+
+await Task.Delay(2000);
+
+effect.Dispose();

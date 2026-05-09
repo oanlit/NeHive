@@ -6,10 +6,10 @@ public class SignalObservable<T>(Signal<T> signal) : IObservable<T>
 {
     public IDisposable Subscribe(IObserver<T> observer)
     {
-        var effect = new Effect(() =>
+        var effect = new Effect(epochScope =>
         {
-            var value = signal.Value;
-            Reactive.Untrack(() => observer.OnNext(value));
+            var value = epochScope.Track(signal);
+            observer.OnNext(value);
         });
 
         return new Unsubscriber(effect.Dispose);
@@ -25,9 +25,10 @@ public static partial class Reactive
 {
     public static IReadOnlySignal<T> From<T>(IObservable<T> producer, T initialValue)
     {
+        var scope = new Scope();
         var signal = new Signal<T>(initialValue);
         var subscription = producer.Subscribe(new ObserverSignal<T>(signal));
-        OnDispose(() => subscription.Dispose());
+        scope.OnDispose(subscription.Dispose);
         return signal;
     }
 
@@ -37,6 +38,7 @@ public static partial class Reactive
         {
             signal.Value = value;
         }
+
         public void OnCompleted()
         {
         }
@@ -44,6 +46,259 @@ public static partial class Reactive
         public void OnError(Exception error)
         {
             throw error;
+        }
+    }
+}
+
+internal delegate bool ProducerFn<T>(out T value);
+
+public readonly struct ReactiveFlow<T>
+{
+    internal readonly Scope Scope;
+    internal readonly ProducerFn<T> Producer;
+
+    internal ReactiveFlow(Scope scope, ProducerFn<T> producer)
+    {
+        Scope = scope;
+        Producer = producer;
+    }
+}
+
+public static partial class Reactive
+{
+    extension(Scope scope)
+    {
+        // 从 Signal 创建流
+        public ReactiveFlow<T> CreateReactiveFlow<T>(Signal<T> signal)
+        {
+            return new ReactiveFlow<T>(scope, (out value) =>
+            {
+                value = signal.Value;
+                return true;
+            });
+        }
+
+        // 从 Accessor 创建流
+        // public ReactiveFlow<T> CreateReactiveFlow<T>(Accessor<T> accessor)
+        // {
+        //     return new ReactiveFlow<T>(scope, (out value) =>
+        //     {
+        //         value = accessor.Value;
+        //         return true;
+        //     });
+        // }
+    }
+}
+
+public static class ReactiveFlowExtensions
+{
+    // 过滤
+    extension<T>(ReactiveFlow<T> flow)
+    {
+        public ReactiveFlow<T> Filter(Func<T, bool> predicate)
+        {
+            return new ReactiveFlow<T>(flow.Scope, (out value) =>
+            {
+                if (!flow.Producer(out value))
+                    return false;
+
+                if (predicate(value)) return true;
+
+                value = default!;
+                return false;
+            });
+        }
+
+        public ReactiveFlow<T> Where(Func<T, bool> predicate)
+            => Filter(flow, predicate);
+
+        // 映射
+        public ReactiveFlow<TU> Map<TU>(Func<T, TU> mapper)
+        {
+            return new ReactiveFlow<TU>(flow.Scope, (out value) =>
+            {
+                if (!flow.Producer(out var current))
+                {
+                    value = default!;
+                    return false;
+                }
+
+                value = mapper(current);
+                return true;
+            });
+        }
+
+        public ReactiveFlow<TU> Select<TU>(Func<T, TU> mapper)
+            => Map(flow, mapper);
+
+        // 去重
+        // public ReactiveFlow<T> Distinct(
+        //     IEqualityComparer<T>? comparer = null)
+        // {
+        //     comparer ??= EqualityComparer<T>.Default;
+        //     T last = default!;
+        //     var firstRun = true;
+        //
+        //     return new ReactiveFlow<T>(flow.Scope, () =>
+        //     {
+        //         var current = flow.Producer();
+        //         if (firstRun || !comparer.Equals(last, current))
+        //         {
+        //             firstRun = false;
+        //             last = current;
+        //             return current;
+        //         }
+        //
+        //         return default!;
+        //     });
+        // }
+
+        public ReactiveFlow<T> Debounce(TimeSpan delay)
+        {
+            var output = new Signal<T>(default!);
+
+            CancellationTokenSource? cts = null;
+
+            flow.Scope.CreateEffect(() =>
+            {
+                if (!flow.Producer(out var value))
+                    return;
+
+                cts?.Cancel();
+
+                var newCts = new CancellationTokenSource();
+                cts = newCts;
+
+                _ = Cooldown();
+                return;
+
+                async Task Cooldown()
+                {
+                    try
+                    {
+                        await Task.Delay(delay, newCts.Token);
+
+                        if (!newCts.IsCancellationRequested)
+                        {
+                            output.Value = value;
+                        }
+                    }
+                    catch (TaskCanceledException)
+                    {
+                    }
+                }
+            });
+
+            return flow.Scope.CreateReactiveFlow(output);
+        }
+
+        public ReactiveFlow<T> Debounce(long delay)
+            => Debounce(flow, TimeSpan.FromMilliseconds(delay));
+
+        public ReactiveFlow<T> ThrottleLatest(
+            TimeSpan interval)
+        {
+            var output = new Signal<T>(default!);
+
+            var throttled = false;
+
+            T latest = default!;
+            var hasLatest = false;
+
+            flow.Scope.CreateEffect(() =>
+            {
+                if (!flow.Producer(out var value))
+                    return;
+
+                // 当前不在节流
+                if (!throttled)
+                {
+                    throttled = true;
+
+                    output.Value = value;
+
+                    _ = Cooldown();
+
+                    return;
+                }
+
+                // 节流期间，只记录最后值
+                latest = value;
+                hasLatest = true;
+            });
+
+            return flow.Scope.CreateReactiveFlow(output);
+
+            async Task Cooldown()
+            {
+                while (true)
+                {
+                    await Task.Delay(interval);
+
+                    if (!hasLatest)
+                    {
+                        throttled = false;
+                        return;
+                    }
+
+                    var value = latest;
+                    hasLatest = false;
+
+                    output.Value = value;
+                }
+            }
+        }
+
+        public ReactiveFlow<T> ThrottleLatest(long interval)
+            => ThrottleLatest(flow, TimeSpan.FromMilliseconds(interval));
+    }
+}
+
+/// <summary>
+/// 只有调用这里，流才开始运行
+/// </summary>
+public static class ReactiveFlowTerminals
+{
+    extension<TSource>(ReactiveFlow<TSource> flow)
+    {
+        public Effect PushEffect(
+            Action<TSource> effect)
+        {
+            return flow.Scope.CreateEffect(() =>
+            {
+                if (flow.Producer(out var value))
+                    effect(value);
+            });
+        }
+
+        public Computed<TResult> PushComputed<TResult>(
+            Func<TSource, TResult> executeFn)
+        {
+            TResult res = default!;
+            return flow.Scope.CreateComputed(() =>
+            {
+                if (flow.Producer(out var value))
+                {
+                    res = executeFn(value);
+                }
+
+                return res;
+            });
+        }
+
+        public AsyncMemo<TResult> PushAsyncMemo<TResult>(
+            Func<TSource, Task<TResult>> executeFn, TResult? initValue = default)
+        {
+            var res = initValue!;
+            return flow.Scope.CreateAsyncMemo(async () =>
+            {
+                if (flow.Producer(out var value))
+                {
+                    res = await executeFn(value);
+                }
+
+                return res;
+            });
         }
     }
 }
