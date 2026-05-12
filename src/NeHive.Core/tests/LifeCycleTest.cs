@@ -53,7 +53,7 @@ public class LifeCycleTest
 
         using var effect = new Effect(epoch =>
         {
-            _ = epoch.Track(signal);
+            _ = epoch.Pull(signal);
             epoch.OnDispose(() => cleanupCount++);
         });
 
@@ -77,7 +77,7 @@ public class LifeCycleTest
 
             return epochScope =>
             {
-                _ = epochScope.Track(signal);
+                _ = epochScope.Pull(signal);
                 executeCount++;
             };
         });
@@ -126,7 +126,7 @@ public class LifeCycleTest
         {
             return epochScope =>
             {
-                _ = epochScope.Track(signal);
+                _ = epochScope.Pull(signal);
                 epochScope.OnDispose(() => log.Add("cleanup"));
                 log.Add("run");
             };
@@ -149,7 +149,7 @@ public class LifeCycleTest
         {
             return epochScope =>
             {
-                _ = epochScope.Track(signal);
+                _ = epochScope.Pull(signal);
                 epochScope.OnDispose(() => cleanupCount++);
             };
         });

@@ -18,7 +18,7 @@ public static partial class ControlFlow
 
         uiScope.CreateEffect(epochScope =>
         {
-            var when = epochScope.Track(prop.When);
+            var when = epochScope.Pull(prop.When);
 
             if (!when)
             {

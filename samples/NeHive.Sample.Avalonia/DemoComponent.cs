@@ -1,7 +1,9 @@
+using System.Text;
 using NeHive.Core;
 using NeHive.Sample.Avalonia.Render;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Controls.Primitives;
 using NeHive.Sample.Avalonia.Render.Components;
 using static NeHive.Sample.Avalonia.Render.Components.BaseComponent;
 using static NeHive.Sample.Avalonia.Render.Components.ControlFlow;
@@ -18,44 +20,36 @@ public static class DemoComponent
 
         var rootElement = uiScope.RootElement(new()
         {
-            // HTextBlock(new($"Id:{id}",
-            //     fontSize: 18,
-            //     fontWeight: FontWeight.Bold,
-            //     foreground: new(Brushes.DarkSlateBlue)
-            // )), // HTextBlock
-            // HTextBlock(new($"Id:{id}",
+            // HTextBlock($"Id:{id}",
+            //     style: new HTextStyle(fontSize: 18,
+            //         fontWeight: FontWeight.Bold,
+            //         foreground: Brushes.DarkSlateBlue
+            //     )
+            // ), // HTextBlock
+            // HTextBlock($"Id:{id}",
             //     style: HTextStyle.Parse(
             //         """
-            //             text-18
+            //             text-lg
             //             font-bold
-            //             fg-darkslateblue
+            //             fg-blue-700
             //         """)
-            // )), // HTextBlock
-            HTextBlock(new($"Id:{id}",
+            // ), // HTextBlock
+            HTextBlock($"Id:{id}",
                 strStyle: """
                               text-lg
                               font-bold
-                              fg-darkslateblue
-                          """
-            )), // HTextBlock
-            HTextBlock(new(countText,
-                strStyle: "text-2xl fg-darkgreen"
-            )), // HTextBlock
-            // HButton(new("Add",
-            //     background: new(Brushes.ForestGreen),
-            //     foreground: new(Brushes.White),
-            //     cornerRadius: new CornerRadius(8),
-            //     padding: new Thickness(8, 4),
-            //     click: _ => count.Value++
-            // )), // HButton
-            HButton(new("Add",
-                strStyle: "mt-1 ml-2 px-2 py-1 bg-forestgreen fg-white rounded-lg",
+                              fg-sky-200
+                          """), // HTextBlock
+            HTextBlock(countText,
+                strStyle: "text-2xl fg-lime-200"
+            ), // HTextBlock
+            HButton("Add",
+                strStyle: "mt-1 ml-2 px-2 py-1 fg-white bg-green-300 border-green-400 rounded-lg",
                 click: _ => count.Value++
-            )), // HButton
-            HButton(new("Sub",
-                strStyle: "mt-1 ml-2 px-2 py-1 bg-crimson fg-white rounded-lg",
-                click: _ => count.Value--
-            )) // HButton
+            ), // HButton
+            HButton("Sub",
+                strStyle: "mt-1 ml-2 px-2 py-1 fg-white bg-pink-300 border-pink-400 rounded-lg",
+                click: _ => count.Value--) // HButton
         }); // rootElement
 
         uiScope.OnMount(() => Console.WriteLine(rootElement.Content.Bounds.Size));
@@ -76,9 +70,9 @@ public static class DemoComponent
 
         var rootElement = uiScope.RootElement(new()
         {
-            HButton(new(visibleText,
+            HButton(visibleText,
                 click: _ => visible.Value = !visible.Value
-            )), // HButton
+            ), // HButton
             Show(new(visible)
             {
                 IfFalse = LoadingDemo,
@@ -98,29 +92,23 @@ public static class DemoComponent
 
         var rootElement = RootElement(new()
         {
-            HButton(new("Add Item"),
-                out var addBtn
-            ), // HButton
-            HButton(new("Remove Last"),
-                out var removeBtn
-            ), // HButton
-            HButton(new("Remove Second Last"),
-                out var removeSecBtn
-            ), // HButton
+            HButton(out var addBtn, text: "Add Item"),
+            HButton(out var removeBtn, text: "Remove Last"),
+            HButton(out var removeSecBtn, text: "Remove Second Last"),
             ForEach<int>(new(items)
             {
                 ComponentItem = Counter
             }) // ForEach<int>
         }); // rootElement
 
-        addBtn.Expose.Click += _ =>
+        addBtn.Click += _ =>
         {
             var arr = items.Value.ToList();
             arr.Add(arr.Count + 1);
             items.Value = arr;
         };
 
-        removeBtn.Expose.Click += _ =>
+        removeBtn.Click += _ =>
         {
             var arr = items.Value.ToList();
             if (arr.Count > 0)
@@ -128,7 +116,7 @@ public static class DemoComponent
             items.Value = arr;
         };
 
-        removeSecBtn.Expose.Click += _ =>
+        removeSecBtn.Click += _ =>
         {
             var arr = items.Value.ToList();
             if (arr.Count > 1)
@@ -165,29 +153,29 @@ public static class DemoComponent
 
         var rootElement = uiScope.RootElement(new()
         {
-            HStackPanel(new(strStyle: "flex-row mb-2")
+            HStackPanel(new(strStyle: "mb-2 flex-row")
             {
-                HButton(new("Add User Id",
+                HButton("Add User Id",
                     strStyle: "ml-2 mt-2",
                     click: _ => userId.Value++
-                )), // HButton
-                HButton(new("Sub User Id",
+                ), // HButton
+                HButton("Sub User Id",
                     strStyle: "ml-2 mt-2",
                     click: _ => userId.Value--
-                )) // HButton
+                ) // HButton
             }), // HStackPanel
 
             Loading<User>(new(userMemo)
             {
                 Success = user => HChildren(
-                    HTextBlock(new($"Id: {user.Id}", strStyle: "mt-1.5")),
-                    HTextBlock(new($"Hello, {user.Name}", strStyle: "mt-1.5"))
+                    HTextBlock($"Id: {user.Id}", strStyle: "mt-1.5"),
+                    HTextBlock($"Hello, {user.Name}", strStyle: "mt-1.5")
                 ), // Loading<User>.Success
                 Loading = () => HTextBlock(new("Fetching user...")),
                 Error = ex =>
-                    HButton(new($"Retry: {ex.Message}",
+                    HButton($"Retry: {ex.Message}",
                         click: _ => userMemo.Refetch()
-                    )) // HButton
+                    ) // HButton
                 // Loading<User>.Error
             }) // Loading<User>
         }); // rootElement
@@ -203,37 +191,40 @@ public static class DemoComponent
         var currentView = new Signal<DemoView>(DemoView.Unknown);
 
         // var rootElement = uiScope.RootElement(new(
-        //     orientation: Orientation.Vertical,
-        //     spacing: 16,
-        //     background: new(Brushes.LightGray),
-        //     // cornerRadius: new CornerRadius(12),
-        //     // padding: new Thickness(16),
-        //     margin: new Thickness(20))
+        //         style: new HPanelStyle(
+        //             orientation: Orientation.Vertical,
+        //             spacing: 16,
+        //             background: Brushes.LightGray,
+        //             // cornerRadius: new CornerRadius(12),
+        //             // padding: new Thickness(16),
+        //             margin: new Thickness(20))
+        //     )
         var rootElement = uiScope.RootElement(new(
-            strStyle: "flex-col gap-4 m-5 bg-lightgray")
+            strStyle: "m-5 gap-4 flex-col bg-gray-100")
         {
-            HStackPanel(new(strStyle: "flex-row center gap-3")
+            HStackPanel(new(strStyle: "gap-3 flex-row justify-center")
             {
-                // HButton(new("显示简单计数器",
-                //     background: new(Brushes.SteelBlue),
-                //     foreground: new(Brushes.White),
-                //     cornerRadius: new CornerRadius(16),
-                //     padding: new Thickness(12, 6),
-                //     fontSize: 14,
+                // HButton("显示简单计数器",
+                //     style: new HButtonStyle(
+                //         background: Brushes.SteelBlue,
+                //         foreground: Brushes.White,
+                //         cornerRadius: new CornerRadius(16),
+                //         padding: new Thickness(12, 6),
+                //         fontSize: 14),
                 //     click: _ => currentView.Value = DemoView.SimpleCounter
-                // )), // HButton
-                HButton(new("显示简单计数器",
-                    strStyle: "px-3 py-1.5 text-sm bg-steelblue fg-white rounded-2xl",
+                // ), // HButton
+                HButton("显示简单计数器",
+                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 border-blue-400 rounded-2xl",
                     click: _ => currentView.Value = DemoView.SimpleCounter
-                )), // HButton
-                HButton(new("显示 ForEach 示例",
-                    strStyle: "px-3 py-1.5 text-sm bg-steelblue fg-white rounded-2xl",
+                ), // HButton
+                HButton("显示 ForEach 示例",
+                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 border-blue-400 rounded-2xl",
                     click: _ => currentView.Value = DemoView.ForEachDemo
-                )), // HButton
-                HButton(new("显示 Loading 示例",
-                    strStyle: "px-3 py-1.5 text-sm bg-steelblue fg-white rounded-2xl",
+                ), // HButton
+                HButton("显示 Loading 示例",
+                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 border-blue-400 rounded-2xl",
                     click: _ => currentView.Value = DemoView.LoadingDemo
-                )) // HButton
+                ) // HButton
             }), // HStackPanel
             // 根据 currentView 切换内容
             HStackPanel(new(
@@ -247,9 +238,8 @@ public static class DemoComponent
                         [DemoView.ForEachDemo] = ForEachDemo,
                         [DemoView.LoadingDemo] = LoadingDemo
                     }, // Switch<DemoView>.Cases
-                    Default = () => HTextBlock(new("未知视图",
-                        strStyle: "text-base fg-gray"
-                    )) // Switch<DemoView>.Default
+                    Default = () => HTextBlock("未知视图",
+                        strStyle: "text-base fg-gray-500") // Switch<DemoView>.Default
                 }) // Switch<DemoView>
             }) // HStackPanel
         }); // rootElement
@@ -268,14 +258,14 @@ public static class DemoComponent
             HGrid(new(
                 rowDefinitions: new([HgLen.Auto, HgLen.Star()]), // 第一行高度自适应，第二行占满剩余
                 columnDefinitions: new([100, HgLen.Star()]), // 第一列固定100，第二列占满
-                strStyle: new(() => $"m-2 gap-x-{gapX.Value} gap-y-3 bg-lightgray"))
+                strStyle: new(() => $"m-2 gap-x-{gapX.Value} gap-y-3 bg-gray-100"))
             {
-                [(row: 0, column: 0)] = HTextBlock(new("左上", style: new HTextStyle(fontSize: 16))),
-                [(row: 0, column: 1)] = HTextBlock(new("右上", style: new HTextStyle(fontSize: 16))),
+                [(row: 0, column: 0)] = HTextBlock("左上", style: new HTextStyle(fontSize: 16)),
+                [(row: 0, column: 1)] = HTextBlock("右上", style: new HTextStyle(fontSize: 16)),
                 [(row: 1, column: 0, rowSpan: 1, colSpan: 2)] =
-                    HButton(new("点我增加间隔",
+                    HButton("点我增加间隔",
                         click: _ => gapX.Value++
-                    )) // HButton
+                    ) // HButton
                 // HGrid.[(row: 1, column: 0, rowSpan: 1, colSpan: 2)]
             }) // HGrid
         }); // rootElement
@@ -289,11 +279,11 @@ public static class DemoComponent
     private static IElement AbsoluteDemoComp(UiScope uiScope)
     {
         var rootElement = uiScope.RootElement(new(
-            strStyle: "flex-col gap-4 m-5 bg-lightgray")
+            strStyle: "m-5 gap-4 flex-col bg-gray-100")
         {
-            HTextBlock(new("Canvas 绝对布局示例",
+            HTextBlock("Canvas 绝对布局示例",
                 strStyle: "text-lg font-bold"
-            )), // HTextBlock
+            ), // HTextBlock
 
             // 创建一个带边框和海蓝色背景的 Canvas 容器
             HAbsolute(new(
@@ -304,52 +294,52 @@ public static class DemoComponent
             {
                 // 左上角放置文本
                 [new(left: 10, top: 10)] =
-                    HTextBlock(new("左上角 (10,10)",
-                        strStyle: "text-sm fg-darkslateblue"
-                    )), // HTextBlock
+                    HTextBlock("左上角 (10,10)",
+                        strStyle: "text-sm fg-blue-700"
+                    ), // HTextBlock
                 // HAbsolute.[new(450, 10)]
 
                 // 右上角放置按钮
                 [new(left: 450, top: 10)] =
-                    HButton(new("右上角按钮",
-                        strStyle: "px-2 py-1 bg-steelblue fg-white rounded",
+                    HButton("右上角按钮",
+                        strStyle: "px-2 py-1 fg-white bg-blue-300 rounded",
                         click: _ => Console.WriteLine("右上角按钮被点击")
-                    )), // HButton
+                    ), // HButton
                 // HAbsolute.[new(450, 10)]
 
                 // 中心偏左位置放置一个圆形文本（通过 Border + 背景模拟）
                 [new(left: 150, top: 150)] =
                     HStackPanel(new(
-                        strStyle: "flex-col gap-2 bg-white")
+                        strStyle: "gap-2 flex-col bg-white")
                     {
-                        HTextBlock(new("中心区域", strStyle: "text-base font-bold")),
-                        HTextBlock(new("坐标 (150,150)", strStyle: "text-xs fg-gray"))
+                        HTextBlock("中心区域", strStyle: "text-base font-bold"),
+                        HTextBlock("坐标 (150,150)", strStyle: "text-xs fg-gray-500")
                     }), // HStackPanel
                 // HAbsolute.[new(left: 150, top: 150)]
 
                 // 右下角放置一个按钮
                 [new(left: 450, top: 340)] =
-                    HButton(new("右下角按钮",
-                        strStyle: "bg-crimson fg-white rounded-lg",
+                    HButton("右下角按钮",
+                        strStyle: "fg-white bg-pink-300 rounded-lg",
                         click: _ => Console.WriteLine("右下角按钮被点击")
-                    )), // HButton
+                    ), // HButton
                 // HAbsolute.[new(left: 450, top: 340)]
 
                 // 添加一个带半透明背景的浮动面板
                 [new(left: 20, top: 300)] =
                     HStackPanel(new(
-                        strStyle: "flex-row gap-2 m-5 bg-black")
+                        strStyle: "m-5 gap-2 flex-row bg-black")
                     {
-                        HTextBlock(new("悬浮信息", style: new HTextStyle(foreground: Brushes.White))),
-                        HTextBlock(new("(20,300)", style: new HTextStyle(foreground: Brushes.LightYellow)))
+                        HTextBlock("悬浮信息", style: new HTextStyle(foreground: Brushes.White)),
+                        HTextBlock("(20,300)", style: new HTextStyle(foreground: Brushes.LightYellow))
                     }) // HStackPanel
                 // HAbsolute.[new(left: 20, top: 300)]
             }), // HAbsolute
 
             // 说明文字
-            HTextBlock(new("提示：Absolute 中元素通过 Left/Top 绝对定位，容器本身有固定宽高 600x400",
-                strStyle: "text-xs fg-gray"
-            )) // HTextBlock
+            HTextBlock("提示：Absolute 中元素通过 Left/Top 绝对定位，容器本身有固定宽高 600x400",
+                strStyle: "text-xs fg-gray-500"
+            ) // HTextBlock
         }); // rootElement
 
         return rootElement;
@@ -357,6 +347,68 @@ public static class DemoComponent
 
     public static IElement AbsoluteDemo()
         => Element.WithScope(AbsoluteDemoComp);
+
+    private static IElement ScrollDemoComp(UiScope uiScope)
+    {
+        var sb = new StringBuilder();
+        for (var i = 1; i <= 40; i++)
+        {
+            sb.Append($"{i}: 这是一段很长的文本，用于测试垂直滚动。");
+            if (i < 40) sb.Append('\n');
+        }
+
+        var longText = sb.ToString();
+
+        var rootElement = uiScope.RootElement(new(strStyle: "horizontal")
+        {
+            HScrollViewer(new(
+                verticalScrollBarVisibility: ScrollBarVisibility.Auto,
+                strStyle: "m-4 h-60 p-3 vertical bg-gray-500 rounded-xl border-blue border-w-4 shadow-sm")
+            {
+                HTextBlock(longText, strStyle: "text-base")
+            }), // HScrollViewer
+            HScrollViewer(new(
+                horizontalScrollBarVisibility: ScrollBarVisibility.Visible,
+                strStyle: "mt-4 p-2 horizontal bg-white rounded-lg")
+            {
+                HStackPanel(new(strStyle: "gap-3 flex-row")
+                {
+                    HButton("按钮1"),
+                    HButton("按钮2"),
+                    HButton("按钮3"),
+                    HButton("按钮4"),
+                    HButton("按钮5")
+                }) // HStackPanel
+            }) // HScrollViewer
+        }); // rootElement
+
+        return rootElement;
+    }
+
+    public static IElement ScrollDemo()
+        => Element.WithScope(ScrollDemoComp);
+
+    // 在 DemoComponent 中添加一个演示
+    private static IElement TextBoxDemoComp(UiScope uiScope)
+    {
+        var textSignal = new Signal<string>("初始文本");
+        var log = new Signal<string>("");
+
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HTextBox(
+                bindText: textSignal,
+                watermark: "输入点什么...",
+                strStyle: "w-100 p-3 font-bold border-blue rounded-lg",
+                textChanged: newText => log.Value = $"输入: {newText}"
+            ), // HTextBox
+            HTextBlock(new(() => $"实时内容: {textSignal.Value}"), strStyle: "mt-2"),
+            HTextBlock(new(() => log.Value), strStyle: "fg-gray-500")
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement TextBoxDemo() => Element.WithScope(TextBoxDemoComp);
 }
 
 public record User(int? Id = null, string? Name = null);

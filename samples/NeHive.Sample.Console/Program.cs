@@ -168,3 +168,18 @@ for (var i = 1; i <= 10; i++)
 await Task.Delay(2000);
 
 effect.Dispose();
+
+var items = "text-blue-600".Split('-');
+
+for (var i = 1; i < items.Length; i++)
+{
+    var key = string.Join('-', items[..^i]) + '-';
+    var value = string.Join('-', items[^i..]);
+    Console.WriteLine($"{key}: {value}");
+}
+
+var ite2 = "[#fff]";
+
+ite2 = ite2[2..^1];
+
+Console.WriteLine(ite2);

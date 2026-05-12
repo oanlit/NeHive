@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using NeHive.Core;
+using NeHive.Sample.Avalonia.Render.Styles;
 
 namespace NeHive.Sample.Avalonia.Render.Components;
 
@@ -169,7 +170,7 @@ public static partial class BaseComponent
         uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style == null) return;
-            var style = epochScope.Track(prop.Style);
+            var style = epochScope.Pull(prop.Style);
 
             grid.Margin = style.Margin;
             grid.ColumnSpacing = style.ColumnSpacing;

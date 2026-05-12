@@ -20,7 +20,7 @@ public static partial class ControlFlow
 
         uiScope.CreateEffect(epochScope =>
         {
-            var list = epochScope.Track(memo);
+            var list = epochScope.Pull(memo);
 
             // —— UI 最小更新（核心）——
             for (var i = 0; i < list.Count; i++)

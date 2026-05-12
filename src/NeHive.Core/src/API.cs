@@ -96,7 +96,7 @@ public interface IReadOnlySignal<out T>
 public interface ISetOnlySignal<T>
 {
     public T Value { set; }
-    public void SetValue(Func<T, T> value);
+    public void NotifySet(Func<T, T> value);
 }
 
 public class Accessor<T> : IReadOnlySignal<T>
@@ -157,12 +157,12 @@ public class Signal<T>(T value) : Accessor<T>(new SignalState<T>(value)),
         set => ValueSignal!.WriteSignal(value);
     }
 
-    public void SetValue(T value)
+    public void NotifySet(T value)
     {
         ValueSignal!.WriteSignal(value);
     }
 
-    public void SetValue(Func<T, T> value)
+    public void NotifySet(Func<T, T> value)
     {
         ValueSignal!.WriteSignal(value(ValueSignal.Value));
     }
@@ -292,7 +292,7 @@ public class EpochScope : Scope
         _tracker = tracker;
     }
 
-    public T Track<T>(Accessor<T> signal)
+    public T Pull<T>(Accessor<T> signal)
     {
         return signal.ValueSignal is null
             ? _tracker.Track(signal.ValueGetter)

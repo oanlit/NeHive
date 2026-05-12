@@ -4,6 +4,7 @@ using Avalonia.Media;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using NeHive.Core;
+using NeHive.Sample.Avalonia.Render.Styles;
 
 namespace NeHive.Sample.Avalonia.Render.Components;
 
@@ -58,13 +59,13 @@ public class HPanelStyle(
     }
 }
 
-public class HStackPanelProp: ISingleChildrenProp
+public class HStackPanelProp : ISingleChildrenProp
 {
     private readonly List<IElement> _children = [];
 
     // 布局属性
     public readonly Accessor<HPanelStyle>? Style;
-    
+
     public HStackPanelProp(
         Accessor<string>? strStyle = null,
         Accessor<HPanelStyle>? style = null
@@ -107,7 +108,7 @@ public static partial class BaseComponent
         uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style == null) return;
-            var style = epochScope.Track(prop.Style);
+            var style = epochScope.Pull(prop.Style);
 
             stack.Orientation = style.Orientation;
             stack.Spacing = style.Spacing;
@@ -116,7 +117,7 @@ public static partial class BaseComponent
             stack.Margin = style.Margin;
             stack.Background = style.Background;
         });
-        
+
         foreach (var child in prop)
             stack.Children.Add(child.Content);
 

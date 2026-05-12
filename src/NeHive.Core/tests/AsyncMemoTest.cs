@@ -28,7 +28,7 @@ public class AsyncMemoTest
         var asyncMemo = new AsyncMemo<int>(async epoch =>
         {
             await Task.Delay(10);
-            return epoch.Track(source) * 2;
+            return epoch.Pull(source) * 2;
         });
 
         await Task.Delay(50);
@@ -45,7 +45,7 @@ public class AsyncMemoTest
         var asyncMemo = new AsyncMemo<int>(async epoch =>
         {
             await Task.Delay(10);
-            return epoch.Track(source) * 2;
+            return epoch.Pull(source) * 2;
         });
 
         await Task.Delay(50);
@@ -64,7 +64,7 @@ public class AsyncMemoTest
 
         var asyncMemo = new AsyncMemo<int>(async epoch =>
         {
-            var v = epoch.Track(source);
+            var v = epoch.Pull(source);
             await Task.Delay(50);
             return v;
         });
@@ -90,7 +90,7 @@ public class AsyncMemoTest
         var asyncMemo = new AsyncMemo<int>(async epoch =>
         {
             await Task.Delay(20);
-            return epoch.Track(source);
+            return epoch.Pull(source);
         });
 
         var runs = 0;
@@ -126,7 +126,7 @@ public class AsyncMemoTest
                 return async epoch =>
                 {
                     await Task.Delay(10);
-                    return epoch.Track(source) * 2;
+                    return epoch.Pull(source) * 2;
                 };
             }
         );

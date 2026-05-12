@@ -1,4 +1,7 @@
+// using Avalonia;
 using Avalonia.Controls;
+// using Avalonia.Input;
+// using Avalonia.Controls.Primitives;
 using NeHive.Sample.Avalonia.Render;
 
 namespace NeHive.Sample.Avalonia;
@@ -14,6 +17,8 @@ public class MainWindow : Window
         _counter = DemoComponent.SwitchDemo();
         // _counter = DemoComponent.GridDemo();
         // _counter = DemoComponent.AbsoluteDemo();
+        // _counter = DemoComponent.ScrollDemo();
+        // _counter = DemoComponent.TextBoxDemo();
         Content = _counter.Content;
     }
 

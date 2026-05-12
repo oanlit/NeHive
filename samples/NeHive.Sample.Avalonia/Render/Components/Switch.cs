@@ -19,7 +19,7 @@ public static partial class ControlFlow
 
         uiScope.CreateEffect(epochScope =>
         {
-            var currentKey = epochScope.Track(prop.Key);
+            var currentKey = epochScope.Pull(prop.Key);
 
             // 根据当前 key 获取对应的子元素工厂，否则使用 Default
             if (!prop.Cases.TryGetValue(currentKey, out var childFactory))

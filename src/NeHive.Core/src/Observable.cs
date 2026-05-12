@@ -8,7 +8,7 @@ public class SignalObservable<T>(Signal<T> signal) : IObservable<T>
     {
         var effect = new Effect(epochScope =>
         {
-            var value = epochScope.Track(signal);
+            var value = epochScope.Pull(signal);
             observer.OnNext(value);
         });
 

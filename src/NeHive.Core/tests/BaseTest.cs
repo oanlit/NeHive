@@ -22,7 +22,7 @@ public class SignalTests
     public void Signal_SetValueMethod_UpdatesValue()
     {
         var signal = new Signal<double>(1.5);
-        signal.SetValue(3.14);
+        signal.NotifySet(3.14);
         Assert.Equal(3.14, signal.Value);
     }
 
@@ -30,7 +30,7 @@ public class SignalTests
     public void Signal_SetValueWithFunc_UpdatesValueBasedOnCurrent()
     {
         var signal = new Signal<int>(5);
-        signal.SetValue(x => x * 2);
+        signal.NotifySet(x => x * 2);
         Assert.Equal(10, signal.Value);
     }
 

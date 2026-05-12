@@ -21,7 +21,7 @@ public class Element : IElement
     public IScope Scope { get; }
     public Control Content { get; }
 
-    internal Element(UiScope scope, Control content)
+    public Element(UiScope scope, Control content)
     {
         Scope = scope;
         Content = content;
@@ -100,7 +100,7 @@ public class Element<TExpose> : Element, IElement<TExpose>
 {
     public TExpose Expose { get; }
 
-    internal Element(UiScope scope, Control content, TExpose expose) : base(scope, content)
+    public Element(UiScope scope, Control content, TExpose expose) : base(scope, content)
         => Expose = expose;
 
     public Element(UiScope scope, Element element, TExpose expose) : base(scope, element)

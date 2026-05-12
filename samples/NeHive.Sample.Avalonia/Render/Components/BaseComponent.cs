@@ -1,6 +1,4 @@
 using System.Collections;
-using Avalonia.Controls;
-using NeHive.Core;
 
 namespace NeHive.Sample.Avalonia.Render.Components;
 

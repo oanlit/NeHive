@@ -4,32 +4,71 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Interactivity;
 using NeHive.Core;
+using NeHive.Sample.Avalonia.Render.Styles;
 
 namespace NeHive.Sample.Avalonia.Render.Components;
 
 public class HButtonStyle(
     Thickness? margin = null,
+    double? width = null,
+    double? height = null,
+    double? minWidth = null,
+    double? maxWidth = null,
+    double? minHeight = null,
+    double? maxHeight = null,
     Thickness? padding = null,
-    IBrush? background = null,
-    IBrush? foreground = null,
     double? fontSize = null,
+    FontWeight? fontWeight = null,
+    FontStyle? fontStyle = null,
+    IBrush? foreground = null,
+    IBrush? background = null,
+    IBrush? borderBrush = null,
+    Thickness? borderThickness = null,
     CornerRadius? cornerRadius = null
 )
 {
     public Thickness Margin = margin ?? new Thickness(0);
+
+    public double? Width = width;
+    public double? Height = height;
+    public double? MinWidth = minWidth;
+    public double? MaxWidth = maxWidth;
+    public double? MinHeight = minHeight;
+    public double? MaxHeight = maxHeight;
+
     public Thickness Padding = padding ?? new Thickness(8, 4);
-    public IBrush Background = background ?? Brushes.LightGray;
-    public IBrush Foreground = foreground ?? Brushes.Black;
+
     public double FontSize = fontSize ?? 12;
+    public FontWeight? FontWeight = fontWeight;
+    public FontStyle? FontStyle = fontStyle;
+    public IBrush Foreground = foreground ?? Brushes.Black;
+
+    public IBrush Background = background ?? Brushes.LightGray;
+    public IBrush? BorderBrush = borderBrush;
+    public Thickness? BorderThickness = borderThickness;
     public CornerRadius CornerRadius = cornerRadius ?? new CornerRadius(4);
-    
+
     public HButtonStyle Merge(HButtonStyle style)
     {
         Margin = style.Margin;
+
+        Width = style.Width;
+        Height = style.Height;
+        MinWidth = style.MinWidth;
+        MaxWidth = style.MaxWidth;
+        MinHeight = style.MinHeight;
+        MaxHeight = style.MaxHeight;
+
         Padding = style.Padding;
-        Background = style.Background;
-        Foreground = style.Foreground;
+
         FontSize = style.FontSize;
+        FontWeight = style.FontWeight;
+        FontStyle = style.FontStyle;
+        Foreground = style.Foreground;
+
+        Background = style.Background;
+        BorderBrush = style.BorderBrush;
+        BorderThickness = style.BorderThickness;
         CornerRadius = style.CornerRadius;
         return this;
     }
@@ -42,44 +81,23 @@ public class HButtonStyle(
             var result = StyleParser.Parse(str);
             return new HButtonStyle(
                 result.Margin,
+                result.Width,
+                result.Height,
+                result.MinWidth,
+                result.MaxWidth,
+                result.MinHeight,
+                result.MinHeight,
                 result.Padding,
-                result.Background,
-                result.Foreground,
                 result.FontSize,
+                result.FontWeight,
+                result.FontStyle,
+                result.Foreground,
+                result.Background,
+                result.BorderBrush,
+                result.BorderThickness,
                 result.CornerRadius
             );
         });
-    }
-}
-
-public class HButtonProp
-{
-    public readonly Accessor<string> Text;
-    public readonly Accessor<HButtonStyle>? Style;
-    public readonly Action<RoutedEventArgs>? Click;
-
-    public HButtonProp(
-        Accessor<string>? text = null,
-        Accessor<string>? strStyle = null,
-        Accessor<HButtonStyle>? style = null,
-        Action<RoutedEventArgs>? click = null
-    )
-    {
-        Text = text ?? "";
-        Click = click;
-        if (style != null && strStyle != null)
-        {
-            Style = new Computed<HButtonStyle>(() =>
-                HButtonStyle.Parse(strStyle).Value.Merge(style.Value));
-        }
-        else if (strStyle != null)
-        {
-            Style = HButtonStyle.Parse(strStyle);
-        }
-        else
-        {
-            Style = style;
-        }
     }
 }
 
@@ -90,8 +108,25 @@ public class HButtonExpose
 
 public static partial class BaseComponent
 {
-    private static readonly Component<HButtonProp, HButtonExpose> CompButton = new((prop, uiScope) =>
+    public static IElement<HButtonExpose> HButton(
+        Accessor<string>? text = null,
+        Accessor<string>? strStyle = null,
+        Accessor<HButtonStyle>? style = null,
+        Action<RoutedEventArgs>? click = null)
     {
+        text ??= "";
+        if (style is not null && strStyle is not null)
+        {
+            style = new Computed<HButtonStyle>(() =>
+                HButtonStyle.Parse(strStyle).Value.Merge(style.Value));
+        }
+        else if (strStyle != null)
+        {
+            style = HButtonStyle.Parse(strStyle);
+        }
+
+        UiScope uiScope = new();
+
         // 创建基础视觉元素
         var border = new Border
         {
@@ -111,21 +146,32 @@ public static partial class BaseComponent
         };
         border.Child = textBlock;
 
-        uiScope.CreateEffect(() =>
-        {
-            textBlock.Text = prop.Text.Value;
-        });
+        uiScope.CreateEffect(() => { textBlock.Text = text.Value; });
         uiScope.CreateEffect(epochScope =>
         {
-            if (prop.Style == null) return;
-            var style = epochScope.Track(prop.Style);
-            border.Background = style.Background;
-            border.Padding = style.Padding;
-            border.Margin = style.Margin;
-            border.CornerRadius = style.CornerRadius;
-            
-            textBlock.FontSize = style.FontSize;
-            textBlock.Foreground = style.Foreground;
+            if (style is null) return;
+            var styleValue = epochScope.Pull(style);
+
+            border.Margin = styleValue.Margin;
+
+            if (styleValue.Width is not null) border.Width = styleValue.Width.Value;
+            if (styleValue.Height is not null) border.Height = styleValue.Height.Value;
+            if (styleValue.MaxWidth is not null) border.MaxWidth = styleValue.MaxWidth.Value;
+            if (styleValue.MinWidth is not null) border.MinWidth = styleValue.MinWidth.Value;
+            if (styleValue.MaxHeight is not null) border.MaxHeight = styleValue.MaxHeight.Value;
+            if (styleValue.MinHeight is not null) border.MinHeight = styleValue.MinHeight.Value;
+
+            border.Padding = styleValue.Padding;
+
+            textBlock.FontSize = styleValue.FontSize;
+            if (styleValue.FontWeight is not null) textBlock.FontWeight = styleValue.FontWeight.Value;
+            if (styleValue.FontStyle is not null) textBlock.FontStyle = styleValue.FontStyle.Value;
+            textBlock.Foreground = styleValue.Foreground;
+
+            border.Background = styleValue.Background;
+            if (styleValue.BorderBrush is not null) border.BorderBrush = styleValue.BorderBrush;
+            if (styleValue.BorderThickness is not null) border.BorderThickness = styleValue.BorderThickness.Value;
+            border.CornerRadius = styleValue.CornerRadius;
         });
 
         var expose = new HButtonExpose();
@@ -137,7 +183,7 @@ public static partial class BaseComponent
         void RaiseClick()
         {
             var args = new RoutedEventArgs(Button.ClickEvent);
-            prop.Click?.Invoke(args);
+            click?.Invoke(args);
             expose.Click.Invoke(args);
         }
 
@@ -169,7 +215,7 @@ public static partial class BaseComponent
             border.PointerExited += (_, _) =>
             {
                 isPressed = false; // 移出区域时取消按下状态
-                border.Background = Brushes.LightGray;
+                border.Background = style?.UntrackValue.Background ?? Brushes.LightGray;
             };
 
             border.PointerEntered += (_, _) =>
@@ -180,11 +226,17 @@ public static partial class BaseComponent
         });
 
         return new Element<HButtonExpose>(uiScope, border, expose);
-    });
+    }
 
-    public static IElement<HButtonExpose> HButton(HButtonProp prop)
-        => CompButton.Create(prop);
-
-    public static IElement<HButtonExpose> HButton(HButtonProp prop, out IElement<HButtonExpose> expose)
-        => CompButton.Create(prop, out expose);
+    public static IElement<HButtonExpose> HButton(
+        out HButtonExpose expose,
+        Accessor<string>? text = null,
+        Accessor<string>? strStyle = null,
+        Accessor<HButtonStyle>? style = null,
+        Action<RoutedEventArgs>? click = null)
+    {
+        var el = HButton(text, strStyle, style, click);
+        expose = el.Expose;
+        return el;
+    }
 }
