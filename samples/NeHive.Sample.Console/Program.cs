@@ -77,18 +77,18 @@
 //         for (var i = 0; i < store.Count; i++)
 //         {
 //             store.TryGetValue(i, out var v);
-//             Console.WriteLine($"  index {i}: {(v.HasValue ? v.Value.ToString() : "null")}");
+//             Console.WriteLine($"  index {i}: {(v.HasValue ? v.RxValue.ToString() : "null")}");
 //         }
 //     });
 //
 //     Computed<int> doubleCount = new(() => store.Count * 2);
-//     Reactive.CreateEffect(() => { Console.WriteLine($"Track DoubleCount: {doubleCount.Value}"); });
-//     Reactive.CreateEffect(() => { Console.WriteLine($"Untrack DoubleCount: {doubleCount.UntrackValue}"); });
+//     Reactive.CreateEffect(() => { Console.WriteLine($"Track DoubleCount: {doubleCount.RxValue}"); });
+//     Reactive.CreateEffect(() => { Console.WriteLine($"Untrack DoubleCount: {doubleCount.Value}"); });
 //
 //     Reactive.CreateEffect(() =>
 //     {
 //         store.TryGetValue(4, out var v);
-//         Console.WriteLine($"  store[4]: {(v.HasValue ? v.Value.ToString() : "null")}");
+//         Console.WriteLine($"  store[4]: {(v.HasValue ? v.RxValue.ToString() : "null")}");
 //     });
 //
 //     return dispose;
@@ -124,7 +124,7 @@
 //
 // using var effect = new Effect(() =>
 // {
-//     a.Value++;
+//     a.RxValue++;
 // });
 
 // using var scope = new Scope();
@@ -136,13 +136,13 @@
 //     .Map(v => v * 10)
 //     .PushEffect(v => Console.WriteLine($"signal: {v}"));
 //
-// signal.Value++;
-// signal.Value++;
-// signal.Value++;
+// signal.RxValue++;
+// signal.RxValue++;
+// signal.RxValue++;
 // e.Dispose();
-// signal.Value++;
-// signal.Value++;
-// signal.Value++;
+// signal.RxValue++;
+// signal.RxValue++;
+// signal.RxValue++;
 
 using var scope = new Scope();
 
@@ -160,7 +160,7 @@ var effect = scope.CreateReactiveFlow(signal)
 
 for (var i = 1; i <= 10; i++)
 {
-    signal.Value = i;
+    signal.RxValue = i;
 
     await Task.Delay(100);
 }

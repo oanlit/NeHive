@@ -4,9 +4,9 @@ using Avalonia.Media;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using NeHive.Core;
-using NeHive.Sample.Avalonia.Render.Styles;
+using NeHive.UI.Avalonia.Styles;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public class HPanelStyle(
     Thickness? margin = null,
@@ -46,7 +46,7 @@ public class HPanelStyle(
         var result = new StyleSet();
         return new Computed<HPanelStyle>(() =>
         {
-            var str = text.Value;
+            var str = text.RxValue;
             StyleParser.Parse(str,ref result);
             return new HPanelStyle(
                 result.Margin,
@@ -76,7 +76,7 @@ public class HStackPanelProp : ISingleChildrenProp
         if (style != null && strStyle != null)
         {
             Style = new Computed<HPanelStyle>(() =>
-                HPanelStyle.Parse(strStyle).Value.Merge(style.Value));
+                HPanelStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
         }
         else if (strStyle != null)
         {

@@ -27,11 +27,11 @@ public class ListStoreTest
         // {
         //     _ = new Effect(() => { snapshots.Add(TakeSnapshot(store)); });
         //     var doubleCount = new Computed<int>(() => store.Count * 2);
-        //     _ = new Effect(() => { doubleCounts.Add(doubleCount.Value); });
+        //     _ = new Effect(() => { doubleCounts.Add(doubleCount.RxValue); });
         // });
         scope.CreateEffect(() => { snapshots.Add(TakeSnapshot(store)); });
         var doubleCount = scope.CreateComputed(() => store.Count * 2);
-        scope.CreateEffect(() => { doubleCounts.Add(doubleCount.Value); });
+        scope.CreateEffect(() => { doubleCounts.Add(doubleCount.RxValue); });
 
         // 初始
         Assert.Equal([10, 20, null], snapshots[^1]);

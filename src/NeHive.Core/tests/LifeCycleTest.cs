@@ -8,15 +8,15 @@ public class LifeCycleTest
         Signal<int> s = new(0);
         List<int> values = [];
 
-        var e = new Effect(() => { values.Add(s.Value); });
+        var e = new Effect(() => { values.Add(s.RxValue); });
 
-        s.Value = 1;
+        s.RxValue = 1;
         Assert.Equal([0, 1], values);
 
         e.Dispose();
         Assert.True(e.IsInvalid);
 
-        s.Value = 2;
+        s.RxValue = 2;
 
         // 不应再触发
         Assert.Equal([0, 1], values);
@@ -59,7 +59,7 @@ public class LifeCycleTest
 
         Assert.Equal(0, cleanupCount);
 
-        signal.Value = 1;
+        signal.RxValue = 1;
         Assert.Equal(1, cleanupCount);
     }
 
@@ -85,7 +85,7 @@ public class LifeCycleTest
         Assert.Equal(1, setupCount);
         Assert.Equal(1, executeCount);
 
-        signal.Value = 1;
+        signal.RxValue = 1;
 
         Assert.Equal(1, setupCount);
         Assert.Equal(2, executeCount);
@@ -102,14 +102,14 @@ public class LifeCycleTest
         {
             setupCount++;
 
-            _ = signal.Value; // ❗如果被 tracking 就会出问题
+            _ = signal.RxValue; // ❗如果被 tracking 就会出问题
 
             return _ => { };
         });
 
         Assert.Equal(1, setupCount);
 
-        signal.Value = 1;
+        signal.RxValue = 1;
 
         // 不应重新执行 setup
         Assert.Equal(1, setupCount);
@@ -134,7 +134,7 @@ public class LifeCycleTest
 
         Assert.Equal(["run"], log);
 
-        signal.Value = 1;
+        signal.RxValue = 1;
 
         Assert.Equal(["run", "cleanup", "run"], log);
     }
@@ -154,10 +154,10 @@ public class LifeCycleTest
             };
         });
 
-        signal.Value = 1;
+        signal.RxValue = 1;
         Assert.Equal(1, cleanupCount);
 
-        signal.Value = 2;
+        signal.RxValue = 2;
         Assert.Equal(2, cleanupCount); // 不是 3！
     }
 
@@ -217,11 +217,11 @@ public class LifeCycleTest
 
         var scope = new Scope();
 
-        var e1 = scope.CreateEffect(() => a.Add(s.Value));
+        var e1 = scope.CreateEffect(() => a.Add(s.RxValue));
 
-        var e2 = new Effect(() => b.Add(s.Value));
+        var e2 = new Effect(() => b.Add(s.RxValue));
 
-        s.Value = 1;
+        s.RxValue = 1;
 
         Assert.Equal([0, 1], a);
         Assert.Equal([0, 1], b);
@@ -231,7 +231,7 @@ public class LifeCycleTest
         Assert.True(e1.IsInvalid);
         Assert.False(e2.IsInvalid);
 
-        s.Value = 2;
+        s.RxValue = 2;
 
         // scope 内的停止
         Assert.Equal([0, 1], a);
@@ -242,7 +242,7 @@ public class LifeCycleTest
         e2.Dispose();
         Assert.True(e2.IsInvalid);
 
-        s.Value = 3;
+        s.RxValue = 3;
 
         Assert.Equal([0, 1, 2], b);
     }
@@ -265,17 +265,17 @@ public class LifeCycleTest
 
         List<int> values = [];
 
-        using var e = new Effect(() => { values.Add(flag.Value ? a.Value : b.Value); });
+        using var e = new Effect(() => { values.Add(flag.RxValue ? a.RxValue : b.RxValue); });
 
-        a.Value = 2;
+        a.RxValue = 2;
         Assert.Equal([1, 2], values);
 
-        flag.Value = false;
+        flag.RxValue = false;
 
-        b.Value = 20;
+        b.RxValue = 20;
         Assert.Equal([1, 2, 10, 20], values);
 
-        a.Value = 3;
+        a.RxValue = 3;
 
         // ❗不能再触发（如果触发说明旧依赖没清）
         Assert.Equal([1, 2, 10, 20], values);
@@ -289,25 +289,25 @@ public class LifeCycleTest
 
         using var scope = new Scope();
 
-        var e = scope.CreateEffect(() => values.Add(s.Value));
+        var e = scope.CreateEffect(() => values.Add(s.RxValue));
         Assert.False(e.IsInvalid);
 
-        s.Value = 1;
+        s.RxValue = 1;
         Assert.Equal([0, 1], values);
 
         scope.Clean();
         Assert.False(scope.IsDisposed);
         Assert.True(e.IsInvalid);
 
-        s.Value = 2;
+        s.RxValue = 2;
 
         // ❗旧 effect 不应再触发
         Assert.Equal([0, 1], values);
 
         // 重新挂
-        scope.CreateEffect(() => values.Add(s.Value));
+        scope.CreateEffect(() => values.Add(s.RxValue));
 
-        s.Value = 3;
+        s.RxValue = 3;
 
         Assert.Equal([0, 1, 2, 3], values);
     }
@@ -320,10 +320,10 @@ public class LifeCycleTest
 
         using var scope = new Scope();
 
-        var e1 = scope.CreateEffect(() => values.Add(s.Value));
+        var e1 = scope.CreateEffect(() => values.Add(s.RxValue));
         Assert.False(e1.IsInvalid);
 
-        s.Value = 1;
+        s.RxValue = 1;
         Assert.Equal([0, 1], values);
 
         var root = Scope.RootScope;
@@ -332,7 +332,7 @@ public class LifeCycleTest
         Assert.True(scope.IsDisposed);
         Assert.True(e1.IsInvalid);
 
-        s.Value = 2;
+        s.RxValue = 2;
         Assert.Equal([0, 1], values);
     }
 

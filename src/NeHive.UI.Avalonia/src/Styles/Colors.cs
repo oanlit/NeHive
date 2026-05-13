@@ -1,6 +1,6 @@
 using Avalonia.Media;
 
-namespace NeHive.Sample.Avalonia.Render.Styles;
+namespace NeHive.UI.Avalonia.Styles;
 
 // https://tailwindcss.com/docs/colors
 public static class Colors

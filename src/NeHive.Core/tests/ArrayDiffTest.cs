@@ -252,7 +252,7 @@ public class ArrayDiffTest
             signal,
             x => x * 2
         );
-        Assert.Equal([2, 4, 6], memo.Value);
+        Assert.Equal([2, 4, 6], memo.RxValue);
         
         memo.Dispose();
     }
@@ -267,8 +267,8 @@ public class ArrayDiffTest
             x => x * 2
         );
 
-        signal.Value = [3, 4];
-        Assert.Equal([6, 8], memo.Value);
+        signal.RxValue = [3, 4];
+        Assert.Equal([6, 8], memo.RxValue);
         
         memo.Dispose();
     }
@@ -290,7 +290,7 @@ public class ArrayDiffTest
         );
         created = 0;
 
-        signal.Value = [1, 2, 3];
+        signal.RxValue = [1, 2, 3];
         Assert.Equal(0, created);
         
         memo.Dispose();
@@ -306,11 +306,11 @@ public class ArrayDiffTest
             _ => new object()
         );
 
-        var before = memo.Value.ToArray();
+        var before = memo.RxValue.ToArray();
 
-        signal.Value = [3, 1, 2];
+        signal.RxValue = [3, 1, 2];
 
-        var after = memo.Value;
+        var after = memo.RxValue;
 
         Assert.Same(before[0], after[1]);
         Assert.Same(before[1], after[2]);
@@ -335,7 +335,7 @@ public class ArrayDiffTest
         );
 
         created = 0;
-        signal.Value = [1, 2, 3];
+        signal.RxValue = [1, 2, 3];
 
         Assert.Equal(1, created);
         memo.Dispose();
@@ -358,11 +358,11 @@ public class ArrayDiffTest
         );
         disposed = 0;
 
-        signal.Value = [2];
+        signal.RxValue = [2];
 
         Assert.Equal(2, disposed);
 
-        signal.Value = [6];
+        signal.RxValue = [6];
         Assert.Equal(3, disposed);
         
         memo.Dispose();
@@ -384,10 +384,10 @@ public class ArrayDiffTest
             }
         );
 
-        signal.Value = [];
+        signal.RxValue = [];
 
         Assert.Equal(3, disposed);
-        Assert.Empty(memo.Value);
+        Assert.Empty(memo.RxValue);
         
         memo.Dispose();
     }
@@ -414,13 +414,13 @@ public class ArrayDiffTest
 
         created = 0;
 
-        signal.Value =
+        signal.RxValue =
         [
             new Item { Id = 2, Name = "B2" },
             new Item { Id = 1, Name = "A2" }
         ];
 
-        var result = memo.Value;
+        var result = memo.RxValue;
 
         Assert.Equal(0, created); // 没有重新 map
         Assert.Equal(["B", "A"], result); // 仍是旧值
@@ -441,17 +441,17 @@ public class ArrayDiffTest
             }
         );
 
-        Assert.Equal(2, iSignal.Value);
+        Assert.Equal(2, iSignal.RxValue);
 
         var effectRuns = 0;
         using var effect = new Effect(() =>
         {
             effectRuns++;
-            _ = iSignal.Value;
+            _ = iSignal.RxValue;
         });
         effectRuns = 0;
-        signal.Value = [3, 1, 2];
-        Assert.Equal(0, iSignal.Value);
+        signal.RxValue = [3, 1, 2];
+        Assert.Equal(0, iSignal.RxValue);
         Assert.Equal(1, effectRuns);
 
         memo.Dispose();

@@ -3,9 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using NeHive.Core;
-using NeHive.Sample.Avalonia.Render.Styles;
+using NeHive.UI.Avalonia.Styles;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public class HTextStyle(
     Thickness? margin = null,
@@ -121,7 +121,7 @@ public class HTextStyle(
         var result = new StyleSet();
         return new Computed<HTextStyle>(() =>
         {
-            var str = text.Value;
+            var str = text.RxValue;
             StyleParser.Parse(str, ref result);
             return new HTextStyle(
                 result.Margin,
@@ -156,7 +156,7 @@ public static partial class BaseComponent
         if (style is not null && strStyle is not null)
         {
             style = new Computed<HTextStyle>(() =>
-                HTextStyle.Parse(strStyle).Value.Merge(style.Value));
+                HTextStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
         }
         else if (strStyle is not null)
         {
@@ -166,7 +166,7 @@ public static partial class BaseComponent
         var uiScope = new UiScope();
         var tb = new TextBlock();
 
-        uiScope.CreateEffect(() => tb.Text = text.Value);
+        uiScope.CreateEffect(() => tb.Text = text.RxValue);
         uiScope.CreateEffect(epochScope =>
         {
             if (style is null) return;

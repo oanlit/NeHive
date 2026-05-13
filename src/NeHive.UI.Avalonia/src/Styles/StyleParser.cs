@@ -3,7 +3,7 @@ using Avalonia.Media;
 using Avalonia.Layout;
 using Avalonia.Input;
 
-namespace NeHive.Sample.Avalonia.Render.Styles;
+namespace NeHive.UI.Avalonia.Styles;
 
 // 定位 → 尺寸 → 内间距 → 布局排版 → 文字 → 颜色 → 边框 → 特效
 public class StyleSet

@@ -11,20 +11,20 @@ public class BatchTest
         using var effect = new Effect(() =>
         {
             runs++;
-            _ = a.Value;
+            _ = a.RxValue;
         });
 
         Reactive.Batch(() =>
         {
-            a.Value = 1;
+            a.RxValue = 1;
 
             Reactive.Batch(() =>
             {
-                a.Value = 2;
-                a.Value = 3;
+                a.RxValue = 2;
+                a.RxValue = 3;
             });
 
-            a.Value = 4;
+            a.RxValue = 4;
         });
 
         Assert.Equal(2, runs);
@@ -39,18 +39,18 @@ public class BatchTest
         using var effect = new Effect(() =>
         {
             runs++;
-            if (a.Value == 1)
+            if (a.RxValue == 1)
             {
                 Reactive.Batch(() =>
                 {
-                    a.Value = 2;
-                    a.Value = 3;
+                    a.RxValue = 2;
+                    a.RxValue = 3;
                 });
             }
         });
         Assert.Equal(1, runs);
 
-        Reactive.Batch(() => { a.Value = 1; });
+        Reactive.Batch(() => { a.RxValue = 1; });
 
         // Assert.Equal(2, runs);
         Assert.Equal(3, runs);
@@ -68,21 +68,21 @@ public class BatchTest
         using var effectA = new Effect(() =>
         {
             runsA++;
-            if (a.Value > 0)
-                b.Value = a.Value;
+            if (a.RxValue > 0)
+                b.RxValue = a.RxValue;
         });
 
         using var effectB = new Effect(() =>
         {
             runsB++;
-            _ = b.Value;
+            _ = b.RxValue;
         });
 
         Reactive.Batch(() =>
         {
-            a.Value = 1;
-            a.Value = 2;
-            a.Value = 3;
+            a.RxValue = 1;
+            a.RxValue = 2;
+            a.RxValue = 3;
         });
 
         Assert.Equal(2, runsA);
@@ -95,21 +95,21 @@ public class BatchTest
         var a = new Signal<int>(1);
         using var owner = new Scope();
 
-        var m = owner.CreateComputed(() => a.Value + 1);
+        var m = owner.CreateComputed(() => a.RxValue + 1);
 
         int runs = 0;
 
         using var effect = new Effect(() =>
         {
             runs++;
-            _ = m.Value;
+            _ = m.RxValue;
         });
 
         Reactive.Batch(() =>
         {
-            a.Value = 2;
-            a.Value = 3;
-            a.Value = 4;
+            a.RxValue = 2;
+            a.RxValue = 3;
+            a.RxValue = 4;
         });
 
         Assert.Equal(2, runs);
@@ -124,14 +124,14 @@ public class BatchTest
         using var effect = new Effect(() =>
         {
             runs++;
-            _ = a.Value;
+            _ = a.RxValue;
         });
 
         Reactive.Batch(() =>
         {
-            a.Value = 1;
-            _ = a.Value; // read
-            a.Value = 2;
+            a.RxValue = 1;
+            _ = a.RxValue; // read
+            a.RxValue = 2;
         });
 
         Assert.Equal(2, runs);
@@ -146,13 +146,13 @@ public class BatchTest
         using var effect = new Effect(() =>
         {
             runs++;
-            _ = a.Value;
+            _ = a.RxValue;
         });
 
         Reactive.Batch(() =>
         {
             for (int i = 0; i < 10000; i++)
-                a.Value = i;
+                a.RxValue = i;
         });
 
         Assert.Equal(2, runs);

@@ -1,12 +1,12 @@
 using System.Text;
 using NeHive.Core;
-using NeHive.Sample.Avalonia.Render;
+using NeHive.UI.Avalonia;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Controls.Primitives;
-using NeHive.Sample.Avalonia.Render.Components;
-using static NeHive.Sample.Avalonia.Render.Components.BaseComponent;
-using static NeHive.Sample.Avalonia.Render.Components.ControlFlow;
+using NeHive.UI.Avalonia.Components;
+using static NeHive.UI.Avalonia.Components.BaseComponent;
+using static NeHive.UI.Avalonia.Components.ControlFlow;
 
 namespace NeHive.Sample.Avalonia;
 
@@ -16,7 +16,7 @@ public static class DemoComponent
     {
         Console.WriteLine($"Counter{id} 组件已创建");
         var count = new Signal<int>(0);
-        var countText = () => $"Count: {count.Value}";
+        var countText = () => $"Count: {count.RxValue}";
 
         var rootElement = uiScope.RootElement(new()
         {
@@ -49,7 +49,7 @@ public static class DemoComponent
                           bg-green-300 hover:bg-green-400 click:bg-green-500
                           border-green-400 rounded-lg
                           """,
-                click: _ => count.Value++
+                click: _ => count.RxValue++
             ), // HButton
             HButton("Sub",
                 strStyle: """
@@ -57,7 +57,7 @@ public static class DemoComponent
                           bg-pink-300 hover:bg-pink-400 click:bg-pink-500
                           border-pink-400 rounded-lg
                           """,
-                click: _ => count.Value--) // HButton
+                click: _ => count.RxValue--) // HButton
         }); // rootElement
 
         uiScope.OnMount(() => Console.WriteLine(rootElement.Content.Bounds.Size));
@@ -73,13 +73,13 @@ public static class DemoComponent
     private static IElement ShowDemoComp(UiScope uiScope)
     {
         var visible = new Signal<bool>(true);
-        // var visibleText = () => visible.Value ? "ForEachDemo" : "LoadDemo";
-        var visibleText = uiScope.CreateComputed(() => visible.Value ? "ForEachDemo" : "LoadDemo");
+        // var visibleText = () => visible.RxValue ? "ForEachDemo" : "LoadDemo";
+        var visibleText = uiScope.CreateComputed(() => visible.RxValue ? "ForEachDemo" : "LoadDemo");
 
         var rootElement = uiScope.RootElement(new()
         {
             HButton(visibleText,
-                click: _ => visible.Value = !visible.Value
+                click: _ => visible.RxValue = !visible.Value
             ), // HButton
             Show(new(visible)
             {
@@ -113,7 +113,7 @@ public static class DemoComponent
         {
             var arr = items.Value.ToList();
             arr.Add(arr.Count + 1);
-            items.Value = arr;
+            items.RxValue = arr;
         };
 
         removeBtn.Click += _ =>
@@ -121,7 +121,7 @@ public static class DemoComponent
             var arr = items.Value.ToList();
             if (arr.Count > 0)
                 arr.RemoveAt(arr.Count - 1);
-            items.Value = arr;
+            items.RxValue = arr;
         };
 
         removeSecBtn.Click += _ =>
@@ -129,7 +129,7 @@ public static class DemoComponent
             var arr = items.Value.ToList();
             if (arr.Count > 1)
                 arr.RemoveAt(1);
-            items.Value = arr;
+            items.RxValue = arr;
         };
 
         return rootElement;
@@ -165,11 +165,11 @@ public static class DemoComponent
             {
                 HButton("Add User Id",
                     strStyle: "ml-2 mt-2",
-                    click: _ => userId.Value++
+                    click: _ => userId.RxValue++
                 ), // HButton
                 HButton("Sub User Id",
                     strStyle: "ml-2 mt-2",
-                    click: _ => userId.Value--
+                    click: _ => userId.RxValue--
                 ) // HButton
             }), // HStackPanel
 
@@ -219,19 +219,19 @@ public static class DemoComponent
                 //         cornerRadius: new CornerRadius(16),
                 //         padding: new Thickness(12, 6),
                 //         fontSize: 14),
-                //     click: _ => currentView.Value = DemoView.SimpleCounter
+                //     click: _ => currentView.RxValue = DemoView.SimpleCounter
                 // ), // HButton
                 HButton("显示简单计数器",
                     strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 hover:bg-blue-400 border-blue-500 rounded-2xl",
-                    click: _ => currentView.Value = DemoView.SimpleCounter
+                    click: _ => currentView.RxValue = DemoView.SimpleCounter
                 ), // HButton
                 HButton("显示 ForEach 示例",
                     strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 hover:bg-blue-400 border-blue-500  rounded-2xl",
-                    click: _ => currentView.Value = DemoView.ForEachDemo
+                    click: _ => currentView.RxValue = DemoView.ForEachDemo
                 ), // HButton
-                HButton("显示 Loading 示例",
+                HButton("显示 RxLoading 示例",
                     strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 hover:bg-blue-400 border-blue-500 rounded-2xl",
-                    click: _ => currentView.Value = DemoView.LoadingDemo
+                    click: _ => currentView.RxValue = DemoView.LoadingDemo
                 ) // HButton
             }), // HStackPanel
             // 根据 currentView 切换内容
@@ -266,13 +266,13 @@ public static class DemoComponent
             HGrid(new(
                 rowDefinitions: new([HgLen.Auto, HgLen.Star()]), // 第一行高度自适应，第二行占满剩余
                 columnDefinitions: new([100, HgLen.Star()]), // 第一列固定100，第二列占满
-                strStyle: new(() => $"m-2 gap-x-{gapX.Value} gap-y-3 bg-gray-100"))
+                strStyle: new(() => $"m-2 gap-x-{gapX.RxValue} gap-y-3 bg-gray-100"))
             {
                 [(row: 0, column: 0)] = HTextBlock("左上", style: new HTextStyle(fontSize: 16)),
                 [(row: 0, column: 1)] = HTextBlock("右上", style: new HTextStyle(fontSize: 16)),
                 [(row: 1, column: 0, rowSpan: 1, colSpan: 2)] =
                     HButton("点我增加间隔",
-                        click: _ => gapX.Value++
+                        click: _ => gapX.RxValue++
                     ) // HButton
                 // HGrid.[(row: 1, column: 0, rowSpan: 1, colSpan: 2)]
             }) // HGrid
@@ -408,10 +408,10 @@ public static class DemoComponent
                 bindText: textSignal,
                 watermark: "输入点什么...",
                 strStyle: "w-100 p-3 font-bold border-blue rounded-lg",
-                textChanged: newText => log.Value = $"输入: {newText}"
+                textChanged: newText => log.RxValue = $"输入: {newText}"
             ), // HTextBox
-            HTextBlock(new(() => $"实时内容: {textSignal.Value}"), strStyle: "mt-2"),
-            HTextBlock(new(() => log.Value), strStyle: "fg-gray-500")
+            HTextBlock(new(() => $"实时内容: {textSignal.RxValue}"), strStyle: "mt-2"),
+            HTextBlock(new(() => log.RxValue), strStyle: "fg-gray-500")
         }); // rootElement
         return rootElement;
     }

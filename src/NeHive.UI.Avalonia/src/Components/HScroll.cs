@@ -5,9 +5,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using NeHive.Core;
-using NeHive.Sample.Avalonia.Render.Styles;
+using NeHive.UI.Avalonia.Styles;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public class HScrollStyle(
     Thickness? margin = null,
@@ -87,7 +87,7 @@ public class HScrollStyle(
         var result = new StyleSet();
         return new Computed<HScrollStyle>(() =>
         {
-            var str = text.Value;
+            var str = text.RxValue;
             
             StyleParser.Parse(str,ref result);
             return new HScrollStyle(
@@ -146,14 +146,14 @@ public class HScrollProp : ISingleChildrenProp
         {
             Style = new Computed<HScrollStyle>(() =>
             {
-                var parsed = HScrollStyle.Parse(strStyle.Value);
-                return parsed.Value.Merge(style.Value);
+                var parsed = HScrollStyle.Parse(strStyle.RxValue);
+                return parsed.RxValue.Merge(style.RxValue);
             });
         }
         
         else if (strStyle != null)
         {
-            Style = HScrollStyle.Parse(strStyle.Value);
+            Style = HScrollStyle.Parse(strStyle.RxValue);
         }
         else
         {
@@ -192,14 +192,14 @@ public static partial class BaseComponent
             if (ori == Orientation.Horizontal)
             {
                 scroll.HorizontalScrollBarVisibility =
-                    prop.HorizontalScrollBarVisibility.Value;
+                    prop.HorizontalScrollBarVisibility.RxValue;
                 scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
             }
             else // Vertical
             {
                 scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
                 scroll.VerticalScrollBarVisibility =
-                    prop.VerticalScrollBarVisibility.Value;
+                    prop.VerticalScrollBarVisibility.RxValue;
             }
 
             scroll.Margin = style.Margin;
@@ -213,32 +213,32 @@ public static partial class BaseComponent
             if (style.Width.HasValue)
             {
                 scroll.Width = style.Width.Value;
-                // stack.Width = style.Width.Value;
+                // stack.Width = style.Width.RxValue;
             }
             if (style.Height.HasValue)
             {
                 scroll.Height = style.Height.Value;
-                // stack.Height = style.Height.Value;
+                // stack.Height = style.Height.RxValue;
             }
             if (style.MinWidth.HasValue)
             {
                 scroll.MinWidth = style.MinWidth.Value;
-                // stack.MinWidth = style.MinWidth.Value;
+                // stack.MinWidth = style.MinWidth.RxValue;
             }
             if (style.MaxWidth.HasValue)
             {
                 scroll.MaxWidth = style.MaxWidth.Value;
-                // stack.MaxWidth = style.MaxWidth.Value;
+                // stack.MaxWidth = style.MaxWidth.RxValue;
             }
             if (style.MinHeight.HasValue)
             {
                 scroll.MinHeight = style.MinHeight.Value;
-                // stack.MinHeight = style.MinHeight.Value;
+                // stack.MinHeight = style.MinHeight.RxValue;
             }
             if (style.MaxHeight.HasValue)
             {
                 scroll.MaxHeight = style.MaxHeight.Value;
-                // stack.MaxHeight = style.MaxHeight.Value;
+                // stack.MaxHeight = style.MaxHeight.RxValue;
             }
             if (style.Opacity.HasValue)
                 scroll.Opacity = style.Opacity.Value;

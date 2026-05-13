@@ -69,8 +69,8 @@ public class ReactiveFlowTest
             .PushEffect(v => last = v);
 
         // ACT
-        signal.Value = 4; // 4*2=8 → 通过
-        signal.Value = 2; // 2*2=4 → 不通过
+        signal.RxValue = 4; // 4*2=8 → 通过
+        signal.RxValue = 2; // 2*2=4 → 不通过
 
         // ASSERT
         Assert.Equal(8, last);
@@ -89,7 +89,7 @@ public class ReactiveFlowTest
 
         // ACT
         scope.Dispose();
-        signal.Value = 20;
+        signal.RxValue = 20;
 
         // ASSERT
         // ✅ 销毁后不再触发
@@ -107,11 +107,11 @@ public class ReactiveFlowTest
             .Map(x => x + 10)
             .PushComputed(v => v * 2);
 
-        Assert.Equal(22, computed.Value);
+        Assert.Equal(22, computed.RxValue);
 
-        signal.Value = 2;
+        signal.RxValue = 2;
 
-        Assert.Equal(24, computed.Value);
+        Assert.Equal(24, computed.RxValue);
     }
     
     [Fact]
@@ -130,7 +130,7 @@ public class ReactiveFlowTest
 
         await Task.Delay(50);
 
-        Assert.Equal(10, memo.Value);
+        Assert.Equal(10, memo.RxValue);
     }
     //
     // [Fact]
@@ -147,11 +147,11 @@ public class ReactiveFlowTest
     //             return v;
     //         });
     //
-    //     signal.Value = 2;
-    //     signal.Value = 3;
+    //     signal.RxValue = 2;
+    //     signal.RxValue = 3;
     //
     //     await Task.Delay(100);
     //
-    //     Assert.True(memo.Value is 2 or 3);
+    //     Assert.True(memo.RxValue is 2 or 3);
     // }
 }

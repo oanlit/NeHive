@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public interface ISingleChildrenProp : IEnumerable<IElement>
 {

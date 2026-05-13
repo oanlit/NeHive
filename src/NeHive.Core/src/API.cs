@@ -89,52 +89,52 @@ public static partial class Reactive
 
 public interface IReadOnlySignal<out T>
 {
+    public T RxValue { get; }
     public T Value { get; }
-    public T UntrackValue { get; }
 }
 
 public interface ISetOnlySignal<T>
 {
-    public T Value { set; }
+    public T RxValue { set; }
     public void NotifySet(Func<T, T> value);
 }
 
 public class Accessor<T> : IReadOnlySignal<T>
 {
     internal ISignalState<T>? ValueSignal;
+    internal Func<T> RxValueGetter;
     internal Func<T> ValueGetter;
-    internal Func<T> UntrackValueGetter;
+
+    public T RxValue => RxValueGetter();
 
     public T Value => ValueGetter();
-
-    public T UntrackValue => UntrackValueGetter();
 
     public Accessor(T value)
     {
         ValueSignal = null;
-        ValueGetter = () => value;
-        UntrackValueGetter = () => Reactive.Untrack(ValueGetter);
+        RxValueGetter = () => value;
+        ValueGetter = () => Reactive.Untrack(RxValueGetter);
     }
 
-    public Accessor(Func<T> valueGetter)
+    public Accessor(Func<T> rxValueGetter)
     {
         ValueSignal = null;
-        ValueGetter = valueGetter;
-        UntrackValueGetter = () => Reactive.Untrack(ValueGetter);
+        RxValueGetter = rxValueGetter;
+        ValueGetter = () => Reactive.Untrack(RxValueGetter);
     }
 
     internal Accessor(ISignalState<T> valueSignal)
     {
         ValueSignal = valueSignal;
-        ValueGetter = valueSignal.ReadSignal;
-        UntrackValueGetter = () => valueSignal.Value;
+        RxValueGetter = valueSignal.ReadSignal;
+        ValueGetter = () => valueSignal.Value;
     }
 
     internal Accessor()
     {
         ValueSignal = null;
-        ValueGetter = () => default!;
-        UntrackValueGetter = () => Reactive.Untrack(ValueGetter);
+        RxValueGetter = () => default!;
+        ValueGetter = () => Reactive.Untrack(RxValueGetter);
     }
 
     public static implicit operator Accessor<T>(T value)
@@ -151,7 +151,7 @@ public class Accessor<T> : IReadOnlySignal<T>
 public class Signal<T>(T value) : Accessor<T>(new SignalState<T>(value)),
     ISetOnlySignal<T>
 {
-    public new T Value
+    public new T RxValue
     {
         get => ValueSignal!.ReadSignal();
         set => ValueSignal!.WriteSignal(value);
@@ -295,7 +295,7 @@ public class EpochScope : Scope
     public T Pull<T>(Accessor<T> signal)
     {
         return signal.ValueSignal is null
-            ? _tracker.Track(signal.ValueGetter)
+            ? _tracker.Track(signal.RxValueGetter)
             : _tracker.Track(signal.ValueSignal);
     }
 
@@ -435,13 +435,13 @@ public class Computed<T> : Accessor<T>
     private void _initSignalGetter()
     {
         ValueSignal = _computedNode;
-        ValueGetter = () =>
+        RxValueGetter = () =>
         {
             if (IsInvalid) return _fn(_value!);
             _value = _computedNode.ReadSignal();
             return _value;
         };
-        UntrackValueGetter = () =>
+        ValueGetter = () =>
         {
             if (IsInvalid)
             {
@@ -488,29 +488,29 @@ public class AsyncMemo<T> : Accessor<T?>
     private bool _scheduled;
     private bool _resolved;
 
-    public AsyncMemoState State => _state.Value;
+    public AsyncMemoState RxState => _state.RxValue;
 
-    public bool Loading
+    public bool RxLoading
     {
         get
         {
-            var state = _state.Value;
+            var state = _state.RxValue;
             return state is AsyncMemoState.Pending or AsyncMemoState.Refreshing;
         }
     }
 
-    public T? Latest
+    public T? RxLatest
     {
         get
         {
-            if (!_resolved) return Value;
-            var err = _error.Value;
+            if (!_resolved) return RxValue;
+            var err = _error.RxValue;
             if (err is not null && _result is null) throw err;
             return ValueSignal!.ReadSignal();
         }
     }
 
-    public Exception? Error => _error.Value;
+    public Exception? RxError => _error.RxValue;
 
     public AsyncMemo(Func<Task<T>> executeFn, Scope? scope = null)
     {
@@ -523,7 +523,7 @@ public class AsyncMemo<T> : Accessor<T?>
             context: current.Context,
             cleanups: null
         );
-        _scope.Cleanups.Add(() => _state.Value = AsyncMemoState.IsInvalid);
+        _scope.Cleanups.Add(() => _state.RxValue = AsyncMemoState.IsInvalid);
         _isSimpleUse = true;
 
         _executeFn = _ => executeFn();
@@ -554,7 +554,7 @@ public class AsyncMemo<T> : Accessor<T?>
             context: current.Context,
             cleanups: null
         );
-        _scope.Cleanups.Add(() => _state.Value = AsyncMemoState.IsInvalid);
+        _scope.Cleanups.Add(() => _state.RxValue = AsyncMemoState.IsInvalid);
         _isSimpleUse = false;
 
         using (new ReactiveContextHelper(_scope, null))
@@ -581,17 +581,17 @@ public class AsyncMemo<T> : Accessor<T?>
     private void _initSignalGetter()
     {
         ValueSignal = new SignalState<T?>(default);
-        ValueGetter = () =>
+        RxValueGetter = () =>
         {
             var v = ValueSignal!.ReadSignal();
-            var err = _error.Value;
+            var err = _error.RxValue;
             if (err is not null && _result is null) throw err;
             return v;
         };
-        UntrackValueGetter = () =>
+        ValueGetter = () =>
         {
             var v = ValueSignal!.Value;
-            var err = _error.UntrackValue;
+            var err = _error.Value;
             if (err is not null && _result is null) throw err;
             return v;
         };
@@ -630,7 +630,7 @@ public class AsyncMemo<T> : Accessor<T?>
         _ = ResetScheduledAsync();
 
         ExecuteNode.StartBatch();
-        _state.Value = _resolved ? AsyncMemoState.Refreshing : AsyncMemoState.Pending;
+        _state.RxValue = _resolved ? AsyncMemoState.Refreshing : AsyncMemoState.Pending;
         ExecuteNode.EndBatch();
 
         return HandleAsync();
@@ -672,13 +672,13 @@ public class AsyncMemo<T> : Accessor<T?>
         ExecuteNode.StartBatch();
         if (err is null)
         {
-            // _value.Value = v;
+            // _value.RxValue = v;
             ValueSignal!.WriteSignal(v);
-            _state.Value = _resolved ? AsyncMemoState.Ready : AsyncMemoState.Unresolved;
+            _state.RxValue = _resolved ? AsyncMemoState.Ready : AsyncMemoState.Unresolved;
         }
-        else _state.Value = AsyncMemoState.Errored;
+        else _state.RxValue = AsyncMemoState.Errored;
 
-        _error.Value = err;
+        _error.RxValue = err;
         ExecuteNode.EndBatch();
     }
 }
@@ -701,7 +701,7 @@ public class Selector<T> where T : notnull
 
         T ComputationFn(T? prevValue)
         {
-            var nextValue = source.Value;
+            var nextValue = source.RxValue;
             foreach (var (key, observers) in _subs.AsEnumerable())
             {
                 // 异或比较
@@ -715,9 +715,9 @@ public class Selector<T> where T : notnull
 
     public bool Select(T key)
     {
-        _ = _logicSignal.Value; // 逻辑依赖，不会导致外部观察者误以为没有信号而失效
+        _ = _logicSignal.RxValue; // 逻辑依赖，不会导致外部观察者误以为没有信号而失效
 
-        var value = _computed.UntrackValue;
+        var value = _computed.Value;
         var currentComputation = ReactiveContext.CurrentExecute;
         if (currentComputation is null) return CompareFn(key, value);
 

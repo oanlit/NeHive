@@ -322,8 +322,8 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
     Accessor<IReadOnlyList<TMap>>
     where TItem : notnull where TKey : notnull
 {
-    // public IReadOnlyList<TMap> Value => _mapCache.ReadSignal();
-    // public IReadOnlyList<TMap> UntrackValue => _mapCache.UntrackValue;
+    // public IReadOnlyList<TMap> RxValue => _mapCache.ReadSignal();
+    // public IReadOnlyList<TMap> Value => _mapCache.Value;
 
     public bool IsInvalid { get; private set; }
 
@@ -348,8 +348,8 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         _scope = _createSelfScope();
         // _mapCache = _createMapCache();
         ValueSignal = _createMapCache();
-        ValueGetter = () => ValueSignal.ReadSignal();
-        UntrackValueGetter = () => ValueSignal.Value;
+        RxValueGetter = () => ValueSignal.ReadSignal();
+        ValueGetter = () => ValueSignal.Value;
     }
 
     public ArrayMapMemo(Accessor<IReadOnlyList<TItem>> sourceListSignal,
@@ -363,8 +363,8 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         _scope = _createSelfScope();
         // _mapCache = _createMapCache();
         ValueSignal = _createMapCache();
-        ValueGetter = () => ValueSignal.ReadSignal();
-        UntrackValueGetter = () => ValueSignal.Value;
+        RxValueGetter = () => ValueSignal.ReadSignal();
+        ValueGetter = () => ValueSignal.Value;
     }
 
     private ScopeNode _createSelfScope()
@@ -448,7 +448,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
     private DenseBuffer<TMap> _effectFn(ITrack track, IReadOnlyList<TMap> oldMap)
     {
         var newList = _sourceListSignal.ValueSignal is null
-            ? track.Track(_sourceListSignal.ValueGetter)
+            ? track.Track(_sourceListSignal.RxValueGetter)
             : track.Track(_sourceListSignal.ValueSignal);
 
         var newLen = newList.Count;
@@ -504,7 +504,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
             if (_indexSignals is null) continue;
             tempIndex![newIndex] = _indexSignals[newIndex];
             _indexSignals[newIndex] = isOverlaid ? tempIndex[oldIndex]! : _indexSignals[oldIndex];
-            _indexSignals[newIndex].Value = newIndex; // 触发更新索引信号
+            _indexSignals[newIndex].RxValue = newIndex; // 触发更新索引信号
         }
 
         foreach (var newItemIndex in diff.NewItemsIndex)

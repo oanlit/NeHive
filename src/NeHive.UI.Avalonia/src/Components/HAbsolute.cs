@@ -5,7 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using NeHive.Core;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public class AbsPosition(
     Accessor<double>? left = null,
@@ -64,12 +64,12 @@ public static partial class BaseComponent
 
         uiScope.CreateEffect(() =>
         {
-            if (prop.Width is not null) canvas.Width = prop.Width.Value;
-            if (prop.Height is not null) canvas.Height = prop.Height.Value;
-            if (prop.Background is not null) canvas.Background = prop.Background.Value;
-            if (prop.Margin is not null) canvas.Margin = prop.Margin.Value;
-            canvas.HorizontalAlignment = prop.HorizontalAlignment.Value;
-            canvas.VerticalAlignment = prop.VerticalAlignment.Value;
+            if (prop.Width is not null) canvas.Width = prop.Width.RxValue;
+            if (prop.Height is not null) canvas.Height = prop.Height.RxValue;
+            if (prop.Background is not null) canvas.Background = prop.Background.RxValue;
+            if (prop.Margin is not null) canvas.Margin = prop.Margin.RxValue;
+            canvas.HorizontalAlignment = prop.HorizontalAlignment.RxValue;
+            canvas.VerticalAlignment = prop.VerticalAlignment.RxValue;
         });
 
         foreach (var (pos, element) in prop)
@@ -77,11 +77,11 @@ public static partial class BaseComponent
             var control = element.Content;
             uiScope.CreateEffect(() =>
             {
-                if (pos.Left is not null) Canvas.SetLeft(control, pos.Left.Value);
-                if (pos.Top is not null) Canvas.SetTop(control, pos.Top.Value);
-                if (pos.Right is not null) Canvas.SetRight(control, pos.Right.Value);
-                if (pos.Bottom is not null) Canvas.SetBottom(control, pos.Bottom.Value);
-                // if (pos.ZIndex is not null) Canvas.SetZIndex(control, pos.ZIndex.Value);
+                if (pos.Left is not null) Canvas.SetLeft(control, pos.Left.RxValue);
+                if (pos.Top is not null) Canvas.SetTop(control, pos.Top.RxValue);
+                if (pos.Right is not null) Canvas.SetRight(control, pos.Right.RxValue);
+                if (pos.Bottom is not null) Canvas.SetBottom(control, pos.Bottom.RxValue);
+                // if (pos.ZIndex is not null) Canvas.SetZIndex(control, pos.ZIndex.RxValue);
             });
 
             canvas.Children.Add(control);

@@ -78,11 +78,11 @@ public class CombinationStoreTest
 
         var memo = new Computed<int>(() => a.Value + b.Double);
 
-        var v1 = memo.Value;
+        var v1 = memo.RxValue;
 
         a.Value = 10;
 
-        var v2 = memo.Value;
+        var v2 = memo.RxValue;
 
         Assert.NotEqual(v1, v2);
     }

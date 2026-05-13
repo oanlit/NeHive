@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {

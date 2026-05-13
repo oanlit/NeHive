@@ -4,9 +4,9 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using NeHive.Core;
-using NeHive.Sample.Avalonia.Render.Styles;
+using NeHive.UI.Avalonia.Styles;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 // 位置参数元组别名，便于阅读
 using GridPosition = (int row, int column, int rowSpan, int colSpan);
@@ -73,7 +73,7 @@ public class HGridStyle(
     {
         return new Computed<HGridStyle>(() =>
         {
-            var str = text.Value;
+            var str = text.RxValue;
             var result = StyleParser.Parse(str);
             return new HGridStyle(
                 result.Margin,
@@ -111,7 +111,7 @@ public class HGridProp : IEnumerable<KeyValuePair<GridPosition, IElement>>
         if (style != null && strStyle != null)
         {
             Style = new Computed<HGridStyle>(() =>
-                HGridStyle.Parse(strStyle).Value.Merge(style.Value));
+                HGridStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
         }
         else if (strStyle != null)
         {
@@ -155,14 +155,14 @@ public static partial class BaseComponent
             if (prop.RowDefinitions is not null)
             {
                 grid.RowDefinitions.Clear();
-                foreach (var rowDef in prop.RowDefinitions.Value)
+                foreach (var rowDef in prop.RowDefinitions.RxValue)
                     grid.RowDefinitions.Add(new RowDefinition(rowDef.Value));
             }
 
             if (prop.ColumnDefinitions is not null)
             {
                 grid.ColumnDefinitions.Clear();
-                foreach (var colDef in prop.ColumnDefinitions.Value)
+                foreach (var colDef in prop.ColumnDefinitions.RxValue)
                     grid.ColumnDefinitions.Add(new ColumnDefinition(colDef.Value));
             }
         });

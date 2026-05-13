@@ -20,5 +20,6 @@
         </PackageReference>
         
         <ProjectReference Include="..\..\src\NeHive.Core\src\NeHive.Core.csproj"/>
+        <ProjectReference Include="..\..\src\NeHive.UI.Avalonia\src\NeHive.UI.Avalonia.csproj"/>
     </ItemGroup>
 </Project>

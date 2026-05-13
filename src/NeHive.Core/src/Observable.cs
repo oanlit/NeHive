@@ -36,7 +36,7 @@ public static partial class Reactive
     {
         public void OnNext(T value)
         {
-            signal.Value = value;
+            signal.RxValue = value;
         }
 
         public void OnCompleted()
@@ -73,7 +73,7 @@ public static partial class Reactive
         {
             return new ReactiveFlow<T>(scope, (out value) =>
             {
-                value = signal.Value;
+                value = signal.RxValue;
                 return true;
             });
         }
@@ -83,7 +83,7 @@ public static partial class Reactive
         // {
         //     return new ReactiveFlow<T>(scope, (out value) =>
         //     {
-        //         value = accessor.Value;
+        //         value = accessor.RxValue;
         //         return true;
         //     });
         // }
@@ -180,7 +180,7 @@ public static class ReactiveFlowExtensions
 
                         if (!newCts.IsCancellationRequested)
                         {
-                            output.Value = value;
+                            output.RxValue = value;
                         }
                     }
                     catch (TaskCanceledException)
@@ -215,7 +215,7 @@ public static class ReactiveFlowExtensions
                 {
                     throttled = true;
 
-                    output.Value = value;
+                    output.RxValue = value;
 
                     _ = Cooldown();
 
@@ -244,7 +244,7 @@ public static class ReactiveFlowExtensions
                     var value = latest;
                     hasLatest = false;
 
-                    output.Value = value;
+                    output.RxValue = value;
                 }
             }
         }

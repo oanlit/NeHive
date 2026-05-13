@@ -10,7 +10,7 @@ public class SignalTest
         {
             for (var i = 0; i < 1000; i++)
             {
-                _ = a.Value;
+                _ = a.RxValue;
             }
         });
 
@@ -32,8 +32,8 @@ public class SignalTest
         {
             for (var i = 0; i < 1000; i++)
             {
-                _ = a.Value;
-                _ = b.Value;
+                _ = a.RxValue;
+                _ = b.RxValue;
             }
         });
 

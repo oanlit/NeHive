@@ -9,15 +9,15 @@ public class AsyncMemoTest
 
         var asyncMemo = new AsyncMemo<int>(async () =>
         {
-            var result = source.Value * 2;
+            var result = source.RxValue * 2;
             await Task.Delay(10);
             return result;
         });
 
         await Task.Delay(50);
 
-        Assert.Equal(AsyncMemoState.Ready, asyncMemo.State);
-        Assert.Equal(2, asyncMemo.Value);
+        Assert.Equal(AsyncMemoState.Ready, asyncMemo.RxState);
+        Assert.Equal(2, asyncMemo.RxValue);
     }
 
     [Fact]
@@ -33,8 +33,8 @@ public class AsyncMemoTest
 
         await Task.Delay(50);
 
-        Assert.Equal(AsyncMemoState.Ready, asyncMemo.State);
-        Assert.Equal(2, asyncMemo.Value);
+        Assert.Equal(AsyncMemoState.Ready, asyncMemo.RxState);
+        Assert.Equal(2, asyncMemo.RxValue);
     }
 
     [Fact]
@@ -49,12 +49,12 @@ public class AsyncMemoTest
         });
 
         await Task.Delay(50);
-        Assert.Equal(2, asyncMemo.Value);
+        Assert.Equal(2, asyncMemo.RxValue);
 
-        source.Value = 2;
+        source.RxValue = 2;
 
         await Task.Delay(50);
-        Assert.Equal(4, asyncMemo.Value);
+        Assert.Equal(4, asyncMemo.RxValue);
     }
 
     [Fact]
@@ -70,16 +70,16 @@ public class AsyncMemoTest
         });
 
         await Task.Delay(100);
-        Assert.Equal(AsyncMemoState.Ready, asyncMemo.State);
+        Assert.Equal(AsyncMemoState.Ready, asyncMemo.RxState);
 
-        source.Value = 2;
+        source.RxValue = 2;
 
-        Assert.True(asyncMemo.Loading);
+        Assert.True(asyncMemo.RxLoading);
 
         await Task.Delay(100);
 
-        Assert.Equal(AsyncMemoState.Ready, asyncMemo.State);
-        Assert.Equal(2, asyncMemo.Value);
+        Assert.Equal(AsyncMemoState.Ready, asyncMemo.RxState);
+        Assert.Equal(2, asyncMemo.RxValue);
     }
     
     [Fact]
@@ -99,12 +99,12 @@ public class AsyncMemoTest
         using var effect = new Effect(() =>
         {
             runs++;
-            last = asyncMemo.State;
+            last = asyncMemo.RxState;
         });
 
         await Task.Delay(50);
 
-        source.Value = 2;
+        source.RxValue = 2;
 
         await Task.Delay(100);
 
@@ -132,7 +132,7 @@ public class AsyncMemoTest
         );
 
         await Task.Delay(50);
-        source.Value = 2;
+        source.RxValue = 2;
         await Task.Delay(50);
 
         Assert.Equal(1, setupRuns);

@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using NeHive.Core;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public struct ForEachProp<T>(Accessor<IReadOnlyList<T>> each)
 {

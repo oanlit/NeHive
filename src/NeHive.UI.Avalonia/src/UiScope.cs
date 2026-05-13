@@ -1,7 +1,7 @@
 using NeHive.Core;
-using NeHive.Sample.Avalonia.Render.Components;
+using NeHive.UI.Avalonia.Components;
 
-namespace NeHive.Sample.Avalonia.Render;
+namespace NeHive.UI.Avalonia;
 
 public class UiScope(Scope? parentOwner = null) : Scope(parentOwner)
 {

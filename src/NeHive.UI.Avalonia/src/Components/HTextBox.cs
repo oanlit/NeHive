@@ -1,9 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using NeHive.Core;
-using NeHive.Sample.Avalonia.Render.Styles;
+using NeHive.UI.Avalonia.Styles;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
@@ -31,8 +31,8 @@ public static partial class BaseComponent
             {
                 finalStyle = new Computed<StyleSet>(() =>
                 {
-                    var ss = StyleParser.Parse(strStyle.Value);
-                    ss.Merge(style.Value);
+                    var ss = StyleParser.Parse(strStyle.RxValue);
+                    ss.Merge(style.RxValue);
                     return ss;
                 });
             }
@@ -41,7 +41,7 @@ public static partial class BaseComponent
                 var result = new StyleSet();
                 finalStyle = new Computed<StyleSet>(() =>
                 {
-                    StyleParser.Parse(strStyle.Value, ref result);
+                    StyleParser.Parse(strStyle.RxValue, ref result);
                     return result;
                 });
             }
@@ -98,7 +98,7 @@ public static partial class BaseComponent
             // 避免循环更新标志
             var updatingFromSignal = false;
 
-            textBox.Text = signal.Value;
+            textBox.Text = signal.RxValue;
 
             uiScope.OnMount(() =>
             {
@@ -106,7 +106,7 @@ public static partial class BaseComponent
                 {
                     if (updatingFromSignal) return;
                     var newText = textBox.Text ?? string.Empty;
-                    signal.Value = newText;
+                    signal.RxValue = newText;
                     textChanged?.Invoke(newText);
                 };
             });

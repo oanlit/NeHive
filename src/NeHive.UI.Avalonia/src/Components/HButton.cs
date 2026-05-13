@@ -4,9 +4,9 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Interactivity;
 using NeHive.Core;
-using NeHive.Sample.Avalonia.Render.Styles;
+using NeHive.UI.Avalonia.Styles;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public class HButtonStyle(
     Thickness? margin = null,
@@ -89,7 +89,7 @@ public class HButtonStyle(
         var result = new StyleSet();
         return new Computed<HButtonStyle>(() =>
         {
-            var str = text.Value;
+            var str = text.RxValue;
             StyleParser.Parse(str, ref result);
             return new HButtonStyle(
                 result.Margin,
@@ -120,7 +120,7 @@ public class HButtonStyle(
 
         return new Computed<FullStyle>(() =>
         {
-            var str = text.Value;
+            var str = text.RxValue;
             fullStyle.Base = DefaultStyleSet();
             fullStyle.Variants = [];
             StyleParser.ParseFullStyle(str, ref fullStyle);
@@ -168,7 +168,7 @@ public class HButtonExpose
 //         if (style is not null && strStyle is not null)
 //         {
 //             style = new Computed<HButtonStyle>(() =>
-//                 HButtonStyle.Parse(strStyle).Value.Merge(style.Value));
+//                 HButtonStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
 //         }
 //         else if (strStyle != null)
 //         {
@@ -186,7 +186,7 @@ public class HButtonExpose
 //         var textBlock = new TextBlock();
 //         border.Child = textBlock;
 //
-//         uiScope.CreateEffect(() => { textBlock.Text = text.Value; });
+//         uiScope.CreateEffect(() => { textBlock.Text = text.RxValue; });
 //         if (style is null)
 //         {
 //             ApplyStyle(new HButtonStyle()); // 应用默认样式
@@ -241,7 +241,7 @@ public class HButtonExpose
 //             border.PointerExited += (_, _) =>
 //             {
 //                 isPressed = false; // 移出区域时取消按下状态
-//                 border.Background = style?.UntrackValue.Background ?? Brushes.LightGray;
+//                 border.Background = style?.Value.Background ?? Brushes.LightGray;
 //             };
 //
 //             border.PointerEntered += (_, _) =>
@@ -255,14 +255,14 @@ public class HButtonExpose
 //
 //         void ApplyStyle(HButtonStyle styleValue)
 //         {
-//             if (styleValue.Margin is not null) border.Margin = styleValue.Margin.Value;
+//             if (styleValue.Margin is not null) border.Margin = styleValue.Margin.RxValue;
 //
-//             if (styleValue.Width is not null) border.Width = styleValue.Width.Value;
-//             if (styleValue.Height is not null) border.Height = styleValue.Height.Value;
-//             if (styleValue.MaxWidth is not null) border.MaxWidth = styleValue.MaxWidth.Value;
-//             if (styleValue.MinWidth is not null) border.MinWidth = styleValue.MinWidth.Value;
-//             if (styleValue.MaxHeight is not null) border.MaxHeight = styleValue.MaxHeight.Value;
-//             if (styleValue.MinHeight is not null) border.MinHeight = styleValue.MinHeight.Value;
+//             if (styleValue.Width is not null) border.Width = styleValue.Width.RxValue;
+//             if (styleValue.Height is not null) border.Height = styleValue.Height.RxValue;
+//             if (styleValue.MaxWidth is not null) border.MaxWidth = styleValue.MaxWidth.RxValue;
+//             if (styleValue.MinWidth is not null) border.MinWidth = styleValue.MinWidth.RxValue;
+//             if (styleValue.MaxHeight is not null) border.MaxHeight = styleValue.MaxHeight.RxValue;
+//             if (styleValue.MinHeight is not null) border.MinHeight = styleValue.MinHeight.RxValue;
 //
 //             border.Padding = styleValue.Padding;
 //
@@ -270,8 +270,8 @@ public class HButtonExpose
 //             textBlock.VerticalAlignment = styleValue.VerticalAlignment;
 //
 //             textBlock.FontSize = styleValue.FontSize;
-//             if (styleValue.FontWeight is not null) textBlock.FontWeight = styleValue.FontWeight.Value;
-//             if (styleValue.FontStyle is not null) textBlock.FontStyle = styleValue.FontStyle.Value;
+//             if (styleValue.FontWeight is not null) textBlock.FontWeight = styleValue.FontWeight.RxValue;
+//             if (styleValue.FontStyle is not null) textBlock.FontStyle = styleValue.FontStyle.RxValue;
 //             textBlock.Foreground = styleValue.Foreground;
 //
 //             border.Background = styleValue.Background;
@@ -367,7 +367,7 @@ public static partial class BaseComponent
             Child = textBlock
         };
         
-        uiScope.CreateEffect(() => textBlock.Text = text.Value);
+        uiScope.CreateEffect(() => textBlock.Text = text.RxValue);
         
         HButtonState state;
 
@@ -378,7 +378,7 @@ public static partial class BaseComponent
         }
         else
         {
-            state = new HButtonState(style.UntrackValue.Base);
+            state = new HButtonState(style.Value.Base);
             ApplyStyle(state.CurrentStyle);
             uiScope.CreateEffect(epochScope =>
             {
@@ -424,7 +424,7 @@ public static partial class BaseComponent
             {
                 state.IsHover = false;
                 state.IsClicked = false; // 移出区域时取消按下状态
-                // border.Background = style?.UntrackValue.Background ?? Brushes.LightGray;
+                // border.Background = style?.Value.Background ?? Brushes.LightGray;
                 state.ResetSetStyle();
                 ApplyStyle(state.CurrentStyle);
             };

@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using NeHive.Core;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 // 泛型参数 T 表示 key 的类型，需要支持作为 Dictionary 的键
 public struct SwitchProp<T>(Accessor<T> key) where T : notnull

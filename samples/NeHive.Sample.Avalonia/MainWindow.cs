@@ -2,7 +2,7 @@
 using Avalonia.Controls;
 // using Avalonia.Input;
 // using Avalonia.Controls.Primitives;
-using NeHive.Sample.Avalonia.Render;
+using NeHive.UI.Avalonia;
 
 namespace NeHive.Sample.Avalonia;
 

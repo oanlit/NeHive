@@ -11,11 +11,11 @@ public class EffectTest
         using var effect = new Effect(() =>
         {
             runs++;
-            if (a.Value < 3)
-                a.Value++;
+            if (a.RxValue < 3)
+                a.RxValue++;
         });
 
-        Assert.Equal(3, a.Value);
+        Assert.Equal(3, a.RxValue);
         Assert.Equal(3, runs);
     }
 
@@ -31,8 +31,8 @@ public class EffectTest
             depth++;
             maxDepth = Math.Max(maxDepth, depth);
 
-            if (a.Value < 10)
-                a.Value++;
+            if (a.RxValue < 10)
+                a.RxValue++;
 
             depth--;
         });
@@ -50,13 +50,13 @@ public class EffectTest
 
         using var e1 = new Effect(() =>
         {
-            logs.Add($"e1:{a.Value}");
-            b.Value = a.Value * 2;
+            logs.Add($"e1:{a.RxValue}");
+            b.RxValue = a.RxValue * 2;
         });
 
-        using var e2 = new Effect(() => { logs.Add($"e2:{b.Value}"); });
+        using var e2 = new Effect(() => { logs.Add($"e2:{b.RxValue}"); });
 
-        a.Value = 10;
+        a.RxValue = 10;
 
         Assert.Equal("e1:10", logs[^2]);
         Assert.Equal("e2:20", logs[^1]);
@@ -71,8 +71,8 @@ public class EffectTest
         using var effect = new Effect(() =>
         {
             runs++;
-            if (a.Value < 1)
-                a.Value = 1;
+            if (a.RxValue < 1)
+                a.RxValue = 1;
         });
 
         Assert.Equal(1, runs);

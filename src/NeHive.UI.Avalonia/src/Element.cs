@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using NeHive.Core;
 
-namespace NeHive.Sample.Avalonia.Render;
+namespace NeHive.UI.Avalonia;
 
 public interface IElement
 {

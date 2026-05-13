@@ -1,8 +1,8 @@
 using Avalonia.Controls;
 using NeHive.Core;
-using NeHive.Sample.Avalonia.Render.Styles;
+using NeHive.UI.Avalonia.Styles;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
@@ -24,8 +24,8 @@ public static partial class BaseComponent
             if (style is not null && strStyle is not null)
                 finalStyle = new Computed<StyleSet>(() =>
                 {
-                    var ss = StyleParser.Parse(strStyle.Value);
-                    ss.Merge(style.Value);
+                    var ss = StyleParser.Parse(strStyle.RxValue);
+                    ss.Merge(style.RxValue);
                     return ss;
                 });
             else if (strStyle != null)
@@ -33,7 +33,7 @@ public static partial class BaseComponent
                 var result = new StyleSet();
                 finalStyle = new Computed<StyleSet>(() =>
                 {
-                    StyleParser.Parse(strStyle.Value, ref result);
+                    StyleParser.Parse(strStyle.RxValue, ref result);
                     return result;
                 });
             }
@@ -58,17 +58,17 @@ public static partial class BaseComponent
         {
             var signal = bindIsChecked;
             var updating = false;
-            checkBox.IsChecked = signal.Value;
+            checkBox.IsChecked = signal.RxValue;
             checkBox.Checked += (_, _) =>
             {
                 if (updating) return;
-                signal.Value = true;
+                signal.RxValue = true;
                 checkedChanged?.Invoke(true);
             };
             checkBox.Unchecked += (_, _) =>
             {
                 if (updating) return;
-                signal.Value = false;
+                signal.RxValue = false;
                 checkedChanged?.Invoke(false);
             };
             uiScope.CreateEffect(scope =>

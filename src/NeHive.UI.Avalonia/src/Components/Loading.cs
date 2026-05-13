@@ -1,8 +1,8 @@
 using NeHive.Core;
 using Avalonia.Controls;
-using static NeHive.Sample.Avalonia.Render.Components.BaseComponent;
+using static NeHive.UI.Avalonia.Components.BaseComponent;
 
-namespace NeHive.Sample.Avalonia.Render.Components;
+namespace NeHive.UI.Avalonia.Components;
 
 public struct LoadingProp<TData>(AsyncMemo<TData> dataSource)
 {
@@ -18,10 +18,10 @@ public struct LoadingProp<TData>(AsyncMemo<TData> dataSource)
 public static partial class ControlFlow
 {
     private static IElement DefaultLoading()
-        => HTextBlock(new("Loading..."));
+        => HTextBlock(new("RxLoading..."));
 
     private static IElement DefaultError(Exception ex)
-        => HTextBlock(new($"Error: {ex.Message}"));
+        => HTextBlock(new($"RxError: {ex.Message}"));
 
     private static Element LoadingComp<T>(LoadingProp<T> prop, UiScope uiScope) where T : notnull
     {
@@ -31,7 +31,7 @@ public static partial class ControlFlow
         uiScope.CreateEffect(epochScope =>
         {
             var memo = prop.DataSource;
-            var state = epochScope.Track(() => memo.State); // 追踪状态
+            var state = epochScope.Track(() => memo.RxState); // 追踪状态
 
             IElement? newChild;
 
@@ -46,20 +46,20 @@ public static partial class ControlFlow
                 case AsyncMemoState.Ready:
                     try
                     {
-                        var data = memo.Value!; // 就绪时取值（可能是信号，直接读当前值）
+                        var data = memo.RxValue!; // 就绪时取值（可能是信号，直接读当前值）
                         newChild = prop.Success(data);
                     }
                     catch (Exception ex)
                     {
-                        // Value 可能抛出异常（如果底层错误），转为错误状态处理
+                        // RxValue 可能抛出异常（如果底层错误），转为错误状态处理
                         newChild = prop.Error?.Invoke(ex) ?? DefaultError(ex);
                     }
 
                     break;
 
                 case AsyncMemoState.Errored:
-                    // 若 AsyncMemo 支持异常存储，此处可获取；这里简化为从 Value 的捕获异常
-                    var exception = memo.Error ?? new Exception("Unknown error");
+                    // 若 AsyncMemo 支持异常存储，此处可获取；这里简化为从 RxValue 的捕获异常
+                    var exception = memo.RxError ?? new Exception("Unknown error");
                     newChild = prop.Error?.Invoke(exception) ?? DefaultError(exception);
                     break;
 
