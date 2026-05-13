@@ -118,10 +118,11 @@ public class HTextStyle(
 
     public static Accessor<HTextStyle> Parse(Accessor<string> text)
     {
+        var result = new StyleSet();
         return new Computed<HTextStyle>(() =>
         {
             var str = text.Value;
-            var result = StyleParser.Parse(str);
+            StyleParser.Parse(str, ref result);
             return new HTextStyle(
                 result.Margin,
                 result.Width,

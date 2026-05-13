@@ -44,11 +44,19 @@ public static class DemoComponent
                 strStyle: "text-2xl fg-lime-200"
             ), // HTextBlock
             HButton("Add",
-                strStyle: "mt-1 ml-2 px-2 py-1 fg-white bg-green-300 border-green-400 rounded-lg",
+                strStyle: """
+                          mt-1 ml-2 px-2 py-1 fg-white 
+                          bg-green-300 hover:bg-green-400 click:bg-green-500
+                          border-green-400 rounded-lg
+                          """,
                 click: _ => count.Value++
             ), // HButton
             HButton("Sub",
-                strStyle: "mt-1 ml-2 px-2 py-1 fg-white bg-pink-300 border-pink-400 rounded-lg",
+                strStyle: """
+                          mt-1 ml-2 px-2 py-1 fg-white 
+                          bg-pink-300 hover:bg-pink-400 click:bg-pink-500
+                          border-pink-400 rounded-lg
+                          """,
                 click: _ => count.Value--) // HButton
         }); // rootElement
 
@@ -200,9 +208,9 @@ public static class DemoComponent
         //             margin: new Thickness(20))
         //     )
         var rootElement = uiScope.RootElement(new(
-            strStyle: "m-5 gap-4 flex-col bg-gray-100")
+            strStyle: "m-5 flex-col bg-gray-100")
         {
-            HStackPanel(new(strStyle: "gap-3 flex-row justify-center")
+            HStackPanel(new(strStyle: "my-4 gap-3 flex-row justify-center")
             {
                 // HButton("显示简单计数器",
                 //     style: new HButtonStyle(
@@ -214,15 +222,15 @@ public static class DemoComponent
                 //     click: _ => currentView.Value = DemoView.SimpleCounter
                 // ), // HButton
                 HButton("显示简单计数器",
-                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 border-blue-400 rounded-2xl",
+                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 hover:bg-blue-400 border-blue-500 rounded-2xl",
                     click: _ => currentView.Value = DemoView.SimpleCounter
                 ), // HButton
                 HButton("显示 ForEach 示例",
-                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 border-blue-400 rounded-2xl",
+                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 hover:bg-blue-400 border-blue-500  rounded-2xl",
                     click: _ => currentView.Value = DemoView.ForEachDemo
                 ), // HButton
                 HButton("显示 Loading 示例",
-                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 border-blue-400 rounded-2xl",
+                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 hover:bg-blue-400 border-blue-500 rounded-2xl",
                     click: _ => currentView.Value = DemoView.LoadingDemo
                 ) // HButton
             }), // HStackPanel

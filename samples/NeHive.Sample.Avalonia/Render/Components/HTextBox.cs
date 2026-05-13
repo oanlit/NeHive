@@ -32,12 +32,18 @@ public static partial class BaseComponent
                 finalStyle = new Computed<StyleSet>(() =>
                 {
                     var ss = StyleParser.Parse(strStyle.Value);
-                    return ss.Merge(style.Value);
+                    ss.Merge(style.Value);
+                    return ss;
                 });
             }
             else if (strStyle != null)
             {
-                finalStyle = new Computed<StyleSet>(() => StyleParser.Parse(strStyle.Value));
+                var result = new StyleSet();
+                finalStyle = new Computed<StyleSet>(() =>
+                {
+                    StyleParser.Parse(strStyle.Value, ref result);
+                    return result;
+                });
             }
             else
             {
@@ -137,8 +143,6 @@ public static partial class BaseComponent
                 textBox.GotFocus += (_, _) => gotFocus();
             if (keyDown != null)
                 textBox.KeyDown += (_, e) => keyDown(e);
-
-            // textBox.Focus();
         });
 
         // 这里没有子元素，所以不需要 ISingleChildrenProp 或集合初始化器
@@ -162,9 +166,13 @@ public static partial class BaseComponent
             if (styleValue.VerticalAlignment.HasValue)
                 textBox.VerticalAlignment = styleValue.VerticalAlignment.Value;
 
-            if (styleValue.TextAlignment.HasValue) textBox.TextAlignment = styleValue.TextAlignment.Value;
-            if (styleValue.TextWrapping.HasValue) textBox.TextWrapping = styleValue.TextWrapping.Value;
-            
+            if (styleValue.TextAlignment.HasValue) 
+                textBox.TextAlignment = styleValue.TextAlignment.Value;
+            if (styleValue.VerticalTextAlignment.HasValue)
+                textBox.VerticalContentAlignment = styleValue.VerticalTextAlignment.Value;
+            if (styleValue.TextWrapping.HasValue) 
+                textBox.TextWrapping = styleValue.TextWrapping.Value;
+
             if (styleValue.FontSize.HasValue) textBox.FontSize = styleValue.FontSize.Value;
             if (styleValue.FontWeight.HasValue) textBox.FontWeight = styleValue.FontWeight.Value;
             if (styleValue.FontStyle.HasValue) textBox.FontStyle = styleValue.FontStyle.Value;

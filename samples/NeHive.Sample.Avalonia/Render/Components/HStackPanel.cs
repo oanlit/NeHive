@@ -43,10 +43,11 @@ public class HPanelStyle(
 
     public static Accessor<HPanelStyle> Parse(Accessor<string> text)
     {
+        var result = new StyleSet();
         return new Computed<HPanelStyle>(() =>
         {
             var str = text.Value;
-            var result = StyleParser.Parse(str);
+            StyleParser.Parse(str,ref result);
             return new HPanelStyle(
                 result.Margin,
                 result.Orientation,
@@ -110,11 +111,13 @@ public static partial class BaseComponent
             if (prop.Style == null) return;
             var style = epochScope.Pull(prop.Style);
 
+            stack.Margin = style.Margin;
+            
             stack.Orientation = style.Orientation;
             stack.Spacing = style.Spacing;
             stack.HorizontalAlignment = style.HorizontalAlignment;
             stack.VerticalAlignment = style.VerticalAlignment;
-            stack.Margin = style.Margin;
+            
             stack.Background = style.Background;
         });
 

@@ -84,10 +84,12 @@ public class HScrollStyle(
 
     public static Accessor<HScrollStyle> Parse(Accessor<string> text)
     {
+        var result = new StyleSet();
         return new Computed<HScrollStyle>(() =>
         {
             var str = text.Value;
-            var result = StyleParser.Parse(str);
+            
+            StyleParser.Parse(str,ref result);
             return new HScrollStyle(
                 result.Margin,
                 result.Width,
@@ -148,6 +150,7 @@ public class HScrollProp : ISingleChildrenProp
                 return parsed.Value.Merge(style.Value);
             });
         }
+        
         else if (strStyle != null)
         {
             Style = HScrollStyle.Parse(strStyle.Value);

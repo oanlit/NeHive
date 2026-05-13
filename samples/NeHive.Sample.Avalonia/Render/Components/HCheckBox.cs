@@ -22,9 +22,22 @@ public static partial class BaseComponent
         if (strStyle is not null || style is not null)
         {
             if (style is not null && strStyle is not null)
-                finalStyle = new Computed<StyleSet>(() => StyleParser.Parse(strStyle.Value).Merge(style.Value));
+                finalStyle = new Computed<StyleSet>(() =>
+                {
+                    var ss = StyleParser.Parse(strStyle.Value);
+                    ss.Merge(style.Value);
+                    return ss;
+                });
             else if (strStyle != null)
-                finalStyle = new Computed<StyleSet>(() => StyleParser.Parse(strStyle.Value));
+            {
+                var result = new StyleSet();
+                finalStyle = new Computed<StyleSet>(() =>
+                {
+                    StyleParser.Parse(strStyle.Value, ref result);
+                    return result;
+                });
+            }
+
             else
                 finalStyle = style;
         }

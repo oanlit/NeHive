@@ -45,48 +45,149 @@ public class StyleSet
     public Cursor? Cursor;
     public FlowDirection? FlowDirection;
 
-    public StyleSet Merge(StyleSet other)
+    public static StyleSet Copy(StyleSet other)
     {
-        return new StyleSet
-        {
-            Margin = other.Margin ?? Margin,
-
-            Width = other.Width ?? Width,
-            Height = other.Height ?? Height,
-            MinWidth = other.MinWidth ?? MinWidth,
-            MaxWidth = other.MaxWidth ?? MaxWidth,
-            MinHeight = other.MinHeight ?? MinHeight,
-            MaxHeight = other.MaxHeight ?? MaxHeight,
-
-            Padding = other.Padding ?? Padding,
-            RowSpacing = other.RowSpacing ?? RowSpacing,
-            ColumnSpacing = other.ColumnSpacing ?? ColumnSpacing,
-
-            Orientation = other.Orientation ?? Orientation,
-            HorizontalAlignment = other.HorizontalAlignment ?? HorizontalAlignment,
-            VerticalAlignment = other.VerticalAlignment ?? VerticalAlignment,
-
-            TextAlignment = other.TextAlignment ?? TextAlignment,
-            VerticalTextAlignment = other.VerticalTextAlignment ?? VerticalTextAlignment,
-            TextWrapping = other.TextWrapping ?? TextWrapping,
-
-            FontSize = other.FontSize ?? FontSize,
-            FontWeight = other.FontWeight ?? FontWeight,
-            FontStyle = other.FontStyle ?? FontStyle,
-            Foreground = other.Foreground ?? Foreground,
-
-            Background = other.Background ?? Background,
-            BorderBrush = other.BorderBrush ?? BorderBrush,
-            BorderThickness = other.BorderThickness ?? BorderThickness,
-            CornerRadius = other.CornerRadius ?? CornerRadius,
-
-            Opacity = other.Opacity ?? Opacity,
-            IsVisible = other.IsVisible ?? IsVisible,
-            Effect = other.Effect ?? Effect,
-            Cursor = other.Cursor ?? Cursor,
-            FlowDirection = other.FlowDirection ?? FlowDirection
-        };
+        var result = new StyleSet();
+        Copy(ref result, other);
+        return result;
     }
+
+    public static void Copy(ref StyleSet target, StyleSet source)
+    {
+        target.Margin = source.Margin;
+
+        target.Width = source.Width;
+        target.Height = source.Height;
+        target.MinWidth = source.MinWidth;
+        target.MaxWidth = source.MaxWidth;
+        target.MinHeight = source.MinHeight;
+        target.MaxHeight = source.MaxHeight;
+
+        target.Padding = source.Padding;
+        target.RowSpacing = source.RowSpacing;
+        target.ColumnSpacing = source.ColumnSpacing;
+
+        target.Orientation = source.Orientation;
+        target.HorizontalAlignment = source.HorizontalAlignment;
+        target.VerticalAlignment = source.VerticalAlignment;
+
+        target.TextAlignment = source.TextAlignment;
+        target.VerticalTextAlignment = source.VerticalTextAlignment;
+        target.TextWrapping = source.TextWrapping;
+
+        target.FontSize = source.FontSize;
+        target.FontWeight = source.FontWeight;
+        target.FontStyle = source.FontStyle;
+        target.Foreground = source.Foreground;
+
+        target.Background = source.Background;
+        target.BorderBrush = source.BorderBrush;
+        target.BorderThickness = source.BorderThickness;
+        target.CornerRadius = source.CornerRadius;
+
+        target.Opacity = source.Opacity;
+        target.IsVisible = source.IsVisible;
+        target.Effect = source.Effect;
+        target.Cursor = source.Cursor;
+        target.FlowDirection = source.FlowDirection;
+    }
+
+    public void Merge(StyleSet other, bool mergeNull = false)
+    {
+        if (mergeNull)
+        {
+            Margin = other.Margin;
+
+            Width = other.Width;
+            Height = other.Height;
+            MinWidth = other.MinWidth;
+            MaxWidth = other.MaxWidth;
+            MinHeight = other.MinHeight;
+            MaxHeight = other.MaxHeight;
+
+            Padding = other.Padding;
+            RowSpacing = other.RowSpacing;
+            ColumnSpacing = other.ColumnSpacing;
+
+            Orientation = other.Orientation;
+            HorizontalAlignment = other.HorizontalAlignment;
+            VerticalAlignment = other.VerticalAlignment;
+
+            TextAlignment = other.TextAlignment;
+            VerticalTextAlignment = other.VerticalTextAlignment;
+            TextWrapping = other.TextWrapping;
+
+            FontSize = other.FontSize;
+            FontWeight = other.FontWeight;
+            FontStyle = other.FontStyle;
+            Foreground = other.Foreground;
+
+            Background = other.Background;
+            BorderBrush = other.BorderBrush;
+            BorderThickness = other.BorderThickness;
+            CornerRadius = other.CornerRadius;
+
+            Opacity = other.Opacity;
+            IsVisible = other.IsVisible;
+            Effect = other.Effect;
+            Cursor = other.Cursor;
+            FlowDirection = other.FlowDirection;
+
+            return;
+        }
+
+        if (other.Margin is not null) Margin = other.Margin;
+
+        if (other.Width is not null) Width = other.Width;
+        if (other.Height is not null) Height = other.Height;
+        if (other.MinWidth is not null) MinWidth = other.MinWidth;
+        if (other.MaxWidth is not null) MaxWidth = other.MaxWidth;
+        if (other.MinHeight is not null) MinHeight = other.MinHeight;
+        if (other.MaxHeight is not null) MaxHeight = other.MaxHeight;
+
+        if (other.Padding is not null) Padding = other.Padding;
+        if (other.RowSpacing is not null) RowSpacing = other.RowSpacing;
+        if (other.ColumnSpacing is not null) ColumnSpacing = other.ColumnSpacing;
+
+        if (other.Orientation is not null) Orientation = other.Orientation;
+        if (other.HorizontalAlignment is not null) HorizontalAlignment = other.HorizontalAlignment;
+        if (other.VerticalAlignment is not null) VerticalAlignment = other.VerticalAlignment;
+
+        if (other.TextAlignment is not null) TextAlignment = other.TextAlignment;
+        if (other.VerticalTextAlignment is not null) VerticalTextAlignment = other.VerticalTextAlignment;
+        if (other.TextWrapping is not null) TextWrapping = other.TextWrapping;
+
+        if (other.FontSize is not null) FontSize = other.FontSize;
+        if (other.FontWeight is not null) FontWeight = other.FontWeight;
+        if (other.FontStyle is not null) FontStyle = other.FontStyle;
+        if (other.Foreground is not null) Foreground = other.Foreground;
+
+        if (other.Background is not null) Background = other.Background;
+        if (other.BorderBrush is not null) BorderBrush = other.BorderBrush;
+        if (other.BorderThickness is not null) BorderThickness = other.BorderThickness;
+        if (other.CornerRadius is not null) CornerRadius = other.CornerRadius;
+
+        if (other.Opacity is not null) Opacity = other.Opacity;
+        if (other.IsVisible is not null) IsVisible = other.IsVisible;
+        if (other.Effect is not null) Effect = other.Effect;
+        if (other.Cursor is not null) Cursor = other.Cursor;
+        if (other.FlowDirection is not null) FlowDirection = other.FlowDirection;
+    }
+
+    public void MergeMany(bool mergeNull, params StyleSet[] styles)
+    {
+        foreach (var style in styles)
+        {
+            Merge(style, mergeNull);
+        }
+    }
+}
+
+public struct FullStyle
+{
+    public StyleSet Base;
+
+    public Dictionary<string, List<string>> Variants;
 }
 
 public static class StyleParser
@@ -188,6 +289,55 @@ public static class StyleParser
     // 样式缓存
     private static readonly Dictionary<string, StyleSet> StyleCache = new(StringComparer.Ordinal);
 
+    public static void ParsePart(string part, ref StyleSet set)
+    {
+        try
+        {
+            var p = part.Trim();
+            if (AtomHandlers.TryGetValue(p, out var handler))
+            {
+                handler([p], set);
+                return;
+            }
+
+            var items = part.Split('-');
+            if (items.Length == 1) return;
+
+            for (var i = 1; i < items.Length; i++)
+            {
+                var key = string.Join('-', items[..^i]) + '-';
+                if (!AtomHandlers.TryGetValue(key, out handler)) continue;
+
+                handler(items[^i..], set);
+                break;
+            }
+        }
+        catch (Exception e)
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine(e.ToString());
+            Console.ResetColor();
+        }
+    }
+
+    public static void Parse(IEnumerable<string>? parts, ref StyleSet set)
+    {
+        if (parts is null) return;
+        foreach (var part in parts)
+        {
+            ParsePart(part, ref set);
+        }
+    }
+
+    public static void Parse(string strStyle, ref StyleSet set)
+    {
+        var parts = strStyle.Split(
+            [' ', '\n', '\r', '\t'],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        Parse(parts, ref set);
+    }
+
     public static StyleSet Parse(string strStyle)
     {
         if (string.IsNullOrWhiteSpace(strStyle))
@@ -200,40 +350,8 @@ public static class StyleParser
         }
 
         var set = new StyleSet();
-        var parts = strStyle.Split(
-            [' ', '\n', '\r', '\t'],
-            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        foreach (var part in parts)
-        {
-            try
-            {
-                var p = part.Trim();
-                if (AtomHandlers.TryGetValue(p, out var handler))
-                {
-                    handler([p], set);
-                    continue;
-                }
-
-                var items = part.Split('-');
-                if (items.Length == 1) continue;
-
-                for (var i = 1; i < items.Length; i++)
-                {
-                    var key = string.Join('-', items[..^i]) + '-';
-                    if (!AtomHandlers.TryGetValue(key, out handler)) continue;
-
-                    handler(items[^i..], set);
-                    break;
-                }
-            }
-            catch (Exception e)
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine(e.ToString());
-                Console.ResetColor();
-            }
-        }
+        Parse(strStyle, ref set);
 
         lock (StyleCache)
         {
@@ -241,6 +359,43 @@ public static class StyleParser
         }
 
         return set;
+    }
+
+    // 实现伪类
+    public static void ParseFullStyle(string strStyle, ref FullStyle fullStyle)
+    {
+        var baseStyle = fullStyle.Base;
+        var variants = fullStyle.Variants;
+
+        var parts = strStyle.Split(
+            [' ', '\n', '\r', '\t'],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (var part in parts)
+        {
+            var variantPrefixes = part.Split(':', StringSplitOptions.RemoveEmptyEntries);
+            if (variantPrefixes.Length == 1)
+            {
+                ParsePart(part, ref baseStyle);
+                continue;
+            }
+
+            var value = variantPrefixes[^1];
+            variantPrefixes = variantPrefixes[..^1];
+
+            // TODO 按平台:响应式:状态:主题 排序
+            Array.Sort(variantPrefixes);
+
+            var key = string.Join(':', variantPrefixes);
+
+            if (variants.TryGetValue(key, out var variant))
+            {
+                variant.Add(value);
+                continue;
+            }
+
+            variants[key] = [value];
+        }
     }
 
     private static void ApplyMargin(string[] v, StyleSet set)
@@ -513,11 +668,16 @@ public static class StyleParser
         return null;
     }
 
+    private static readonly Dictionary<string, Color> ColorResultCache = new();
+
     private static Color? ParseColor(string[] colors)
     {
         try
         {
             if (colors.Length > 2) return null;
+            var cacheKey = string.Join("-", colors);
+            if (ColorResultCache.TryGetValue(cacheKey, out var cacheValue)) return cacheValue;
+
             var values = colors[^1].Split('/'); // 500/50
             if (values.Length > 2) return null;
 
@@ -550,17 +710,18 @@ public static class StyleParser
                 if (colors.Length == 2) return null; // 不允许诸如 [#8a2be2]-300 等
             }
 
-            if (colors.Length == 1) return resultAssign ? result : null;
+            if (colors.Length == 1)
+            {
+                ColorResultCache[cacheKey] = result;
+                return resultAssign ? result : null;
+            }
 
             var key = $"{color}-{values[0]}";
             if (!Colors.ColorDict.TryGetValue(key, out result)) return null;
-            //
-            // if (values.Length == 1) return result;
-            // if (values.Length != 2) return null;
-            //
-            // a = byte.Parse(values[1]);
-            // if (a > 100) return null;
-            return Color.FromArgb((byte)(255 * a / 100), result.R, result.G, result.B);
+
+            result = Color.FromArgb((byte)(255 * a / 100), result.R, result.G, result.B);
+            ColorResultCache[cacheKey] = result;
+            return result;
         }
         catch (Exception e)
         {
