@@ -22,7 +22,7 @@ internal static class Common
     {
         var currentExecute = ReactiveContext.CurrentExecute;
         if (currentExecute is null) return signal.Value;
-        return currentExecute.Track(signal);
+        return currentExecute.Pull(signal);
     }
 
     internal static T WriteSignal<T>(ISignalState<T> signal, T value)
@@ -237,7 +237,7 @@ internal enum ExecutePhase
 
 internal interface ITrack
 {
-    T Track<T>(ISignalState<T> signal);
+    T Pull<T>(ISignalState<T> signal);
     T Track<T>(Func<T> trackFn);
     void Track(Action trackFn);
 }
@@ -335,7 +335,7 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
     {
     }
 
-    public T Track<T>(ISignalState<T> signal)
+    public T Pull<T>(ISignalState<T> signal)
     {
         if (signal.LastTracker == this) return signal.Value;
         signal.LastTracker = this;

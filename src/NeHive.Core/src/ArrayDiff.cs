@@ -449,7 +449,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
     {
         var newList = _sourceListSignal.ValueSignal is null
             ? track.Track(_sourceListSignal.RxValueGetter)
-            : track.Track(_sourceListSignal.ValueSignal);
+            : track.Pull(_sourceListSignal.ValueSignal);
 
         var newLen = newList.Count;
         var oldLen = _oldList.Count;

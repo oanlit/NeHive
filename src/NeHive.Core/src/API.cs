@@ -296,7 +296,7 @@ public class EpochScope : Scope
     {
         return signal.ValueSignal is null
             ? _tracker.Track(signal.RxValueGetter)
-            : _tracker.Track(signal.ValueSignal);
+            : _tracker.Pull(signal.ValueSignal);
     }
 
     public T Track<T>(Func<T> trackFn)
