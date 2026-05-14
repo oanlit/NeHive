@@ -1,4 +1,4 @@
-namespace NeHive.Core;
+namespace NeHive.Reactive;
 
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class StoreAttribute : Attribute

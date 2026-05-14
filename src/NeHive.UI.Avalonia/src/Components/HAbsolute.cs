@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
-using NeHive.Core;
+using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Components;
 

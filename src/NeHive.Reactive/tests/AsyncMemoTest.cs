@@ -1,4 +1,6 @@
-namespace NeHive.Core.Tests;
+using NeHive.Reactive;
+
+namespace NeHive.Reactive.Tests;
 
 public class AsyncMemoTest
 {

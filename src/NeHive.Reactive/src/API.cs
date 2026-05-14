@@ -1,6 +1,6 @@
-namespace NeHive.Core;
+namespace NeHive.Reactive;
 
-public static partial class Reactive
+public static partial class Rx
 {
     public static void Batch(Action fn)
     {
@@ -114,14 +114,14 @@ public class Accessor<T> : ISignal<T>
     {
         InternalSignal = null;
         RxValueGetter = () => value;
-        ValueGetter = () => Reactive.Untrack(RxValueGetter);
+        ValueGetter = () => Rx.Untrack(RxValueGetter);
     }
 
     public Accessor(Func<T> rxValueGetter)
     {
         InternalSignal = null;
         RxValueGetter = rxValueGetter;
-        ValueGetter = () => Reactive.Untrack(RxValueGetter);
+        ValueGetter = () => Rx.Untrack(RxValueGetter);
         // TODO 设计一个可以发现 RxValue 的API
     }
 
@@ -129,7 +129,7 @@ public class Accessor<T> : ISignal<T>
     {
         InternalSignal = signal.InternalSignal;
         RxValueGetter = InternalSignal.ReadSignal;
-        ValueGetter = () => Reactive.Untrack(InternalSignal.ReadSignal);
+        ValueGetter = () => Rx.Untrack(InternalSignal.ReadSignal);
         IsReactive = true;
     }
 
@@ -444,7 +444,7 @@ public class Computed<T> : Signal<T>
         {
             if (IsInvalid)
             {
-                _value = Reactive.Untrack(() => _fn(_value!));
+                _value = Rx.Untrack(() => _fn(_value!));
                 return _value;
             }
 
@@ -775,7 +775,7 @@ public class Selector<T> where T : notnull
             _subs.Add(key, computations);
         }
 
-        Reactive.OnDispose(() =>
+        Rx.OnDispose(() =>
         {
             computations.Remove(currentComputation);
             if (computations.Count == 0) _subs.Remove(key);

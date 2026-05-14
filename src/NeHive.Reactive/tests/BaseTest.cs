@@ -1,4 +1,4 @@
-namespace NeHive.Core.Tests;
+namespace NeHive.Reactive.Tests;
 
 public class MutSignalTests
 {
@@ -524,7 +524,7 @@ public class IntegrationTests
             _ = a.RxValue;
         });
 
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             a.RxValue = 1;
             a.RxValue = 2;

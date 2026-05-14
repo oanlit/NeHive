@@ -1,4 +1,4 @@
-namespace NeHive.Core.Tests;
+namespace NeHive.Reactive.Tests;
 
 public class LifeCycleTest
 {
@@ -184,12 +184,12 @@ public class LifeCycleTest
 
         scope.CreateEffect(() =>
         {
-            Reactive.OnDispose(() => logs.Add("cleanup"));
+            Rx.OnDispose(() => logs.Add("cleanup"));
 
             _ = new Effect(() =>
             {
                 logs.Add("child run");
-                Reactive.OnDispose(() => logs.Add("child dispose"));
+                Rx.OnDispose(() => logs.Add("child dispose"));
             });
         });
 

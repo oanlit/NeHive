@@ -1,12 +1,12 @@
-# NeHive.Core
+# NeHive.Reactive
 A lightweight high-performance reactive runtime for .NET, built on a single-threaded dependency graph model with signal-driven fine-grained state updates.
 
-[![NuGet](https://img.shields.io/nuget/v/NeHive.Core.svg)](https://www.nuget.org/packages/NeHive.Core)
+[![NuGet](https://img.shields.io/nuget/v/NeHive.Reactive.svg)](https://www.nuget.org/packages/NeHive.Reactive)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Target Framework](https://img.shields.io/badge/.NET-7.0%2F8.0%2F9.0%2F10.0-green)]()
 
 ## Overview
-**NeHive.Core** is a lightweight high-performance single-threaded reactive runtime for .NET.
+**NeHive.Reactive** is a lightweight high-performance single-threaded reactive runtime for .NET.
 
 Built on a **scope dependency graph + signal propagation** architecture, it follows the fine-grained reactivity model popularized by SolidJS and Vue3, while remaining fully native to C#.
 
@@ -42,11 +42,11 @@ Designed for declarative UI systems, reactive state management, and business flo
 ## NuGet
 
 ```bash
-Install-Package NeHive.Core
+Install-Package NeHive.Reactive
 ```
 
 ```bash
-dotnet add package NeHive.Core
+dotnet add package NeHive.Reactive
 ```
 
 ---
@@ -56,7 +56,7 @@ dotnet add package NeHive.Core
 ## 1. Basic Signal + Effect Reactivity
 
 ```csharp
-using NeHive.Core;
+using NeHive.Reactive;
 
 // Create scope
 using var scope = new Scope();
@@ -249,7 +249,7 @@ Features:
 
 # Ecosystem
 
-- **NeHive.Core**  
+- **NeHive.Reactive**  
   Reactive runtime engine
 
 - **NeHive.UI.Avalonia**  

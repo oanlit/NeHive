@@ -1,4 +1,4 @@
-namespace NeHive.Core;
+namespace NeHive.Reactive;
 
 using System.Diagnostics;
 using System.Text;

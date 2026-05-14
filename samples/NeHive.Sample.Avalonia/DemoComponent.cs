@@ -1,5 +1,5 @@
 using System.Text;
-using NeHive.Core;
+using NeHive.Reactive;
 using NeHive.UI.Avalonia;
 using Avalonia;
 using Avalonia.Media;

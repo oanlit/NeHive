@@ -4,7 +4,7 @@ using Avalonia.Media;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
-using NeHive.Core;
+using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;

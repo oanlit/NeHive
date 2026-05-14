@@ -1,4 +1,4 @@
-namespace NeHive.Core.Tests;
+namespace NeHive.Reactive.Tests;
 
 public class MutSignalTest
 {

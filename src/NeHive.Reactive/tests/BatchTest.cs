@@ -1,4 +1,4 @@
-namespace NeHive.Core.Tests;
+namespace NeHive.Reactive.Tests;
 
 public class BatchTest
 {
@@ -14,11 +14,11 @@ public class BatchTest
             _ = a.RxValue;
         });
 
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             a.RxValue = 1;
 
-            Reactive.Batch(() =>
+            Rx.Batch(() =>
             {
                 a.RxValue = 2;
                 a.RxValue = 3;
@@ -41,7 +41,7 @@ public class BatchTest
             runs++;
             if (a.RxValue == 1)
             {
-                Reactive.Batch(() =>
+                Rx.Batch(() =>
                 {
                     a.RxValue = 2;
                     a.RxValue = 3;
@@ -50,7 +50,7 @@ public class BatchTest
         });
         Assert.Equal(1, runs);
 
-        Reactive.Batch(() => { a.RxValue = 1; });
+        Rx.Batch(() => { a.RxValue = 1; });
 
         // Assert.Equal(2, runs);
         Assert.Equal(3, runs);
@@ -78,7 +78,7 @@ public class BatchTest
             _ = b.RxValue;
         });
 
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             a.RxValue = 1;
             a.RxValue = 2;
@@ -105,7 +105,7 @@ public class BatchTest
             _ = m.RxValue;
         });
 
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             a.RxValue = 2;
             a.RxValue = 3;
@@ -127,7 +127,7 @@ public class BatchTest
             _ = a.RxValue;
         });
 
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             a.RxValue = 1;
             _ = a.RxValue; // read
@@ -149,7 +149,7 @@ public class BatchTest
             _ = a.RxValue;
         });
 
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             for (int i = 0; i < 10000; i++)
                 a.RxValue = i;

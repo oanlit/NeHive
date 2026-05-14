@@ -1,25 +1,32 @@
 <Solution>
     <Folder Name="/samples/">
-        <Project Path="samples/NeHive.Sample.Console/NeHive.Sample.Console.csproj"/>
-        <Project Path="samples/NeHive.Sample.Avalonia/NeHive.Sample.Avalonia.csproj"/>
+        <Project Path="samples/NeHive.Sample.Console/NeHive.Sample.Console.csproj" />
+        <Project Path="samples/NeHive.Sample.Avalonia/NeHive.Sample.Avalonia.csproj" />
     </Folder>
-    <Folder Name="/src/"/>
-    <Folder Name="/src/NeHive.Core/"/>
+    <Folder Name="/src/" />
+    <Folder Name="/src/NeHive.Core/" />
     <Folder Name="/src/NeHive.Core/src/">
-        <Project Path="src/NeHive.Core/src/NeHive.Core.csproj"/>
+        <Project Path="src/NeHive.Core/src/NeHive.Core.csproj" />
     </Folder>
     <Folder Name="/src/NeHive.Core/tests/">
-        <Project Path="src/NeHive.Core/tests/NeHive.Core.Tests.csproj"/>
+        <Project Path="src/NeHive.Core/tests/NeHive.Core.Tests.csproj" />
     </Folder>
-    <Folder Name="/src/NeHive.Generator/"/>
+    <Folder Name="/src/NeHive.Reactive/" />
+    <Folder Name="/src/NeHive.Reactive/src/">
+        <Project Path="src/NeHive.Reactive/src/NeHive.Core.csproj" />
+    </Folder>
+    <Folder Name="/src/NeHive.Reactive/tests/">
+        <Project Path="src/NeHive.Reactive/tests/NeHive.Reactive.Tests.csproj" />
+    </Folder>
+    <Folder Name="/src/NeHive.Generator/" />
     <Folder Name="/src/NeHive.Generator/src/">
-        <Project Path="src/NeHive.Generator/src/NeHive.Generator.csproj"/>
+        <Project Path="src/NeHive.Generator/src/NeHive.Generator.csproj" />
     </Folder>
     <Folder Name="/src/NeHive.Generator/tests/">
-        <Project Path="src/NeHive.Generator/tests/NeHive.Generator.Tests.csproj"/>
+        <Project Path="src/NeHive.Generator/tests/NeHive.Generator.Tests.csproj" />
     </Folder>
-    <Folder Name="/src/NeHive.UI.Avalonia/"/>
+    <Folder Name="/src/NeHive.UI.Avalonia/" />
     <Folder Name="/src/NeHive.UI.Avalonia/src/">
-        <Project Path="src/NeHive.UI.Avalonia/src/NeHive.UI.Avalonia.csproj"/>
+        <Project Path="src/NeHive.UI.Avalonia/src/NeHive.UI.Avalonia.csproj" />
     </Folder>
 </Solution>

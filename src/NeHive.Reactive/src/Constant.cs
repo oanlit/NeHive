@@ -1,4 +1,4 @@
-namespace NeHive.Core;
+namespace NeHive.Reactive;
 
 internal static class Constant
 {

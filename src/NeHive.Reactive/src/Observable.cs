@@ -1,4 +1,4 @@
-namespace NeHive.Core;
+namespace NeHive.Reactive;
 
 using System;
 
@@ -21,7 +21,7 @@ public class SignalObservable<T>(MutSignal<T> mutSignal) : IObservable<T>
     }
 }
 
-public static partial class Reactive
+public static partial class Rx
 {
     public static ISignal<T> From<T>(IObservable<T> producer, T initialValue)
     {
@@ -64,7 +64,7 @@ public readonly struct ReactiveFlow<T>
     }
 }
 
-public static partial class Reactive
+public static partial class Rx
 {
     extension(Scope scope)
     {

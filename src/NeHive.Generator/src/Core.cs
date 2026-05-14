@@ -78,7 +78,7 @@ namespace NeHive.Generator
             var usingNamespaces = new HashSet<string>
             {
                 "System",
-                "NeHive.Core"
+                "NeHive.Reactive"
             };
             CollectNameSpaces(classSymbol.BaseType, usingNamespaces);
             foreach (var i in classSymbol.Interfaces)
@@ -744,7 +744,7 @@ namespace NeHive.Generator
             var batchInvocation = InvocationExpression(
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName("Reactive"),
+                        IdentifierName("Rx"),
                         IdentifierName("Batch")
                     )
                 )

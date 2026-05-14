@@ -1,4 +1,4 @@
-using NeHive.Core;
+using NeHive.Reactive;
 
 namespace NeHive.Generator.Tests;
 

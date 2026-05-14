@@ -1,4 +1,4 @@
-namespace NeHive.Core;
+namespace NeHive.Reactive;
 
 using System.Collections;
 
@@ -229,10 +229,6 @@ public class ArrayMapResult<T, TU> where T : notnull
         if (_mapCache.Count > newLen)
             _mapCache.RemoveRange(newLen, _mapCache.Count - newLen);
     }
-}
-
-public static partial class Reactive
-{
 }
 
 internal class DenseBuffer<T> : IReadOnlyList<T>

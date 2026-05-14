@@ -1,4 +1,4 @@
-namespace NeHive.Core.Tests;
+namespace NeHive.Reactive.Tests;
 
 public class ReactiveLoopDetectionTests
 {
@@ -6,7 +6,7 @@ public class ReactiveLoopDetectionTests
     public void Infinite_Loop_Should_Throw()
     {
         var signal = new MutSignal<int>(0);
-        Assert.Throws<Core.InfiniteReactiveLoopException>(() =>
+        Assert.Throws<InfiniteReactiveLoopException>(() =>
         {
             using var effect = new Effect(() =>
             {
@@ -21,7 +21,7 @@ public class ReactiveLoopDetectionTests
         var a = new MutSignal<int>(0);
         var b = new MutSignal<int>(1);
 
-        Assert.Throws<Core.InfiniteReactiveLoopException>(() =>
+        Assert.Throws<InfiniteReactiveLoopException>(() =>
         {
             using var effect = new Effect(() =>
             {
@@ -37,11 +37,11 @@ public class ReactiveLoopDetectionTests
     public void Batch_WithoutUntrack_StillTriggersLoopDetection()
     {
         var signal = new MutSignal<int>(0);
-        Assert.Throws<Core.InfiniteReactiveLoopException>(() =>
+        Assert.Throws<InfiniteReactiveLoopException>(() =>
         {
             using var effect = new Effect(() =>
             {
-                Reactive.Batch(() =>
+                Rx.Batch(() =>
                 {
                     // Batch 只延迟通知，但依赖关系仍然建立
                     signal.RxValue++;
@@ -60,7 +60,7 @@ public class ReactiveLoopDetectionTests
         using var effect = new Effect(() =>
         {
             effectRunCount++;
-            Reactive.BatchUntrack(() =>
+            Rx.BatchUntrack(() =>
             {
                 // 这里的读取不会建立依赖，修改也不会触发自身重入
                 signal.RxValue++;

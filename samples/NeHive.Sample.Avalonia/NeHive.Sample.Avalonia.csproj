@@ -19,7 +19,7 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         
-        <ProjectReference Include="..\..\src\NeHive.Core\src\NeHive.Core.csproj"/>
+        <ProjectReference Include="..\..\src\NeHive.Reactive\src\NeHive.Reactive.csproj"/>
         <ProjectReference Include="..\..\src\NeHive.UI.Avalonia\src\NeHive.UI.Avalonia.csproj"/>
     </ItemGroup>
 </Project>

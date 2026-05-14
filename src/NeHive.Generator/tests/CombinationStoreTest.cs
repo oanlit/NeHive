@@ -1,4 +1,4 @@
-using NeHive.Core;
+using NeHive.Reactive;
 
 namespace NeHive.Generator.Tests;
 
@@ -101,7 +101,7 @@ public class CombinationStoreTest
             _ = b.Double;
         });
 
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             a.Value = 1;
             a.Value = 2;

@@ -1,4 +1,4 @@
-namespace NeHive.Core;
+namespace NeHive.Reactive;
 
 using System.Collections;
 using System.Collections.ObjectModel;
@@ -58,7 +58,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     private void _updateSignalValue(int index, T value)
     {
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             if (!_oldValueSignals.TryGetValue(index, out var indexSignal)) return;
             if (Comparator(indexSignal.Value, value)) return;
@@ -123,7 +123,7 @@ public class ListStore<T> : IReactiveCollection<T>
     {
         if (_isBatch) return;
         if (!_isChange) return;
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             foreach (var (key, signal) in _oldValueSignals)
             {
@@ -176,7 +176,7 @@ public class ListStore<T> : IReactiveCollection<T>
     {
         if (_items.Count == 0) return;
         _items.Clear();
-        Reactive.Batch(() =>
+        Rx.Batch(() =>
         {
             List<int> removeKeys = [];
             foreach (var (key, signal) in _oldValueSignals)

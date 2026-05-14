@@ -1,0 +1,4 @@
+<Solution>
+   <Project Path="src/NeHive.Reactive.csproj" />
+  <Project Path="tests/NeHive.Reactive.Tests.csproj" />
+</Solution>

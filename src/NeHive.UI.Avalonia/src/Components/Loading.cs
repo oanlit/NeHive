@@ -1,4 +1,4 @@
-using NeHive.Core;
+using NeHive.Reactive;
 using Avalonia.Controls;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
 

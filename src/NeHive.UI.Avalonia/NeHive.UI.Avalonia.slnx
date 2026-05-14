@@ -1,4 +1,3 @@
 <Solution>
    <Project Path="src/NeHive.UI.Avalonia.csproj" />
-  <Project Path="tests/NeHive.Core.Tests.csproj" />
 </Solution>

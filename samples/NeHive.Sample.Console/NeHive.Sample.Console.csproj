@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NeHive.Core\src\NeHive.Core.csproj" />
+        <ProjectReference Include="..\..\src\NeHive.Reactive\src\NeHive.Reactive.csproj" />
 <!--        <ProjectReference Include="..\..\src\NeHive.Generator\src\NeHive.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />-->
     </ItemGroup>
 

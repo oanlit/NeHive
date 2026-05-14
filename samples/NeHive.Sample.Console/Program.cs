@@ -1,4 +1,4 @@
-﻿using NeHive.Core;
+﻿using NeHive.Reactive;
 
 // using NeHive.Sample.Console.Store;
 

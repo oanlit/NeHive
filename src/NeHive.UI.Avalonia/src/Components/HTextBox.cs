@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using NeHive.Core;
+using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
