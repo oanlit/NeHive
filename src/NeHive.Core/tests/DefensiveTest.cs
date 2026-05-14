@@ -5,7 +5,7 @@ public class ReactiveLoopDetectionTests
     [Fact]
     public void Infinite_Loop_Should_Throw()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         Assert.Throws<Core.InfiniteReactiveLoopException>(() =>
         {
             using var effect = new Effect(() =>
@@ -18,8 +18,8 @@ public class ReactiveLoopDetectionTests
     [Fact]
     public void Effect_IndirectlyModifiesOwnDependency_ThrowsInfiniteReactiveLoopException()
     {
-        var a = new Signal<int>(0);
-        var b = new Signal<int>(1);
+        var a = new MutSignal<int>(0);
+        var b = new MutSignal<int>(1);
 
         Assert.Throws<Core.InfiniteReactiveLoopException>(() =>
         {
@@ -36,7 +36,7 @@ public class ReactiveLoopDetectionTests
     [Fact]
     public void Batch_WithoutUntrack_StillTriggersLoopDetection()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         Assert.Throws<Core.InfiniteReactiveLoopException>(() =>
         {
             using var effect = new Effect(() =>
@@ -53,7 +53,7 @@ public class ReactiveLoopDetectionTests
     [Fact]
     public void BatchUntrack_PreventsInfiniteLoopByNotTrackingDependency()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var effectRunCount = 0;
 
         // 使用 BatchUntrack 包裹修改逻辑，避免建立依赖
@@ -84,7 +84,7 @@ public class NestedEffectTest
     [Fact]
     public void Nested_Effect_With_Write_Test()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
     
         var outer = 0;
         var inner = 0;
@@ -110,7 +110,7 @@ public class NestedEffectTest
     [Fact]
     public void Owner_Clean_Nested_Effect_Test()
     {
-        Signal<int> s = new(0);
+        MutSignal<int> s = new(0);
         List<int> logs = [];
     
         var scope = new Scope();
@@ -136,7 +136,7 @@ public class NestedEffectTest
     // [Fact]
     // public void No_Zombie_Effect_Test()
     // {
-    //     Signal<int> s = new(0);
+    //     MutSignal<int> s = new(0);
     //     List<int> values = [];
     //
     //     var e = new Effect(() =>

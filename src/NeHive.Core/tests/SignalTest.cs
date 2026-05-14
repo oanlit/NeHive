@@ -1,11 +1,11 @@
 namespace NeHive.Core.Tests;
 
-public class SignalTest
+public class MutSignalTest
 {
     [Fact]
     public void Repeat_Read_Signal_Test()
     {
-        Signal<int> a = new(0);
+        MutSignal<int> a = new(0);
         var effect = new Effect(() =>
         {
             for (var i = 0; i < 1000; i++)
@@ -25,8 +25,8 @@ public class SignalTest
     [Fact]
     public void Repeat_Alternation_Read_Signal_Test()
     {
-        Signal<int> a = new(0);
-        Signal<int> b = new(0);
+        MutSignal<int> a = new(0);
+        MutSignal<int> b = new(0);
 
         var effect = new Effect(() =>
         {

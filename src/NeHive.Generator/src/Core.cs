@@ -146,7 +146,7 @@ namespace NeHive.Generator
                 walker.Visit(propSyntax);
 
                 var signalType =
-                    GenericName("Signal")
+                    GenericName("MutSignal")
                         .WithTypeArgumentList(
                             TypeArgumentList(
                                 SingletonSeparatedList(

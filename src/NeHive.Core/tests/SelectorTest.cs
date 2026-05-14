@@ -5,7 +5,7 @@ public class SelectorTests
     [Fact]
     public void Select_ReturnsCorrectBoolean()
     {
-        var source = new Signal<int>(5);
+        var source = new MutSignal<int>(5);
         var selector = new Selector<int>(source);
 
         Assert.True(selector.Select(5));
@@ -15,7 +15,7 @@ public class SelectorTests
     [Fact]
     public void Select_EstablishesDependencyOnSource()
     {
-        var source = new Signal<int>(0);
+        var source = new MutSignal<int>(0);
         var selector = new Selector<int>(source);
         var effectRunCount = 0;
 
@@ -37,7 +37,7 @@ public class SelectorTests
     [Fact]
     public void Select_MultipleKeys_OnlyAffectedKeysTriggerUpdates()
     {
-        var source = new Signal<string>("apple");
+        var source = new MutSignal<string>("apple");
         var selector = new Selector<string>(source);
         var effectAppleCount = 0;
         var effectBananaCount = 0;
@@ -76,7 +76,7 @@ public class SelectorTests
     [Fact]
     public void Select_WithCustomComparer_UsesProvidedFunction()
     {
-        var source = new Signal<string>("Hello");
+        var source = new MutSignal<string>("Hello");
         var selector = new Selector<string>(source, (a, b) => a.Equals(b, StringComparison.OrdinalIgnoreCase));
 
         Assert.True(selector.Select("HELLO"));
@@ -101,7 +101,7 @@ public class SelectorTests
     [Fact]
     public void Select_CleansUpWhenEffectDisposed()
     {
-        var source = new Signal<int>(0);
+        var source = new MutSignal<int>(0);
         var selector = new Selector<int>(source);
         var effect = new Effect(() => { _ = selector.Select(100); });
 
@@ -119,7 +119,7 @@ public class SelectorTests
     [Fact]
     public void Select_WithoutCurrentComputation_ReturnsValueWithoutTracking()
     {
-        var source = new Signal<int>(10);
+        var source = new MutSignal<int>(10);
         var selector = new Selector<int>(source);
 
         // 模拟无当前计算节点（例如在普通函数中调用）
@@ -135,7 +135,7 @@ public class SelectorTests
     [Fact]
     public void Select_MemoDependsOnSelector_UpdatesCorrectly()
     {
-        var source = new Signal<int>(0);
+        var source = new MutSignal<int>(0);
         var selector = new Selector<int>(source);
         var memoComputeCount = 0;
 
@@ -159,7 +159,7 @@ public class SelectorTests
     [Fact]
     public void Select_MultipleEffectsOnSameKey_AllTriggerWhenSourceChanges()
     {
-        var source = new Signal<int>(1);
+        var source = new MutSignal<int>(1);
         var selector = new Selector<int>(source);
         var effect1Count = 0;
         var effect2Count = 0;
@@ -190,7 +190,7 @@ public class SelectorTests
     [Fact]
     public void Select_EqualComparisonPreventsUnnecessaryUpdates()
     {
-        var source = new Signal<int>(0);
+        var source = new MutSignal<int>(0);
         var selector = new Selector<int>(source);
         var effectRunCount = 0;
 

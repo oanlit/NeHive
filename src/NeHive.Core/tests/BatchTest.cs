@@ -5,7 +5,7 @@ public class BatchTest
     [Fact]
     public void Nested_Batch_Should_Behave_As_One_Batch()
     {
-        var a = new Signal<int>(0);
+        var a = new MutSignal<int>(0);
         int runs = 0;
 
         using var effect = new Effect(() =>
@@ -33,7 +33,7 @@ public class BatchTest
     [Fact]
     public void Dynamic_Nested_Batch_Should_Work()
     {
-        var a = new Signal<int>(0);
+        var a = new MutSignal<int>(0);
         int runs = 0;
 
         using var effect = new Effect(() =>
@@ -59,8 +59,8 @@ public class BatchTest
     [Fact]
     public void Effect_Chain_Should_Batch()
     {
-        var a = new Signal<int>(0);
-        var b = new Signal<int>(0);
+        var a = new MutSignal<int>(0);
+        var b = new MutSignal<int>(0);
 
         int runsA = 0;
         int runsB = 0;
@@ -92,7 +92,7 @@ public class BatchTest
     [Fact]
     public void Memo_And_Effect_Should_Batch_Together()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
         using var owner = new Scope();
 
         var m = owner.CreateComputed(() => a.RxValue + 1);
@@ -118,7 +118,7 @@ public class BatchTest
     [Fact]
     public void Read_Inside_Batch_Should_Not_Trigger_Extra_Run()
     {
-        var a = new Signal<int>(0);
+        var a = new MutSignal<int>(0);
         int runs = 0;
 
         using var effect = new Effect(() =>
@@ -140,7 +140,7 @@ public class BatchTest
     [Fact]
     public void Large_Batch_Should_Run_Once()
     {
-        var a = new Signal<int>(0);
+        var a = new MutSignal<int>(0);
         int runs = 0;
 
         using var effect = new Effect(() =>

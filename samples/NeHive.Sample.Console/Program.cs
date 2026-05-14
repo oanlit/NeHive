@@ -120,7 +120,7 @@
 //
 // dispose();
 
-// var a = new Signal<int>(0);
+// var a = new MutSignal<int>(0);
 //
 // using var effect = new Effect(() =>
 // {
@@ -128,7 +128,7 @@
 // });
 
 // using var scope = new Scope();
-// var signal = new Signal<int>(100);
+// var signal = new MutSignal<int>(100);
 //
 // // ACT
 // var e = scope.CreateReactiveFlow(signal)
@@ -146,7 +146,7 @@
 
 using var scope = new Scope();
 
-var signal = new Signal<int>(0);
+var signal = new MutSignal<int>(0);
 
 var effect = scope.CreateReactiveFlow(signal)
     // .ThrottleLatest(TimeSpan.FromMilliseconds(500))
@@ -168,18 +168,3 @@ for (var i = 1; i <= 10; i++)
 await Task.Delay(2000);
 
 effect.Dispose();
-
-var items = "text-blue-600".Split('-');
-
-for (var i = 1; i < items.Length; i++)
-{
-    var key = string.Join('-', items[..^i]) + '-';
-    var value = string.Join('-', items[^i..]);
-    Console.WriteLine($"{key}: {value}");
-}
-
-var ite2 = "[#fff]";
-
-ite2 = ite2[2..^1];
-
-Console.WriteLine(ite2);

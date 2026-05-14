@@ -7,7 +7,7 @@ public class ReactiveFlowTest
     {
         // ARRANGE
         using var root = Scope.RootScope;
-        var signal = new Signal<int>(100);
+        var signal = new MutSignal<int>(100);
         var effectValue = 0;
 
         // ACT
@@ -24,7 +24,7 @@ public class ReactiveFlowTest
     {
         // ARRANGE
         using var root = Scope.RootScope;
-        var signal = new Signal<int>(5);
+        var signal = new MutSignal<int>(5);
         int result = 0;
 
         // ACT
@@ -42,7 +42,7 @@ public class ReactiveFlowTest
     {
         // ARRANGE
         using var root = Scope.RootScope;
-        var signal = new Signal<int>(3);
+        var signal = new MutSignal<int>(3);
         int effectCount = 0;
 
         // ACT
@@ -60,7 +60,7 @@ public class ReactiveFlowTest
     {
         // ARRANGE
         using var root = Scope.RootScope;
-        var signal = new Signal<int>(1);
+        var signal = new MutSignal<int>(1);
         var last = 0;
 
         root.CreateReactiveFlow(signal)
@@ -81,7 +81,7 @@ public class ReactiveFlowTest
     {
         // ARRANGE
         var scope = Scope.RootScope.RunInScope(() => Scope.CurrentScope);
-        var signal = new Signal<int>(10);
+        var signal = new MutSignal<int>(10);
         var count = 0;
 
         scope.CreateReactiveFlow(signal)
@@ -101,7 +101,7 @@ public class ReactiveFlowTest
     {
         using var scope = new Scope();
 
-        var signal = new Signal<int>(1);
+        var signal = new MutSignal<int>(1);
 
         var computed = scope.CreateReactiveFlow(signal)
             .Map(x => x + 10)
@@ -119,7 +119,7 @@ public class ReactiveFlowTest
     {
         using var scope = new Scope();
 
-        var signal = new Signal<int>(1);
+        var signal = new MutSignal<int>(1);
 
         var memo = scope.CreateReactiveFlow(signal)
             .PushAsyncMemo(async v =>
@@ -138,17 +138,17 @@ public class ReactiveFlowTest
     // {
     //     using var scope = new Scope();
     //
-    //     var signal = new Signal<int>(1);
+    //     var mutSignal = new MutSignal<int>(1);
     //
-    //     var memo = scope.CreateReactiveFlow(signal)
+    //     var memo = scope.CreateReactiveFlow(mutSignal)
     //         .PushAsyncMemo(async v =>
     //         {
     //             await Task.Delay(20);
     //             return v;
     //         });
     //
-    //     signal.RxValue = 2;
-    //     signal.RxValue = 3;
+    //     mutSignal.RxValue = 2;
+    //     mutSignal.RxValue = 3;
     //
     //     await Task.Delay(100);
     //

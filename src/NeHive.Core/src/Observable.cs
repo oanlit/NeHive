@@ -2,13 +2,13 @@ namespace NeHive.Core;
 
 using System;
 
-public class SignalObservable<T>(Signal<T> signal) : IObservable<T>
+public class SignalObservable<T>(MutSignal<T> mutSignal) : IObservable<T>
 {
     public IDisposable Subscribe(IObserver<T> observer)
     {
         var effect = new Effect(epochScope =>
         {
-            var value = epochScope.Pull(signal);
+            var value = epochScope.Pull(mutSignal);
             observer.OnNext(value);
         });
 
@@ -23,20 +23,20 @@ public class SignalObservable<T>(Signal<T> signal) : IObservable<T>
 
 public static partial class Reactive
 {
-    public static IReadOnlySignal<T> From<T>(IObservable<T> producer, T initialValue)
+    public static ISignal<T> From<T>(IObservable<T> producer, T initialValue)
     {
         var scope = new Scope();
-        var signal = new Signal<T>(initialValue);
+        var signal = new MutSignal<T>(initialValue);
         var subscription = producer.Subscribe(new ObserverSignal<T>(signal));
         scope.OnDispose(subscription.Dispose);
         return signal;
     }
 
-    private class ObserverSignal<T>(Signal<T> signal) : IObserver<T>
+    private class ObserverSignal<T>(MutSignal<T> mutSignal) : IObserver<T>
     {
         public void OnNext(T value)
         {
-            signal.RxValue = value;
+            mutSignal.RxValue = value;
         }
 
         public void OnCompleted()
@@ -68,8 +68,8 @@ public static partial class Reactive
 {
     extension(Scope scope)
     {
-        // 从 Signal 创建流
-        public ReactiveFlow<T> CreateReactiveFlow<T>(ReadOnlySignal<T> signal)
+        // 从 MutSignal 创建流
+        public ReactiveFlow<T> CreateReactiveFlow<T>(Signal<T> signal)
         {
             return new ReactiveFlow<T>(scope, (out value) =>
             {
@@ -78,8 +78,8 @@ public static partial class Reactive
             });
         }
 
-        // 从 ReadOnlySignal 创建流
-        // public ReactiveFlow<T> CreateReactiveFlow<T>(ReadOnlySignal<T> accessor)
+        // 从 Signal 创建流
+        // public ReactiveFlow<T> CreateReactiveFlow<T>(Signal<T> accessor)
         // {
         //     return new ReactiveFlow<T>(scope, (out value) =>
         //     {
@@ -155,7 +155,7 @@ public static class ReactiveFlowExtensions
 
         public ReactiveFlow<T> Debounce(TimeSpan delay)
         {
-            var output = new Signal<T>(default!);
+            var output = new MutSignal<T>(default!);
 
             CancellationTokenSource? cts = null;
 
@@ -198,7 +198,7 @@ public static class ReactiveFlowExtensions
         public ReactiveFlow<T> ThrottleLatest(
             TimeSpan interval)
         {
-            var output = new Signal<T>(default!);
+            var output = new MutSignal<T>(default!);
 
             var throttled = false;
 

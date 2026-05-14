@@ -7,7 +7,7 @@ namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
-    public static IElement HTextBox(Signal<string>? bindText = null,
+    public static IElement HTextBox(MutSignal<string>? bindText = null,
         Accessor<string>? text = null,
         Accessor<string>? watermark = null,
         Accessor<bool>? isReadOnly = null,
@@ -93,7 +93,7 @@ public static partial class BaseComponent
         // 处理双向/单向绑定
         if (bindText != null)
         {
-            // 双向绑定：UI 编辑时更新 Signal，且 Signal 变化时更新 UI
+            // 双向绑定：UI 编辑时更新 MutSignal，且 MutSignal 变化时更新 UI
             var signal = bindText;
             // 避免循环更新标志
             var updatingFromSignal = false;

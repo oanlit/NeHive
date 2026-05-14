@@ -7,7 +7,7 @@ namespace NeHive.UI.Avalonia.Components;
 public static partial class BaseComponent
 {
     public static IElement HCheckBox(
-        Signal<bool>? bindIsChecked = null,
+        MutSignal<bool>? bindIsChecked = null,
         Accessor<bool>? isChecked = null,
         Accessor<string>? label = null,
         Accessor<string>? strStyle = null,

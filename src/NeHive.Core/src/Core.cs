@@ -335,12 +335,12 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
     {
     }
 
-    public T Pull<T>(ISignalState<T> signal)
+    public void Pull(ISignalState signal)
     {
-        if (signal.LastTracker == this) return signal.Value;
+        if (signal.LastTracker == this) return;
         signal.LastTracker = this;
 
-        // 建立 Computation 与 Signal 的双向引用
+        // 建立 Computation 与 MutSignal 的双向引用
         var sSlot = signal.Observers.Count;
         var oSlot = Sources.Count;
 
@@ -349,6 +349,12 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
 
         signal.Observers.Add(this);
         signal.ObserverSlots.Add(oSlot);
+    }
+
+    public T Pull<T>(ISignalState<T> signal)
+    {
+        if (signal.LastTracker == this) return signal.Value;
+        Pull((ISignalState)signal);
         return signal.Value;
     }
 

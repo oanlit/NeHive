@@ -319,7 +319,7 @@ internal class DenseBuffer<T> : IReadOnlyList<T>
 }
 
 public class ArrayMapMemo<TItem, TMap, TKey> :
-    ReadOnlySignal<IReadOnlyList<TMap>>
+    Signal<IReadOnlyList<TMap>>
     where TItem : notnull where TKey : notnull
 {
     public bool IsInvalid { get; private set; }
@@ -330,10 +330,10 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
     private readonly Accessor<IReadOnlyList<TItem>> _sourceListSignal;
     private IReadOnlyList<TItem> _oldList = [];
     private readonly DenseBuffer<Action> _disposers = []; // _oldList的平行数组
-    private readonly DenseBuffer<Signal<int>>? _indexSignals; // // _oldList的平行数组
+    private readonly DenseBuffer<MutSignal<int>>? _indexSignals; // // _oldList的平行数组
 
     private readonly Func<TItem, TMap>? _mapFn;
-    private readonly Func<TItem, IReadOnlySignal<int>, TMap>? _mapFnWithIndex;
+    private readonly Func<TItem, ISignal<int>, TMap>? _mapFnWithIndex;
     private readonly Func<TItem, TKey>? _keyFn;
 
     public ArrayMapMemo(Accessor<IReadOnlyList<TItem>> sourceListSignal, Func<TItem, TMap>? mapFn,
@@ -347,7 +347,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
     }
 
     public ArrayMapMemo(Accessor<IReadOnlyList<TItem>> sourceListSignal,
-        Func<TItem, IReadOnlySignal<int>, TMap>? mapFnWithIndex,
+        Func<TItem, ISignal<int>, TMap>? mapFnWithIndex,
         Func<TItem, TKey>? keyFn = null)
     {
         _sourceListSignal = sourceListSignal;
@@ -422,10 +422,10 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         {
             if (_indexSignals is not null)
             {
-                Signal<int> indexSignal = new(index);
-                _indexSignals[index] = indexSignal;
+                MutSignal<int> indexMutSignal = new(index);
+                _indexSignals[index] = indexMutSignal;
                 _disposers[index] = scope.Dispose;
-                result = _mapFnWithIndex!.Invoke(sourceList[index], indexSignal);
+                result = _mapFnWithIndex!.Invoke(sourceList[index], indexMutSignal);
             }
             else
             {
@@ -439,9 +439,9 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
 
     private DenseBuffer<TMap> _effectFn(ITrack track, IReadOnlyList<TMap> oldMap)
     {
-        var newList = _sourceListSignal.ValueSignal is null
+        var newList = _sourceListSignal.InternalSignal is null
             ? track.Track(_sourceListSignal.RxValueGetter)
-            : track.Pull(_sourceListSignal.ValueSignal);
+            : track.Pull(_sourceListSignal.InternalSignal);
 
         var newLen = newList.Count;
         var oldLen = _oldList.Count;
@@ -483,7 +483,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         newMap.Length = maxLen;
         var tempMap = new TMap[maxLen];
         var tempDisposers = new Action?[maxLen];
-        var tempIndex = _indexSignals is null ? null : new Signal<int>?[maxLen];
+        var tempIndex = _indexSignals is null ? null : new MutSignal<int>?[maxLen];
 
         foreach (var (oldIndex, newIndex) in diff.OldIndex2News)
         {

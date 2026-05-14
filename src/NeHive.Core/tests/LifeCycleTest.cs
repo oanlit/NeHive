@@ -5,7 +5,7 @@ public class LifeCycleTest
     [Fact]
     public void Effect_Dispose_Unsubscribe_Test()
     {
-        Signal<int> s = new(0);
+        MutSignal<int> s = new(0);
         List<int> values = [];
 
         var e = new Effect(() => { values.Add(s.RxValue); });
@@ -47,7 +47,7 @@ public class LifeCycleTest
     [Fact]
     public void EpochScope_Cleanup_Should_Run_On_ReExecution()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
 
         var cleanupCount = 0;
 
@@ -66,7 +66,7 @@ public class LifeCycleTest
     [Fact]
     public void Setup_Should_Run_Only_Once()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
 
         var setupCount = 0;
         var executeCount = 0;
@@ -94,7 +94,7 @@ public class LifeCycleTest
     [Fact]
     public void Setup_Should_Not_Track_Dependencies()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
 
         var setupCount = 0;
 
@@ -118,7 +118,7 @@ public class LifeCycleTest
     [Fact]
     public void Cleanup_Should_Run_Before_Next_Execution()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
 
         var log = new List<string>();
 
@@ -142,7 +142,7 @@ public class LifeCycleTest
     [Fact]
     public void Cleanup_Should_Not_Accumulate()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var cleanupCount = 0;
 
         using var effect = new Effect(selfScope =>
@@ -210,7 +210,7 @@ public class LifeCycleTest
     [Fact]
     public void Owner_And_Standalone_Effect_Test()
     {
-        Signal<int> s = new(0);
+        MutSignal<int> s = new(0);
 
         List<int> a = [];
         List<int> b = [];
@@ -259,9 +259,9 @@ public class LifeCycleTest
     [Fact]
     public void Dynamic_Dependency_Switch_Test()
     {
-        Signal<int> a = new(1);
-        Signal<int> b = new(10);
-        Signal<bool> flag = new(true);
+        MutSignal<int> a = new(1);
+        MutSignal<int> b = new(10);
+        MutSignal<bool> flag = new(true);
 
         List<int> values = [];
 
@@ -284,7 +284,7 @@ public class LifeCycleTest
     [Fact]
     public void Owner_Clean_Reuse_Test()
     {
-        Signal<int> s = new(0);
+        MutSignal<int> s = new(0);
         List<int> values = [];
 
         using var scope = new Scope();
@@ -315,7 +315,7 @@ public class LifeCycleTest
     [Fact]
     public void Clean_Root_Test()
     {
-        Signal<int> s = new(0);
+        MutSignal<int> s = new(0);
         List<int> values = [];
 
         using var scope = new Scope();

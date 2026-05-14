@@ -15,7 +15,7 @@ public static class DemoComponent
     private static IElement CounterComp(int id, UiScope uiScope)
     {
         Console.WriteLine($"Counter{id} 组件已创建");
-        var count = new Signal<int>(0);
+        var count = new MutSignal<int>(0);
         var countText = () => $"Count: {count.RxValue}";
 
         var rootElement = uiScope.RootElement(new()
@@ -72,7 +72,7 @@ public static class DemoComponent
 
     private static IElement ShowDemoComp(UiScope uiScope)
     {
-        var visible = new Signal<bool>(true);
+        var visible = new MutSignal<bool>(true);
         // var visibleText = () => visible.RxValue ? "ForEachDemo" : "LoadDemo";
         var visibleText = uiScope.CreateComputed(() => visible.RxValue ? "ForEachDemo" : "LoadDemo");
 
@@ -96,7 +96,7 @@ public static class DemoComponent
 
     private static IElement ForEachDemoComp()
     {
-        var items = new Signal<IReadOnlyList<int>>([1, 2, 3]);
+        var items = new MutSignal<IReadOnlyList<int>>([1, 2, 3]);
 
         var rootElement = RootElement(new()
         {
@@ -140,7 +140,7 @@ public static class DemoComponent
 
     private static IElement LoadingDemoComp(UiScope uiScope)
     {
-        var userId = new Signal<int>(1);
+        var userId = new MutSignal<int>(1);
         // var userMemo = uiScope.CreateAsyncMemo<User>(async epoch =>
         // {
         //     var id = epoch.Track(userId);
@@ -196,7 +196,7 @@ public static class DemoComponent
 
     private static IElement SwitchDemoComp(UiScope uiScope)
     {
-        var currentView = new Signal<DemoView>(DemoView.Unknown);
+        var currentView = new MutSignal<DemoView>(DemoView.Unknown);
 
         // var rootElement = uiScope.RootElement(new(
         //         style: new HPanelStyle(
@@ -229,7 +229,7 @@ public static class DemoComponent
                     strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 hover:bg-blue-400 border-blue-500  rounded-2xl",
                     click: _ => currentView.RxValue = DemoView.ForEachDemo
                 ), // HButton
-                HButton("显示 RxLoading 示例",
+                HButton("显示 Loading 示例",
                     strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 hover:bg-blue-400 border-blue-500 rounded-2xl",
                     click: _ => currentView.RxValue = DemoView.LoadingDemo
                 ) // HButton
@@ -260,7 +260,7 @@ public static class DemoComponent
 
     private static IElement GridDemoComp(UiScope uiScope)
     {
-        var gapX = new Signal<int>(3);
+        var gapX = new MutSignal<int>(3);
         var rootElement = uiScope.RootElement(new()
         {
             HGrid(new(
@@ -399,8 +399,8 @@ public static class DemoComponent
     // 在 DemoComponent 中添加一个演示
     private static IElement TextBoxDemoComp(UiScope uiScope)
     {
-        var textSignal = new Signal<string>("初始文本");
-        var log = new Signal<string>("");
+        var textSignal = new MutSignal<string>("初始文本");
+        var log = new MutSignal<string>("");
 
         var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
         {

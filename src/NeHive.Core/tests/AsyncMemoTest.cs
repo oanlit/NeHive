@@ -5,7 +5,7 @@ public class AsyncMemoTest
     [Fact]
     public async Task AsyncMemo_Simple_Use()
     {
-        var source = new Signal<int>(1);
+        var source = new MutSignal<int>(1);
 
         var asyncMemo = new AsyncMemo<int>(async () =>
         {
@@ -23,7 +23,7 @@ public class AsyncMemoTest
     [Fact]
     public async Task AsyncMemo_Should_Resolve_To_Value()
     {
-        var source = new Signal<int>(1);
+        var source = new MutSignal<int>(1);
 
         var asyncMemo = new AsyncMemo<int>(async epoch =>
         {
@@ -40,7 +40,7 @@ public class AsyncMemoTest
     [Fact]
     public async Task AsyncMemo_Should_Reload_When_Dependency_Changes()
     {
-        var source = new Signal<int>(1);
+        var source = new MutSignal<int>(1);
 
         var asyncMemo = new AsyncMemo<int>(async epoch =>
         {
@@ -60,7 +60,7 @@ public class AsyncMemoTest
     [Fact]
     public async Task AsyncMemo_Should_Enter_Loading_When_Dependency_Changes()
     {
-        var source = new Signal<int>(1);
+        var source = new MutSignal<int>(1);
 
         var asyncMemo = new AsyncMemo<int>(async epoch =>
         {
@@ -85,7 +85,7 @@ public class AsyncMemoTest
     [Fact]
     public async Task AsyncMemo_State_Should_Be_Reactive()
     {
-        var source = new Signal<int>(1);
+        var source = new MutSignal<int>(1);
 
         var asyncMemo = new AsyncMemo<int>(async epoch =>
         {
@@ -117,7 +117,7 @@ public class AsyncMemoTest
     {
         var setupRuns = 0;
 
-        var source = new Signal<int>(1);
+        var source = new MutSignal<int>(1);
 
         _ = new AsyncMemo<int>(
             _ =>

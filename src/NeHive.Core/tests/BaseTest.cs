@@ -1,11 +1,11 @@
 namespace NeHive.Core.Tests;
 
-public class SignalTests
+public class MutSignalTests
 {
     [Fact]
     public void Signal_InitialValue_IsSet()
     {
-        var signal = new Signal<int>(42);
+        var signal = new MutSignal<int>(42);
         Assert.Equal(42, signal.RxValue);
         Assert.Equal(42, signal.Value);
     }
@@ -13,7 +13,7 @@ public class SignalTests
     [Fact]
     public void Signal_SetValue_UpdatesValue()
     {
-        var signal = new Signal<string>("hello");
+        var signal = new MutSignal<string>("hello");
         signal.RxValue = "world";
         Assert.Equal("world", signal.RxValue);
     }
@@ -21,7 +21,7 @@ public class SignalTests
     [Fact]
     public void Signal_SetValueMethod_UpdatesValue()
     {
-        var signal = new Signal<double>(1.5);
+        var signal = new MutSignal<double>(1.5);
         signal.NotifySet(3.14);
         Assert.Equal(3.14, signal.RxValue);
     }
@@ -29,7 +29,7 @@ public class SignalTests
     [Fact]
     public void Signal_SetValueWithFunc_UpdatesValueBasedOnCurrent()
     {
-        var signal = new Signal<int>(5);
+        var signal = new MutSignal<int>(5);
         signal.NotifySet(x => x * 2);
         Assert.Equal(10, signal.RxValue);
     }
@@ -37,7 +37,7 @@ public class SignalTests
     [Fact]
     public void Signal_UntrackValue_ReturnsValueWithoutTracking()
     {
-        var signal = new Signal<bool>(true);
+        var signal = new MutSignal<bool>(true);
         // Value should not establish a dependency (no observable effect in isolation)
         Assert.True(signal.Value);
         signal.RxValue = false;
@@ -47,7 +47,7 @@ public class SignalTests
     [Fact]
     public void Signal_HasObserver_IsInternalButBehavioral_WhenEffectSubscribes()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var callCount = 0;
         using var effect = new Effect(() =>
         {
@@ -75,7 +75,7 @@ public class EffectTests
     [Fact]
     public void Effect_ReactsToSignalChanges()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var effectCount = 0;
         using var effect = new Effect(() =>
         {
@@ -93,8 +93,8 @@ public class EffectTests
     [Fact]
     public void Effect_ReactsToMultipleSignals()
     {
-        var a = new Signal<int>(1);
-        var b = new Signal<int>(2);
+        var a = new MutSignal<int>(1);
+        var b = new MutSignal<int>(2);
         var sum = 0;
         using var effect = new Effect(() => { sum = a.RxValue + b.RxValue; });
 
@@ -108,7 +108,7 @@ public class EffectTests
     [Fact]
     public void Effect_Dispose_StopsReactingAndIsDisposed()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var effectCount = 0;
         var effect = new Effect(() =>
         {
@@ -126,9 +126,9 @@ public class EffectTests
     [Fact]
     public void Effect_IsDisposed_AfterManualDisposeEvenWithSources()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var effect = new Effect(() => _ = signal.RxValue);
-        Assert.False(effect.IsInvalid); // Has a source (signal)
+        Assert.False(effect.IsInvalid); // Has a source (mutSignal)
         effect.Dispose();
         Assert.True(effect.IsInvalid);
     }
@@ -139,7 +139,7 @@ public class ComputedTests
     [Fact]
     public void Memo_InitialValue_ReturnsComputedValue()
     {
-        var signal = new Signal<int>(5);
+        var signal = new MutSignal<int>(5);
         var memo = new Computed<int>(s => signal.RxValue * 2 + s, 20);
         Assert.Equal(30, memo.RxValue);
         memo.Dispose();
@@ -148,7 +148,7 @@ public class ComputedTests
     [Fact]
     public void Memo_CachesValue_UntilDependencyChanges()
     {
-        var signal = new Signal<int>(2);
+        var signal = new MutSignal<int>(2);
         var computeCount = 0;
         var memo = new Computed<int>(() =>
         {
@@ -159,12 +159,12 @@ public class ComputedTests
         Assert.Equal(6, memo.RxValue);
         Assert.Equal(1, computeCount);
 
-        // Access again without changing signal -> no recompute
+        // Access again without changing mutSignal -> no recompute
         Assert.Equal(6, memo.RxValue);
         Assert.Equal(1, computeCount);
 
         signal.RxValue = 5;
-        // After signal change, next access recomputes
+        // After mutSignal change, next access recomputes
         Assert.Equal(15, memo.RxValue);
         Assert.Equal(2, computeCount);
         memo.Dispose();
@@ -173,7 +173,7 @@ public class ComputedTests
     [Fact]
     public void Memo_UntrackValue_ReturnsValueWithoutTracking()
     {
-        var signal = new Signal<int>(10);
+        var signal = new MutSignal<int>(10);
         var memo = new Computed<int>(() => signal.RxValue + 1);
         var untracked = memo.Value;
         Assert.Equal(11, untracked);
@@ -191,22 +191,22 @@ public class ComputedTests
     [Fact]
     public void Memo_WithFuncOfT_T_SupportsPreviousValue()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var memo = new Computed<int>(prev => prev + signal.RxValue);
-        Assert.Equal(0, memo.RxValue); // prev = 0, signal = 0 => 0
+        Assert.Equal(0, memo.RxValue); // prev = 0, mutSignal = 0 => 0
 
         signal.RxValue = 5;
-        Assert.Equal(5, memo.RxValue); // prev = 0, signal = 5 => 5
+        Assert.Equal(5, memo.RxValue); // prev = 0, mutSignal = 5 => 5
 
         signal.RxValue = 2;
-        Assert.Equal(7, memo.RxValue); // prev = 5, signal = 2 => 7
+        Assert.Equal(7, memo.RxValue); // prev = 5, mutSignal = 2 => 7
         memo.Dispose();
     }
 
     [Fact]
     public void Memo_ConstructorWithFuncT_WithoutInitialValue()
     {
-        var signal = new Signal<int>(3);
+        var signal = new MutSignal<int>(3);
         var memo = new Computed<int>(() => signal.RxValue * 4);
         Assert.Equal(12, memo.RxValue);
         signal.RxValue = 4;
@@ -220,8 +220,8 @@ public class IntegrationTests
     [Fact]
     public void EffectAndMemo_Combine_UpdatesCorrectly()
     {
-        var a = new Signal<int>(2);
-        var b = new Signal<int>(3);
+        var a = new MutSignal<int>(2);
+        var b = new MutSignal<int>(3);
         var memo = new Computed<int>(() => a.RxValue * b.RxValue);
         var effectResult = 0;
         using var effect = new Effect(() => effectResult = memo.RxValue);
@@ -238,7 +238,7 @@ public class IntegrationTests
     [Fact]
     public void MultipleEffects_OnSameSignal_AllRun()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var count1 = 0;
         var count2 = 0;
         using var effect1 = new Effect(() =>
@@ -263,7 +263,7 @@ public class IntegrationTests
     [Fact]
     public void DisposeEffect_DoesNotAffectOtherObservers()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var count1 = 0;
         var count2 = 0;
         var effect1 = new Effect(() =>
@@ -286,7 +286,7 @@ public class IntegrationTests
     [Fact]
     public void Memo_DependencyOnMemo_WorksCorrectly()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
         var memo1 = new Computed<int>(() => a.RxValue * 2);
         var memo2 = new Computed<int>(() => memo1.RxValue + 3);
 
@@ -298,11 +298,11 @@ public class IntegrationTests
         memo2.Dispose();
     }
 
-    // ========== Signal + Effect ==========
+    // ========== MutSignal + Effect ==========
     [Fact]
     public void Effect_UsingUntrackValue_DoesNotReRunWhenSignalChanges()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var effectRunCount = 0;
 
         using var effect = new Effect(() =>
@@ -324,7 +324,7 @@ public class IntegrationTests
     [Fact]
     public void Effect_UsingValue_ReRunsWhenSignalChanges()
     {
-        var signal = new Signal<int>(0);
+        var signal = new MutSignal<int>(0);
         var effectRunCount = 0;
 
         using var effect = new Effect(() =>
@@ -344,8 +344,8 @@ public class IntegrationTests
     [Fact]
     public void Effect_MixesValueAndUntrackValue_OnlyValueCreatesDependency()
     {
-        var a = new Signal<int>(10);
-        var b = new Signal<int>(20);
+        var a = new MutSignal<int>(10);
+        var b = new MutSignal<int>(20);
         var effectRunCount = 0;
         var lastResult = 0;
 
@@ -373,7 +373,7 @@ public class IntegrationTests
     [Fact]
     public void Memo_UsingValue_RecomputesWhenSignalChanges()
     {
-        var signal = new Signal<int>(1);
+        var signal = new MutSignal<int>(1);
         var computeCount = 0;
 
         var memo = new Computed<int>(() =>
@@ -394,8 +394,8 @@ public class IntegrationTests
     [Fact]
     public void Memo_MixesValueAndUntrackValue_OnlyValueTriggersRecompute()
     {
-        var a = new Signal<int>(2);
-        var b = new Signal<int>(3);
+        var a = new MutSignal<int>(2);
+        var b = new MutSignal<int>(3);
         var computeCount = 0;
 
         var memo = new Computed<int>(() =>
@@ -423,7 +423,7 @@ public class IntegrationTests
     {
         // 验证失效 Computed 在首次读取 RxValue 且 fn 内使用信号 .RxValue 时，
         // 会建立依赖，变为有效，后续信号变化时自动更新。
-        var signal = new Signal<int>(5);
+        var signal = new MutSignal<int>(5);
         var computeCount = 0;
         var effectRunCount = 0;
 
@@ -463,7 +463,7 @@ public class IntegrationTests
     public void Memo_DisposeCausesInvalidationAndDegradation()
     {
         // 验证 Dispose 后 Computed 失效，退化为普通函数
-        var signal = new Signal<int>(1);
+        var signal = new MutSignal<int>(1);
         var computeCount = 0;
         var effectRunCount = 0;
 
@@ -515,7 +515,7 @@ public class IntegrationTests
     [Fact]
     public void Effect_Multiple_Writes_Should_Batch()
     {
-        var a = new Signal<int>(0);
+        var a = new MutSignal<int>(0);
         int runs = 0;
 
         using var effect = new Effect(() =>
@@ -538,7 +538,7 @@ public class IntegrationTests
     [Fact]
     public void Effect_Memo_Effect_Chain_Test()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
 
         using var scope = new Scope();
 
@@ -559,9 +559,9 @@ public class BaseTest
     [Fact]
     public void Dynamic_Dependency_Switch_Test()
     {
-        var a = new Signal<int>(1);
-        var b = new Signal<int>(2);
-        var flag = new Signal<bool>(true);
+        var a = new MutSignal<int>(1);
+        var b = new MutSignal<int>(2);
+        var flag = new MutSignal<bool>(true);
 
         int runs = 0;
 
@@ -586,7 +586,7 @@ public class BaseTest
     [Fact]
     public void Topological_Order_Test()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
         var logs = new List<int>();
 
         using var scope = new Scope();
@@ -604,7 +604,7 @@ public class BaseTest
     [Fact]
     public void No_Glitch_Test()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
 
         using var scope = new Scope();
 
@@ -627,7 +627,7 @@ public class BaseTest
     [Fact]
     public void Accessor_Test()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
         var p = () => a.RxValue;
         TestAccessor(1);
         TestAccessor(p);

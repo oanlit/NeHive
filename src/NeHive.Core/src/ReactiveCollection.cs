@@ -14,9 +14,9 @@ public class ListStore<T> : IReactiveCollection<T>
     private const int DefaultCapacity = 4;
 
     private readonly List<T> _items;
-    private readonly Signal<int> _countSignal;
-    private readonly Signal<int> _versionSignal = new(0);
-    private readonly SortedDictionary<int, Signal<T?>> _oldValueSignals = []; // index是固定的
+    private readonly MutSignal<int> _countMutSignal;
+    private readonly MutSignal<int> _versionMutSignal = new(0);
+    private readonly SortedDictionary<int, MutSignal<T?>> _oldValueSignals = []; // index是固定的
 
     private bool _isBatch;
     private bool _isChange;
@@ -27,13 +27,13 @@ public class ListStore<T> : IReactiveCollection<T>
     public ListStore(int capacity = DefaultCapacity)
     {
         _items = new(capacity);
-        _countSignal = new(_items.Count);
+        _countMutSignal = new(_items.Count);
     }
 
     public ListStore(IEnumerable<T> collection)
     {
         _items = new(collection);
-        _countSignal = new(_items.Count);
+        _countMutSignal = new(_items.Count);
     }
 
     public int Capacity
@@ -42,14 +42,14 @@ public class ListStore<T> : IReactiveCollection<T>
         set => _items.Capacity = value;
     }
 
-    public int Count => _countSignal.RxValue;
+    public int Count => _countMutSignal.RxValue;
 
     private void _subscribeSignal(int index, T? initValue)
     {
         if (ReactiveContext.CurrentExecute is null) return;
         if (!_oldValueSignals.TryGetValue(index, out var signal))
         {
-            signal = new Signal<T?>(initValue);
+            signal = new MutSignal<T?>(initValue);
             _oldValueSignals[index] = signal;
         }
 
@@ -66,7 +66,7 @@ public class ListStore<T> : IReactiveCollection<T>
             _isChange = true;
             if (_isBatch) return;
             indexSignal.RxValue = value;
-            _versionSignal.RxValue = _versionSignal.Value + 1;
+            _versionMutSignal.RxValue = _versionMutSignal.Value + 1;
         });
     }
 
@@ -133,35 +133,35 @@ public class ListStore<T> : IReactiveCollection<T>
                 signal.RxValue = newValue;
             }
 
-            if (_countSignal.Value != _items.Count)
-                _countSignal.RxValue = _items.Count;
+            if (_countMutSignal.Value != _items.Count)
+                _countMutSignal.RxValue = _items.Count;
 
-            _versionSignal.RxValue = _versionSignal.Value + 1;
+            _versionMutSignal.RxValue = _versionMutSignal.Value + 1;
             _isChange = false;
         });
     }
 
     public void CopyTo(int index, T[] array, int arrayIndex, int count)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         _items.CopyTo(index, array, arrayIndex, count);
     }
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         _items.CopyTo(array, arrayIndex);
     }
 
     public ReadOnlyCollection<T> AsReadOnly()
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return new ReadOnlyCollection<T>(_items);
     }
 
     public int BinarySearch(int index, int count, T item, IComparer<T>? comparer)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.BinarySearch(index, count, item, comparer);
     }
 
@@ -196,20 +196,20 @@ public class ListStore<T> : IReactiveCollection<T>
                 _oldValueSignals.Remove(key);
             }
 
-            _countSignal.RxValue = 0;
-            _versionSignal.RxValue++;
+            _countMutSignal.RxValue = 0;
+            _versionMutSignal.RxValue++;
         });
     }
 
     public bool Contains(T item)
     {
-        _ = _versionSignal.RxValue; // 访问版本信号以建立依赖关系
+        _ = _versionMutSignal.RxValue; // 访问版本信号以建立依赖关系
         return _items.Contains(item);
     }
 
     public List<TOutput> ConvertAll<TOutput>(Converter<T, TOutput> converter)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.ConvertAll(converter);
     }
 
@@ -217,7 +217,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public int FindIndex(int startIndex, int count, Predicate<T> match)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.FindIndex(startIndex, count, match);
     }
 
@@ -231,25 +231,25 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public T? Find(Predicate<T> match)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.Find(match);
     }
 
     public List<T> FindAll(Predicate<T> match)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.FindAll(match);
     }
 
     public T? FindLast(Predicate<T> match)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.FindLast(match);
     }
 
     public int FindLastIndex(int startIndex, int count, Predicate<T> match)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.FindLastIndex(startIndex, count, match);
     }
 
@@ -261,18 +261,18 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public void ForEach(Action<T> action)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         _items.ForEach(action);
     }
 
     // 新增API
     public void ForEach(Action<T, int> action)
     {
-        var version = _versionSignal.RxValue;
+        var version = _versionMutSignal.RxValue;
 
         for (var i = 0; i < _items.Count; i++)
         {
-            if (version != _versionSignal.Value)
+            if (version != _versionMutSignal.Value)
                 throw new InvalidOperationException();
 
             action(_items[i], i);
@@ -281,7 +281,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public IEnumerator<T> GetEnumerator()
     {
-        _ = _versionSignal.RxValue; // 访问版本信号以建立依赖关系
+        _ = _versionMutSignal.RxValue; // 访问版本信号以建立依赖关系
         return _items.GetEnumerator();
     }
 
@@ -293,7 +293,7 @@ public class ListStore<T> : IReactiveCollection<T>
     public List<T> GetRange(int index, int count)
     {
         var result = _items.GetRange(index, count);
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return result;
     }
 
@@ -301,19 +301,19 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public int IndexOf(T item)
     {
-        _ = _versionSignal.RxValue; // 访问版本信号以建立依赖关系
+        _ = _versionMutSignal.RxValue; // 访问版本信号以建立依赖关系
         return _items.IndexOf(item);
     }
 
     public int IndexOf(T item, int index)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.IndexOf(item, index);
     }
 
     public int IndexOf(T item, int index, int count)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.IndexOf(item, index, count);
     }
 
@@ -336,19 +336,19 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public int LastIndexOf(T item)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.LastIndexOf(item);
     }
 
     public int LastIndexOf(T item, int index)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.LastIndexOf(item, index);
     }
 
     public int LastIndexOf(T item, int index, int count)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.LastIndexOf(item, index, count);
     }
 
@@ -437,7 +437,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public T[] ToArray()
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.ToArray();
     }
 
@@ -465,7 +465,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public bool TrueForAll(Predicate<T> match)
     {
-        _ = _versionSignal.RxValue;
+        _ = _versionMutSignal.RxValue;
         return _items.TrueForAll(match);
     }
 }

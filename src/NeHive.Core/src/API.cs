@@ -87,7 +87,7 @@ public static partial class Reactive
     }
 }
 
-public interface IReadOnlySignal<out T>
+public interface ISignal<out T>
 {
     public T RxValue { get; }
     public T Value { get; }
@@ -99,9 +99,9 @@ public interface ISetOnlySignal<T>
     public void NotifySet(Func<T, T> value);
 }
 
-public class Accessor<T> : IReadOnlySignal<T>
+public class Accessor<T> : ISignal<T>
 {
-    internal readonly ISignalState<T>? ValueSignal;
+    internal readonly ISignalState<T>? InternalSignal;
     internal readonly Func<T> RxValueGetter;
     internal readonly Func<T> ValueGetter;
 
@@ -112,24 +112,24 @@ public class Accessor<T> : IReadOnlySignal<T>
 
     public Accessor(T value)
     {
-        ValueSignal = null;
+        InternalSignal = null;
         RxValueGetter = () => value;
         ValueGetter = () => Reactive.Untrack(RxValueGetter);
     }
 
     public Accessor(Func<T> rxValueGetter)
     {
-        ValueSignal = null;
+        InternalSignal = null;
         RxValueGetter = rxValueGetter;
         ValueGetter = () => Reactive.Untrack(RxValueGetter);
         // TODO 设计一个可以发现 RxValue 的API
     }
 
-    public Accessor(ReadOnlySignal<T> signal)
+    public Accessor(Signal<T> signal)
     {
-        ValueSignal = signal.InternalSignal;
-        RxValueGetter = ValueSignal.ReadSignal;
-        ValueGetter = () => Reactive.Untrack(ValueSignal.ReadSignal);
+        InternalSignal = signal.InternalSignal;
+        RxValueGetter = InternalSignal.ReadSignal;
+        ValueGetter = () => Reactive.Untrack(InternalSignal.ReadSignal);
         IsReactive = true;
     }
 
@@ -143,32 +143,38 @@ public class Accessor<T> : IReadOnlySignal<T>
         return new Accessor<T>(getter);
     }
 
-    public static implicit operator Accessor<T>(ReadOnlySignal<T> signal)
+    public static implicit operator Accessor<T>(Signal<T> signal)
     {
         return new Accessor<T>(signal);
     }
 }
 
-public class ReadOnlySignal<T> : IReadOnlySignal<T>
+public abstract class Signal
+{
+    internal abstract ISignalState GetInternalSignal();
+}
+
+public class Signal<T> : Signal, ISignal<T>
 {
     internal ISignalState<T> InternalSignal;
+    internal override ISignalState<T> GetInternalSignal() => InternalSignal;
 
     public virtual T RxValue => InternalSignal.ReadSignal();
 
     public virtual T Value => InternalSignal.Value;
 
-    internal ReadOnlySignal(ISignalState<T> internalSignal)
+    internal Signal(ISignalState<T> internalSignal)
     {
         InternalSignal = internalSignal;
     }
 
-    internal ReadOnlySignal()
+    internal Signal()
     {
         InternalSignal = new SignalState<T>(default!);
     }
 }
 
-public class Signal<T>(T value) : ReadOnlySignal<T>(new SignalState<T>(value)),
+public class MutSignal<T>(T value) : Signal<T>(new SignalState<T>(value)),
     ISetOnlySignal<T>
 {
     public new T RxValue
@@ -312,9 +318,17 @@ public class EpochScope : Scope
         _tracker = tracker;
     }
 
-    public T Pull<T>(ReadOnlySignal<T> signal)
+    public T Pull<T>(Signal<T> signal)
     {
         return _tracker.Pull(signal.InternalSignal);
+    }
+
+    public void Pull(IEnumerable<Signal> signals)
+    {
+        foreach (var signal in signals)
+        {
+            _tracker.Pull(signal.GetInternalSignal());
+        }
     }
 
     public T Track<T>(Func<T> trackFn)
@@ -326,12 +340,12 @@ public class EpochScope : Scope
     {
         _tracker.Track(trackFn);
     }
-    
+
     public T Track<T>(Accessor<T> accessor)
     {
-        return accessor.ValueSignal is null
+        return accessor.InternalSignal is null
             ? _tracker.Track(accessor.RxValueGetter)
-            : _tracker.Pull(accessor.ValueSignal);
+            : _tracker.Pull(accessor.InternalSignal);
     }
 }
 
@@ -402,7 +416,7 @@ public class Effect : IDisposable
     }
 }
 
-public class Computed<T> : ReadOnlySignal<T>
+public class Computed<T> : Signal<T>
 {
     private readonly ScopeNode _scope;
     private readonly ComputedNode<T> _computedNode;
@@ -502,15 +516,15 @@ public enum AsyncMemoState
     IsInvalid
 }
 
-public class AsyncMemo<T> : ReadOnlySignal<T?>
+public class AsyncMemo<T> : Signal<T?>
 {
     private readonly ScopeNode _scope;
     private EpochScope? _epochScope;
     private readonly bool _isSimpleUse;
 
     private readonly Func<EpochScope, Task<T>> _executeFn;
-    private readonly Signal<Exception?> _error = new(null);
-    private readonly Signal<AsyncMemoState> _state = new(AsyncMemoState.Unresolved);
+    private readonly MutSignal<Exception?> _error = new(null);
+    private readonly MutSignal<AsyncMemoState> _state = new(AsyncMemoState.Unresolved);
 
     private Task<T>? _result;
     private bool _scheduled;
@@ -718,11 +732,11 @@ public class Selector<T> where T : notnull
 {
     private readonly Dictionary<T, HashSet<ExecuteNode>> _subs;
     private readonly Computed<T> _computed;
-    private readonly Signal<bool> _logicSignal = new(true);
+    private readonly MutSignal<bool> _logicMutSignal = new(true);
 
     public readonly Func<T, T, bool> CompareFn;
 
-    public Selector(IReadOnlySignal<T> source, Func<T, T, bool>? compareFn = null)
+    public Selector(ISignal<T> source, Func<T, T, bool>? compareFn = null)
     {
         CompareFn = compareFn ?? Constant.EqualFn;
         _subs = new Dictionary<T, HashSet<ExecuteNode>>();
@@ -746,7 +760,7 @@ public class Selector<T> where T : notnull
 
     public bool Select(T key)
     {
-        _ = _logicSignal.RxValue; // 逻辑依赖，不会导致外部观察者误以为没有信号而失效
+        _ = _logicMutSignal.RxValue; // 逻辑依赖，不会导致外部观察者误以为没有信号而失效
 
         var value = _computed.Value;
         var currentComputation = ReactiveContext.CurrentExecute;

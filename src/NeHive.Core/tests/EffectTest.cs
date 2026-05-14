@@ -5,7 +5,7 @@ public class EffectTest
     [Fact]
     public void Effect_Self_Update_Test()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
         int runs = 0;
 
         using var effect = new Effect(() =>
@@ -22,7 +22,7 @@ public class EffectTest
     [Fact]
     public void Effect_Should_Not_Recurse_Immediately()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
         var depth = 0;
         var maxDepth = 0;
 
@@ -43,8 +43,8 @@ public class EffectTest
     [Fact]
     public void Cross_Effect_Update_Order_Test()
     {
-        var a = new Signal<int>(1);
-        var b = new Signal<int>(0);
+        var a = new MutSignal<int>(1);
+        var b = new MutSignal<int>(0);
 
         var logs = new List<string>();
 
@@ -65,7 +65,7 @@ public class EffectTest
     [Fact]
     public void Conditional_Write_Should_Not_Trigger_Extra()
     {
-        var a = new Signal<int>(1);
+        var a = new MutSignal<int>(1);
         int runs = 0;
 
         using var effect = new Effect(() =>

@@ -246,7 +246,7 @@ public class ArrayDiffTest
     [Fact]
     public void ArrayMapMemo_Initial()
     {
-        var signal = new Signal<IReadOnlyList<int>>([1, 2, 3]);
+        var signal = new MutSignal<IReadOnlyList<int>>([1, 2, 3]);
 
         var memo = new ArrayMapMemo<int, int, int>(
             signal,
@@ -260,7 +260,7 @@ public class ArrayDiffTest
     [Fact]
     public void ArrayMapMemo_Update()
     {
-        var signal = new Signal<IReadOnlyList<int>>([1, 2]);
+        var signal = new MutSignal<IReadOnlyList<int>>([1, 2]);
 
         var memo = new ArrayMapMemo<int, int, int>(
             signal,
@@ -278,7 +278,7 @@ public class ArrayDiffTest
     {
         var created = 0;
 
-        var signal = new Signal<IReadOnlyList<int>>([1, 2, 3]);
+        var signal = new MutSignal<IReadOnlyList<int>>([1, 2, 3]);
 
         var memo = new ArrayMapMemo<int, object, int>(
             signal,
@@ -299,7 +299,7 @@ public class ArrayDiffTest
     [Fact]
     public void ArrayMapMemo_Move_ShouldReuseReference()
     {
-        var signal = new Signal<IReadOnlyList<int>>([1, 2, 3]);
+        var signal = new MutSignal<IReadOnlyList<int>>([1, 2, 3]);
 
         var memo = new ArrayMapMemo<int, object, int>(
             signal,
@@ -323,7 +323,7 @@ public class ArrayDiffTest
     public void ArrayMapMemo_Insert_ShouldOnlyCreateNew()
     {
         var created = 0;
-        var signal = new Signal<IReadOnlyList<int>>([1, 2]);
+        var signal = new MutSignal<IReadOnlyList<int>>([1, 2]);
 
         var memo = new ArrayMapMemo<int, int, int>(
             signal,
@@ -346,7 +346,7 @@ public class ArrayDiffTest
     {
         var disposed = 0;
 
-        var signal = new Signal<IReadOnlyList<int>>([1, 2, 3]);
+        var signal = new MutSignal<IReadOnlyList<int>>([1, 2, 3]);
 
         var memo = new ArrayMapMemo<int, int, int>(
             signal,
@@ -373,7 +373,7 @@ public class ArrayDiffTest
     {
         var disposed = 0;
 
-        var signal = new Signal<IReadOnlyList<int>>([1, 2, 3]);
+        var signal = new MutSignal<IReadOnlyList<int>>([1, 2, 3]);
 
         var memo = new ArrayMapMemo<int, int, int>(
             signal,
@@ -397,7 +397,7 @@ public class ArrayDiffTest
     {
         var created = 0;
 
-        var signal = new Signal<IReadOnlyList<Item>>([
+        var signal = new MutSignal<IReadOnlyList<Item>>([
             new Item { Id = 1, Name = "A" },
             new Item { Id = 2, Name = "B" }
         ]);
@@ -429,9 +429,9 @@ public class ArrayDiffTest
     [Fact]
     public void ArrayMapMemo_IndexSignal_ShouldUpdate()
     {
-        var signal = new Signal<IReadOnlyList<int>>([1, 2, 3]);
+        var signal = new MutSignal<IReadOnlyList<int>>([1, 2, 3]);
 
-        IReadOnlySignal<int> iSignal = new Signal<int>(-1);
+        ISignal<int> iSignal = new MutSignal<int>(-1);
         var memo = new ArrayMapMemo<int, int, int>(
             signal,
             (item, indexSignal) =>
