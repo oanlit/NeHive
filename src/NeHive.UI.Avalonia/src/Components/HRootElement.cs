@@ -26,7 +26,7 @@ public static partial class BaseComponent
         uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style == null) return;
-            var s = epochScope.Pull(prop.Style);
+            var s = epochScope.Track(prop.Style);
 
             stack.Orientation = s.Orientation;
             stack.Spacing = s.Spacing;

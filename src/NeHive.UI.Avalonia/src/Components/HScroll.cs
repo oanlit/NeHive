@@ -186,7 +186,7 @@ public static partial class BaseComponent
         uiScope.CreateEffect(scope =>
         {
             if (prop.Style == null) return;
-            var style = scope.Pull(prop.Style);
+            var style = scope.Track(prop.Style);
 
             var ori = style.Orientation;
             if (ori == Orientation.Horizontal)

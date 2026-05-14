@@ -170,7 +170,7 @@ public static partial class BaseComponent
         uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style == null) return;
-            var style = epochScope.Pull(prop.Style);
+            var style = epochScope.Track(prop.Style);
 
             grid.Margin = style.Margin;
             grid.ColumnSpacing = style.ColumnSpacing;

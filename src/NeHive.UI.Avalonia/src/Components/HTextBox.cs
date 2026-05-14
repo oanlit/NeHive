@@ -55,7 +55,7 @@ public static partial class BaseComponent
         uiScope.CreateEffect(scope =>
         {
             if (finalStyle == null) return;
-            var styleValue = scope.Pull(finalStyle);
+            var styleValue = scope.Track(finalStyle);
             ApplyStyle(styleValue);
         });
 
@@ -65,7 +65,7 @@ public static partial class BaseComponent
             if (watermark == null)
                 return;
 
-            var wm = scope.Pull(watermark);
+            var wm = scope.Track(watermark);
             textBox.Watermark = wm;
         });
 
@@ -73,21 +73,21 @@ public static partial class BaseComponent
         uiScope.CreateEffect(scope =>
         {
             if (isReadOnly != null)
-                textBox.IsReadOnly = scope.Pull(isReadOnly);
+                textBox.IsReadOnly = scope.Track(isReadOnly);
         });
 
         // 处理最大长度
         uiScope.CreateEffect(scope =>
         {
             if (maxLength != null)
-                textBox.MaxLength = scope.Pull(maxLength);
+                textBox.MaxLength = scope.Track(maxLength);
         });
 
         // 处理多行
         uiScope.CreateEffect(scope =>
         {
             if (acceptsReturn != null)
-                textBox.AcceptsReturn = scope.Pull(acceptsReturn);
+                textBox.AcceptsReturn = scope.Track(acceptsReturn);
         });
 
         // 处理双向/单向绑定
@@ -127,7 +127,7 @@ public static partial class BaseComponent
             // 单向更新
             uiScope.CreateEffect(scope =>
             {
-                var val = scope.Pull(text);
+                var val = scope.Track(text);
                 if (textBox.Text != val)
                     textBox.Text = val;
                 textChanged?.Invoke(val);

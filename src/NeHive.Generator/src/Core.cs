@@ -317,7 +317,7 @@ namespace NeHive.Generator
                             MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 IdentifierName(scopeName),
-                                IdentifierName("AddComputed")
+                                IdentifierName("CreateComputed")
                             )
                         ).WithArgumentList(
                             ArgumentList(
@@ -330,7 +330,7 @@ namespace NeHive.Generator
                                     )
                                 )
                             )
-                        ) // scope.AddComputed(() => store.Count * 2);
+                        ) // scope.CreateComputed(() => store.Count * 2);
                     );
 
                 var propertyGetter =
@@ -338,7 +338,7 @@ namespace NeHive.Generator
                         MemberAccessExpression(
                             SyntaxKind.SimpleMemberAccessExpression,
                             ParenthesizedExpression(assignment),
-                            IdentifierName("Value")
+                            IdentifierName("RxValue")
                         )
                     );
 
@@ -668,7 +668,7 @@ namespace NeHive.Generator
             {
                 if (node is FieldExpressionSyntax)
                 {
-                    return ParseExpression($"{_fieldName}.Value");
+                    return ParseExpression($"{_fieldName}.RxValue");
                 }
 
                 return base.Visit(node);
@@ -690,7 +690,7 @@ namespace NeHive.Generator
                             MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
                                 IdentifierName(fieldName),
-                                IdentifierName("Value")
+                                IdentifierName("RxValue")
                             )
                         )
                     ));
@@ -707,7 +707,7 @@ namespace NeHive.Generator
                                 MemberAccessExpression(
                                     SyntaxKind.SimpleMemberAccessExpression,
                                     IdentifierName(fieldName),
-                                    IdentifierName("Value")
+                                    IdentifierName("RxValue")
                                 ),
                                 IdentifierName("value")
                             )

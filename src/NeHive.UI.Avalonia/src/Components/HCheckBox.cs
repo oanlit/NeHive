@@ -45,13 +45,13 @@ public static partial class BaseComponent
         uiScope.CreateEffect(scope =>
         {
             if (finalStyle == null) return;
-            var styleValue = scope.Pull(finalStyle);
+            var styleValue = scope.Track(finalStyle);
             ApplyStyle(styleValue);
         });
 
         // 标签
         if (label != null)
-            uiScope.CreateEffect(scope => checkBox.Content = scope.Pull(label));
+            uiScope.CreateEffect(scope => checkBox.Content = scope.Track(label));
 
         // 双向绑定
         if (bindIsChecked != null)
@@ -84,7 +84,7 @@ public static partial class BaseComponent
         {
             uiScope.CreateEffect(scope =>
             {
-                var val = scope.Pull(isChecked);
+                var val = scope.Track(isChecked);
                 if (checkBox.IsChecked != val)
                     checkBox.IsChecked = val;
                 checkedChanged?.Invoke(val);

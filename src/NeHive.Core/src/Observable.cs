@@ -69,7 +69,7 @@ public static partial class Reactive
     extension(Scope scope)
     {
         // 从 Signal 创建流
-        public ReactiveFlow<T> CreateReactiveFlow<T>(Signal<T> signal)
+        public ReactiveFlow<T> CreateReactiveFlow<T>(ReadOnlySignal<T> signal)
         {
             return new ReactiveFlow<T>(scope, (out value) =>
             {
@@ -78,8 +78,8 @@ public static partial class Reactive
             });
         }
 
-        // 从 Accessor 创建流
-        // public ReactiveFlow<T> CreateReactiveFlow<T>(Accessor<T> accessor)
+        // 从 ReadOnlySignal 创建流
+        // public ReactiveFlow<T> CreateReactiveFlow<T>(ReadOnlySignal<T> accessor)
         // {
         //     return new ReactiveFlow<T>(scope, (out value) =>
         //     {

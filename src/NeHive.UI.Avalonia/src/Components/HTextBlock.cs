@@ -170,7 +170,7 @@ public static partial class BaseComponent
         uiScope.CreateEffect(epochScope =>
         {
             if (style is null) return;
-            var styleValue = epochScope.Pull(style);
+            var styleValue = epochScope.Track(style);
             ApplyStyle(styleValue);
         });
 

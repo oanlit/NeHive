@@ -382,7 +382,7 @@ public static partial class BaseComponent
             ApplyStyle(state.CurrentStyle);
             uiScope.CreateEffect(epochScope =>
             {
-                var styleValue = epochScope.Pull(style);
+                var styleValue = epochScope.Track(style);
                 state.BaseStyle = styleValue.Base;
                 state.Variants = styleValue.Variants;
                 state.CurrentStyle = StyleSet.Copy(state.BaseStyle);

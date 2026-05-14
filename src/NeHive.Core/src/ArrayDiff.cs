@@ -319,12 +319,9 @@ internal class DenseBuffer<T> : IReadOnlyList<T>
 }
 
 public class ArrayMapMemo<TItem, TMap, TKey> :
-    Accessor<IReadOnlyList<TMap>>
+    ReadOnlySignal<IReadOnlyList<TMap>>
     where TItem : notnull where TKey : notnull
 {
-    // public IReadOnlyList<TMap> RxValue => _mapCache.ReadSignal();
-    // public IReadOnlyList<TMap> Value => _mapCache.Value;
-
     public bool IsInvalid { get; private set; }
 
     private readonly ScopeNode _scope;
@@ -346,10 +343,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         _mapFn = mapFn;
         _keyFn = keyFn;
         _scope = _createSelfScope();
-        // _mapCache = _createMapCache();
-        ValueSignal = _createMapCache();
-        RxValueGetter = () => ValueSignal.ReadSignal();
-        ValueGetter = () => ValueSignal.Value;
+        InternalSignal = _createMapCache();
     }
 
     public ArrayMapMemo(Accessor<IReadOnlyList<TItem>> sourceListSignal,
@@ -362,9 +356,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         _indexSignals = [];
         _scope = _createSelfScope();
         // _mapCache = _createMapCache();
-        ValueSignal = _createMapCache();
-        RxValueGetter = () => ValueSignal.ReadSignal();
-        ValueGetter = () => ValueSignal.Value;
+        InternalSignal = _createMapCache();
     }
 
     private ScopeNode _createSelfScope()

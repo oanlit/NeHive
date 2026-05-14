@@ -620,17 +620,17 @@ public class BaseTest
         Assert.Equal(12, observed); // 不能出现 3、11 等中间值
     }
 
-    void TestReadOnlySignal(Accessor<int> accessor)
+    void TestAccessor(Accessor<int> readOnlySignal)
     {
     }
 
     [Fact]
-    public void ReadOnlySignal_Test()
+    public void Accessor_Test()
     {
         var a = new Signal<int>(1);
         var p = () => a.RxValue;
-        TestReadOnlySignal(1);
-        TestReadOnlySignal(p);
-        TestReadOnlySignal(a);
+        TestAccessor(1);
+        TestAccessor(p);
+        TestAccessor(a);
     }
 }
