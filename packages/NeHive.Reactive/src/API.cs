@@ -20,15 +20,38 @@
 
 namespace NeHive.Reactive;
 
+/// <summary>
+/// Core static utilities for the NeHive reactive runtime, providing batch operations,
+/// untracking, disposal registration, and scope extensions.
+/// </summary>
 public static partial class Rx
 {
+    /// <summary>
+    /// Batches reactive updates to prevent redundant effect and computed executions.
+    /// All signal changes inside the action are flushed once at the end of the batch.
+    /// </summary>
+    /// <param name="fn">The action containing reactive state modifications</param>
+    /// <example>
+    /// <code>
+    /// var signal = new MutSignal&lt;int&gt;(0);
+    /// using var effect = new Effect(() => Console.WriteLine(signal.RxValue));
+    ///
+    /// Rx.Batch(() =>
+    /// {
+    ///     signal.RxValue = 1;
+    ///     signal.RxValue = 2;
+    ///     signal.RxValue = 3;
+    /// });
+    /// // Effect runs only once with value 3
+    /// </code>
+    /// </example>
     public static void Batch(Action fn)
     {
         ExecuteNode.StartBatch();
         fn();
         ExecuteNode.EndBatch();
     }
-
+    
     public static T Batch<T>(Func<T> fn)
     {
         ExecuteNode.StartBatch();
@@ -37,11 +60,37 @@ public static partial class Rx
         return result;
     }
 
+    /// <summary>
+    /// Registers a cleanup action to run when the current reactive scope is disposed.
+    /// </summary>
+    /// <param name="fn">The cleanup action to execute on disposal</param>
+    /// <example>
+    /// <code>
+    /// using var effect = new Effect(() =>
+    /// {
+    ///     Rx.OnDispose(() => Console.WriteLine("Cleaning up"));
+    /// });
+    /// effect.Dispose(); // Prints "Cleaning up"
+    /// </code>
+    /// </example>
     public static void OnDispose(Action fn)
     {
         Scope.CurrentScope.OnDispose += fn;
     }
 
+    /// <summary>
+    /// Executes a function without establishing reactive dependencies.
+    /// Signal reads inside this function will not trigger effects or computed values.
+    /// </summary>
+    /// <param name="fn">The function to execute without tracking</param>
+    /// <returns>The result of the function</returns>
+    /// <example>
+    /// <code>
+    /// var signal = new MutSignal&lt;int&gt;(10);
+    /// int value = Rx.Untrack(() => signal.RxValue);
+    /// // Reading signal does not create a dependency
+    /// </code>
+    /// </example>
     public static T Untrack<T>(Func<T> fn)
         => ReactiveContext.Untrack(fn);
 
@@ -57,6 +106,21 @@ public static partial class Rx
 
     extension(Scope scope)
     {
+        /// <summary>
+        /// Creates a reactive effect that runs immediately and re-runs when its dependencies change.
+        /// </summary>
+        /// <param name="fn">The effect execution logic</param>
+        /// <returns>A disposable Effect instance</returns>
+        /// <example>
+        /// <code>
+        /// var signal = new MutSignal&lt;int&gt;(0);
+        /// using var effect = new Effect(() =>
+        /// {
+        ///     Console.WriteLine("Value: " + signal.RxValue);
+        /// });
+        /// signal.RxValue = 1; // Triggers effect
+        /// </code>
+        /// </example>
         public Effect CreateEffect(Action fn)
         {
             ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
@@ -75,6 +139,22 @@ public static partial class Rx
             return new Effect(fn, scope);
         }
 
+        /// <summary>
+        /// Creates a cached computed value that recalculates only when its dependencies change.
+        /// </summary>
+        /// <typeparam name="T">The type of the computed value</typeparam>
+        /// <param name="fn">The computation function</param>
+        /// <param name="value">Optional initial value</param>
+        /// <returns>A disposable Computed reactive value</returns>
+        /// <example>
+        /// <code>
+        /// var signal = new MutSignal&lt;int&gt;(2);
+        /// var computed = new Computed&lt;int&gt;(() => signal.RxValue * 2);
+        /// Console.WriteLine(computed.RxValue); // 4
+        /// signal.RxValue = 3;
+        /// Console.WriteLine(computed.RxValue); // 6
+        /// </code>
+        /// </example>
         public Computed<T> CreateComputed<T>(Func<T, T> fn, T? value = default)
         {
             ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
@@ -107,9 +187,22 @@ public static partial class Rx
     }
 }
 
+/// <summary>
+/// Read-only reactive signal interface providing both tracked and untracked value access.
+/// </summary>
+/// <typeparam name="T">The type of the signal value</typeparam>
 public interface ISignal<out T>
 {
+    /// <summary>
+    /// Gets the current value **with reactive tracking**.
+    /// When accessed inside an Effect or Computed, it automatically creates a dependency.
+    /// </summary>
     public T RxValue { get; }
+    
+    /// <summary>
+    /// Gets the current value **without reactive tracking**.
+    /// Accessing Value never creates dependencies, so Effects or Computed will not react to changes.
+    /// </summary>
     public T Value { get; }
 }
 
@@ -194,20 +287,47 @@ public class Signal<T> : Signal, ISignal<T>
     }
 }
 
+/// <summary>
+/// Mutable reactive signal that supports read (tracked/untracked) and write operations.
+/// </summary>
+/// <typeparam name="T">Value type</typeparam>
+/// <param name="value">Initial value</param>
 public class MutSignal<T>(T value) : Signal<T>(new SignalState<T>(value)),
     ISetOnlySignal<T>
 {
+    /// <summary>
+    /// Gets or sets the value **with full reactivity**.
+    /// Get: automatically tracks dependencies for Effects and Computed.
+    /// Set: notifies all observers.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var signal = new MutSignal&lt;int&gt;(0);
+    /// // Automatically tracks
+    /// new Effect(() => Console.WriteLine(signal.RxValue));
+    /// </code>
+    /// </example>
     public new T RxValue
     {
         get => InternalSignal.ReadSignal();
         set => InternalSignal.WriteSignal(value);
     }
-
+    
     public void NotifySet(T value)
     {
         InternalSignal.WriteSignal(value);
     }
 
+    /// <summary>
+    /// Updates the value using a function that receives the current value.
+    /// </summary>
+    /// <param name="value">A function that returns the new value</param>
+    /// <example>
+    /// <code>
+    /// var signal = new MutSignal&lt;int&gt;(5);
+    /// signal.NotifySet(x => x * 2); // value becomes 10
+    /// </code>
+    /// </example>
     public void NotifySet(Func<T, T> value)
     {
         InternalSignal.WriteSignal(value(InternalSignal.Value));
@@ -224,6 +344,18 @@ public interface IScope : IDisposable
     public event Action OnDispose;
 }
 
+/// <summary>
+/// Reactive scope for managing lifecycle, cleanup, and ownership of effects, computed values, and async memos.
+/// Scopes form a hierarchical tree for nested disposal.
+/// </summary>
+/// <example>
+/// <code>
+/// using var scope = new Scope();
+/// var signal = new MutSignal&lt;int&gt;(0);
+/// var effect = scope.CreateEffect(() => Console.WriteLine(signal.RxValue));
+/// scope.Dispose(); // Effect stops reacting
+/// </code>
+/// </example>
 public class Scope : IScope
 {
     private static readonly Dictionary<ScopeNode, Scope> ScopeHolder = [];
@@ -341,15 +473,22 @@ public class Scope : IScope
         => RunInScope(Util.WrapAction(fn));
 }
 
+/// <summary>
+/// Provides manual dependency tracking for Effects in non-auto-tracking mode.
+/// </summary>
 public class EpochScope : Scope
 {
     private readonly ExecuteNode _tracker;
-
+    
     internal EpochScope(ExecuteNode tracker) : base(tracker)
     {
         _tracker = tracker;
     }
 
+    /// <summary>
+    /// Manually creates a dependency on a signal.
+    /// Required when using Effect(EpochScope => ...) overloads.
+    /// </summary>
     public T Pull<T>(Signal<T> signal)
     {
         return _tracker.Pull(signal.InternalSignal);
@@ -363,6 +502,10 @@ public class EpochScope : Scope
         }
     }
 
+    /// <summary>
+    /// Manually tracks dependencies by executing a function.
+    /// Any <see cref="RxValue"/> access inside the function will be tracked.
+    /// </summary>
     public T Track<T>(Func<T> trackFn)
     {
         return _tracker.Track(trackFn);
@@ -381,11 +524,38 @@ public class EpochScope : Scope
     }
 }
 
+/// <summary>
+/// Reactive effect that automatically or manually tracks dependencies re-runs when its dependencies change.
+/// Supports lifecycle cleanup and scoped ownership.
+/// </summary>
+/// <example>
+/// <code>
+/// var signal = new MutSignal&lt;int&gt;(0);
+/// using var effect = new Effect(() =>
+/// {
+///     Console.WriteLine($"Effect ran: {signal.RxValue}");
+/// });
+/// signal.RxValue = 1; // Triggers effect
+/// </code>
+/// </example>
 public class Effect : IDisposable
 {
     private readonly ScopeNode _scope;
     public bool IsInvalid { get; private set; }
 
+    /// <summary>
+    /// Creates an Effect with **automatic dependency tracking**.
+    /// Any access to <see cref="RxValue"/> inside the action will create reactive bindings.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var signal = new MutSignal&lt;int&gt;(0);
+    /// new Effect(() => {
+    ///     // Automatically tracks signal
+    ///     Console.WriteLine(signal.RxValue);
+    /// });
+    /// </code>
+    /// </example>
     public Effect(Action executeFn, Scope? scope = null)
     {
         var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
@@ -408,10 +578,44 @@ public class Effect : IDisposable
         }
     }
 
+    /// <summary>
+    /// Creates an Effect with **manual dependency tracking**.
+    /// <see cref="RxValue"/> access will NOT automatically bind dependencies.
+    /// You must explicitly call <see cref="EpochScope.Pull{T}(Signal{T})"/> or <see cref="EpochScope.Track(Action)"/>.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var signal = new MutSignal&lt;int&gt;(0);
+    /// new Effect(epoch => {
+    ///     // RxValue does NOT track automatically
+    ///     var v = signal.RxValue;
+    ///     // Must manually pull to bind dependency
+    ///     epoch.Pull(signal);
+    /// });
+    /// </code>
+    /// </example>
     public Effect(Action<EpochScope> fn, Scope? scope = null) : this(_ => fn, scope)
     {
     }
 
+    /// <summary>
+    /// Creates an Effect with **setup + execution separation**.
+    /// Setup runs ONCE. Execution runs reactively with manual tracking.
+    /// <see cref="RxValue"/> does not auto-bind in the execution phase.
+    /// Use <see cref="EpochScope.Pull{T}(Signal{T})"/> or <see cref="EpochScope.Track(Action)"/>.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var signal = new MutSignal&lt;int&gt;(0);
+    /// new Effect(scope => {
+    ///     // Setup: runs once
+    ///     return epoch => {
+    ///         // Execution: runs reactively
+    ///         epoch.Pull(signal);
+    ///     };
+    /// });
+    /// </code>
+    /// </example>
     public Effect(Func<Scope, Action<EpochScope>> setupFn, Scope? scope = null)
     {
         var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
@@ -448,6 +652,19 @@ public class Effect : IDisposable
     }
 }
 
+/// <summary>
+/// Cached reactive computed value that recalculates only when dependencies change.
+/// Provides both tracked and untracked value access.
+/// </summary>
+/// <typeparam name="T">Type of computed value</typeparam>
+/// <example>
+/// <code>
+/// var a = new MutSignal&lt;int&gt;(2);
+/// var b = new MutSignal&lt;int&gt;(3);
+/// var sum = new Computed&lt;int&gt;(() => a.RxValue + b.RxValue);
+/// Console.WriteLine(sum.RxValue); // 5
+/// </code>
+/// </example>
 public class Computed<T> : Signal<T>
 {
     private readonly ScopeNode _scope;
@@ -485,6 +702,12 @@ public class Computed<T> : Signal<T>
         }
     }
 
+    /// <summary>
+    /// Creates a computed value from a simple function.
+    /// </summary>
+    /// <param name="fn">Computation function</param>
+    /// <param name="value">Optional initial value</param>
+    /// <param name="scope">Owner scope</param>
     public Computed(Func<T, T> fn, T? value = default, Scope? scope = null)
     {
         _fn = fn;
@@ -548,6 +771,21 @@ public enum AsyncMemoState
     IsInvalid
 }
 
+/// <summary>
+/// Reactive asynchronous memo that resolves a task and tracks dependencies.
+/// Provides reactive state, loading status, error, and value.
+/// </summary>
+/// <typeparam name="T">Type of async result</typeparam>
+/// <example>
+/// <code>
+/// var source = new MutSignal&lt;int&gt;(1);
+/// var asyncMemo = new AsyncMemo&lt;int&gt;(async () =>
+/// {
+///     await Task.Delay(10);
+///     return source.RxValue * 2;
+/// });
+/// </code>
+/// </example>
 public class AsyncMemo<T> : Signal<T?>
 {
     private readonly ScopeNode _scope;
