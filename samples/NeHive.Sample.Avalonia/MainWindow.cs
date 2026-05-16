@@ -8,23 +8,20 @@ namespace NeHive.Sample.Avalonia;
 
 public class MainWindow : Window
 {
-    private readonly IElement _counter;
+    private readonly IElement _mainNavDemo;
 
     public MainWindow()
     {
-        // _counter = DemoComponent.ShowDemo();
-        // _counter = DemoComponent.ForEachDemo();
-        _counter = DemoComponent.SwitchDemo();
-        // _counter = DemoComponent.GridDemo();
-        // _counter = DemoComponent.AbsoluteDemo();
-        // _counter = DemoComponent.ScrollDemo();
-        // _counter = DemoComponent.TextBoxDemo();
-        Content = _counter.Content;
+        Width = 1000;
+        Height = 600;
+        Title = "NeHive UI Avalonia Demo";
+        _mainNavDemo = DemoComponent.MainNavDemo();
+        Content = _mainNavDemo.Content;
     }
 
     protected override void OnClosed(EventArgs e)
     {
-        _counter.Dispose();
+        _mainNavDemo.Dispose();
         base.OnClosed(e);
     }
 }

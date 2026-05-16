@@ -3,10 +3,14 @@ namespace NeHive.Reactive;
 using System.Collections;
 using System.Collections.ObjectModel;
 
-// 不要把它当成普通的集合，尤其是在Effect环境上，所以你最好知道它是响应式类型
+/// <summary>
+/// Don't treat it as a regular collection,
+/// especially in the Track environment of Effect.
+/// So it's best for you to be aware that it is a reactive type.
+/// </summary>
+/// <typeparam name="T"></typeparam>
 public interface IReactiveCollection<out T> : IEnumerable<T>
 {
-    
 }
 
 public class ListStore<T> : IReactiveCollection<T>
@@ -53,7 +57,7 @@ public class ListStore<T> : IReactiveCollection<T>
             _oldValueSignals[index] = signal;
         }
 
-        _ = signal.RxValue; // 访问索引信号以建立依赖关系
+        _ = signal.RxValue; // Access the index signal to establish the dependency relationship
     }
 
     private void _updateSignalValue(int index, T value)
@@ -85,7 +89,12 @@ public class ListStore<T> : IReactiveCollection<T>
         }
     }
 
-    // 新增API，防止索引丢失报错
+    /// <summary>
+    /// Prevent index loss errors
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="value"></param>
+    /// <returns></returns>
     public bool TryGetValue(int index, out T? value)
     {
         value = default;
@@ -203,7 +212,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public bool Contains(T item)
     {
-        _ = _versionMutSignal.RxValue; // 访问版本信号以建立依赖关系
+        _ = _versionMutSignal.RxValue; // Access the index signal to establish the dependency relationship
         return _items.Contains(item);
     }
 
@@ -281,7 +290,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public IEnumerator<T> GetEnumerator()
     {
-        _ = _versionMutSignal.RxValue; // 访问版本信号以建立依赖关系
+        _ = _versionMutSignal.RxValue; // Access the index signal to establish the dependency relationship
         return _items.GetEnumerator();
     }
 
@@ -301,7 +310,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     public int IndexOf(T item)
     {
-        _ = _versionMutSignal.RxValue; // 访问版本信号以建立依赖关系
+        _ = _versionMutSignal.RxValue; // Access the index signal to establish the dependency relationship
         return _items.IndexOf(item);
     }
 
@@ -424,7 +433,7 @@ public class ListStore<T> : IReactiveCollection<T>
     }
 
     /// <summary>
-    /// 批量修改以提高性能，尤其是修改结构
+    /// Batch modification to enhance performance, especially for structural changes
     /// </summary>
     /// <param name="fn"></param>
     public void BatchModify(Action<ListStore<T>> fn)

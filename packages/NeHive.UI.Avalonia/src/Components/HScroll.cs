@@ -88,8 +88,8 @@ public class HScrollStyle(
         return new Computed<HScrollStyle>(() =>
         {
             var str = text.RxValue;
-            
-            StyleParser.Parse(str,ref result);
+
+            StyleParser.Parse(str, ref result);
             return new HScrollStyle(
                 result.Margin,
                 result.Width,
@@ -150,7 +150,7 @@ public class HScrollProp : ISingleChildrenProp
                 return parsed.RxValue.Merge(style.RxValue);
             });
         }
-        
+
         else if (strStyle != null)
         {
             Style = HScrollStyle.Parse(strStyle.RxValue);
@@ -174,12 +174,22 @@ public class HScrollProp : ISingleChildrenProp
     }
 }
 
+public class HScrollExpose(ScrollViewer scroll)
+{
+    public void ScrollToHome()
+        => scroll.ScrollToHome();
+
+    public void ScrollToEnd()
+        => scroll.ScrollToEnd();
+}
+
 public static partial class BaseComponent
 {
-    private static readonly Component<HScrollProp> CompScrollViewer = new((prop, uiScope) =>
+    public static IElement HScrollViewer(out HScrollExpose expose, HScrollProp prop)
     {
+        var uiScope = new UiScope();
         var scroll = new ScrollViewer();
-        
+
         // 设置唯一的内容
         var stack = new StackPanel();
 
@@ -187,7 +197,22 @@ public static partial class BaseComponent
         {
             if (prop.Style == null) return;
             var style = scope.Track(prop.Style);
+            ApplyStyle(style);
+        });
 
+        foreach (var child in prop)
+            stack.Children.Add(child.Content);
+
+        scroll.Content = stack;
+
+        scroll.ScrollToHome();
+
+        expose = new HScrollExpose(scroll);
+
+        return new Element(uiScope, scroll);
+
+        void ApplyStyle(HScrollStyle style)
+        {
             var ori = style.Orientation;
             if (ori == Orientation.Horizontal)
             {
@@ -215,55 +240,47 @@ public static partial class BaseComponent
                 scroll.Width = style.Width.Value;
                 // stack.Width = style.Width.RxValue;
             }
+
             if (style.Height.HasValue)
             {
                 scroll.Height = style.Height.Value;
                 // stack.Height = style.Height.RxValue;
             }
+
             if (style.MinWidth.HasValue)
             {
                 scroll.MinWidth = style.MinWidth.Value;
                 // stack.MinWidth = style.MinWidth.RxValue;
             }
+
             if (style.MaxWidth.HasValue)
             {
                 scroll.MaxWidth = style.MaxWidth.Value;
                 // stack.MaxWidth = style.MaxWidth.RxValue;
             }
+
             if (style.MinHeight.HasValue)
             {
                 scroll.MinHeight = style.MinHeight.Value;
                 // stack.MinHeight = style.MinHeight.RxValue;
             }
+
             if (style.MaxHeight.HasValue)
             {
                 scroll.MaxHeight = style.MaxHeight.Value;
                 // stack.MaxHeight = style.MaxHeight.RxValue;
             }
+
             if (style.Opacity.HasValue)
                 scroll.Opacity = style.Opacity.Value;
             if (style.IsVisible.HasValue)
                 scroll.IsVisible = style.IsVisible.Value;
             // Cursor 和 Effect 按需添加
-        });
-        
-        foreach (var child in prop)
-            stack.Children.Add(child.Content);
+        }
+    }
 
-        scroll.Content = stack;
-
-        return new Element(uiScope, scroll);
-    });
-
-    /// <summary>
-    /// 创建滚动容器。示例：
-    /// <code>
-    /// HScrollViewer(new(orientation: Orientation.Vertical, strStyle: "m-4 p-2 bg-lightgray rounded-lg border-slate-500 border-w-1"))
-    /// {
-    ///     HTextBlock(longText, strStyle: "text-base")
-    /// }
-    /// </code>
-    /// </summary>
     public static IElement HScrollViewer(HScrollProp prop)
-        => CompScrollViewer.Create(prop);
+    {
+        return HScrollViewer(out _, prop);
+    }
 }

@@ -1,3 +1,23 @@
+//-----------------------------------------------------------------------------
+// NeHive Reactive Runtime
+//
+// Early versions of this runtime were heavily inspired by the SolidJS
+// reactive runtime architecture.
+//
+// Core concepts such as fine-grained dependency tracking,
+// owner/scope lifecycle management, and reactive scheduling
+// have been adapted, redesigned, and extensively reimplemented
+// for the .NET ecosystem.
+//
+// SolidJS Original:
+// https://github.com/solidjs/solid
+//
+// SolidJS is licensed under the MIT License.
+// Copyright (c) 2016-2025 Ryan Carniato
+//
+// This file is part of NeHive, released under the MIT License.
+//-----------------------------------------------------------------------------
+
 namespace NeHive.Reactive;
 
 public static partial class Rx

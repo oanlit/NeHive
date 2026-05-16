@@ -1,5 +1,10 @@
+[![Language](https://img.shields.io/badge/README-English-green.svg)](README.md)
+[![Language](https://img.shields.io/badge/README-中文-green.svg)](README-zh.md)
+
 # NeHive.Reactive
 A lightweight high-performance reactive runtime for .NET, built on a single-threaded dependency graph model with signal-driven fine-grained state updates.
+
+This project is in early development (0.1.x series). APIs are subject to change.
 
 [![NuGet](https://img.shields.io/nuget/v/NeHive.Reactive.svg)](https://www.nuget.org/packages/NeHive.Reactive)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -53,33 +58,38 @@ dotnet add package NeHive.Reactive
 
 # Quick Start
 
-## 1. Basic Signal + Effect Reactivity
+## 1. Basic Reactivity
 
 ```csharp
 using NeHive.Reactive;
 
-// Create scope
 using var scope = new Scope();
 
-// Define reactive state
 var count = new MutSignal<int>(0);
 
-// Automatically tracks dependencies
 scope.CreateEffect(() =>
 {
-    Console.WriteLine($"Current Count: {count.RxValue}");
+    Console.WriteLine(
+        $"Count: {count.RxValue}");
 });
 
-// Update state
-count.RxValue = 10;
-count.RxValue = 99;
+count.RxValue = 1;
+count.RxValue = 2;
+```
+
+Output:
+
+```text
+Count: 0
+Count: 1
+Count: 2
 ```
 
 ---
 
-## 2. Computed Values
+## 2. Computed State
 
-Computed values are cached automatically and only recomputed when dependencies change.
+Computed values cache automatically and only update when dependencies change.
 
 ```csharp
 using var scope = new Scope();
@@ -87,137 +97,154 @@ using var scope = new Scope();
 var price = new MutSignal<double>(100);
 var quantity = new MutSignal<int>(2);
 
-// Computed value
-var totalPrice = new Computed<double>(
+var total = new Computed<double>(
     () => price.RxValue * quantity.RxValue);
 
 scope.CreateEffect(() =>
 {
-    Console.WriteLine($"Total Price: {totalPrice.RxValue}");
+    Console.WriteLine(
+        $"Total: {total.RxValue}");
 });
 
-price.RxValue = 199;
+price.RxValue = 150;
 quantity.RxValue = 5;
 ```
 
 ---
 
-## 3. Reactive Flow
-Debounce, throttle, filtering, and mapping for high-frequency event streams.
+## 3. Async Reactive State
+
+`AsyncMemo<T>` provides reactive async state with loading and error tracking.
 
 ```csharp
 using var scope = new Scope();
 
-var inputSignal = new MutSignal<int>(0);
+var userId = new MutSignal<int>(1);
 
-var flow = scope.CreateReactiveFlow(inputSignal)
-    .ThrottleLatest(500)
-    .Filter(v => v > 5)
-    .Map(v => v * 10)
-    .PushEffect(val =>
-    {
-        Console.WriteLine(
-            $"{DateTime.Now:HH:mm:ss.fff} Output: {val}");
-    });
-
-// Rapid updates
-for (int i = 1; i <= 10; i++)
+var user = scope.CreateAsyncMemo(async epoch =>
 {
-    inputSignal.RxValue = i;
-    await Task.Delay(100);
-}
+    var id = epoch.Pull(userId);
 
-await Task.Delay(1000);
+    await Task.Delay(500);
 
-flow.Dispose();
+    return $"User-{id}";
+});
+
+scope.CreateEffect(() =>
+{
+    Console.WriteLine(
+        $"Loading: {user.RxLoading}");
+
+    Console.WriteLine(
+        $"Value: {user.RxValue}");
+});
+
+userId.RxValue = 2;
 ```
 
 ---
 
-## 4. Reactive ListStore
+## 4. Reactive Flow
 
-Fine-grained tracking for item updates, insertion, removal, sorting, and batch modifications.
+ReactiveFlow provides lightweight stream-style operators.
 
 ```csharp
 using var scope = new Scope();
 
-// Nullable reactive list
-var listStore = new ListStore<int?>(
-    [1, 2, 3, null, 5]);
+var input = new MutSignal<int>(0);
 
-// Observe count changes
+var effect = scope
+    .CreateReactiveFlow(input)
+    .ThrottleLatest(500)
+    .Filter(v => v > 3)
+    .Map(v => v * 10)
+    .PushEffect(v =>
+    {
+        Console.WriteLine(
+            $"Output: {v}");
+    });
+
+for (var i = 0; i < 10; i++)
+{
+    input.RxValue = i;
+    await Task.Delay(100);
+}
+```
+
+---
+
+## 5. Reactive Collections
+
+```csharp
+using var scope = new Scope();
+
+var list = new ListStore<int>(
+    [1, 2, 3]);
+
 scope.CreateEffect(() =>
 {
     Console.WriteLine(
-        $"List Count: {listStore.Count}");
+        $"Count: {list.Count}");
 });
 
-// Observe specific index
 scope.CreateEffect(() =>
 {
-    listStore.TryGetValue(0, out var first);
+    list.TryGetValue(0, out var value);
 
     Console.WriteLine(
-        $"First Item: {first ?? -1}");
+        $"First: {value}");
 });
 
-// Batch modification
-listStore.BatchModify(list =>
+list.BatchModify(items =>
 {
-    list[0] = 999;
-    list.Add(666);
+    items[0] = 999;
+    items.Add(4);
 });
 
-listStore.Reverse();
-listStore.Sort();
-listStore.Clear();
+list.Sort();
+list.Reverse();
 ```
 
 ---
 
 # Core APIs
 
-## Core Runtime
-- `Scope`  
-  Reactive scope container and lifecycle manager
+## Runtime Primitives
 
-- `Signal<T>`  
-  Readonly reactive state source
-
-- `MutSignal<T>`  
-  Mutable reactive state source
-
-- `Computed<T>`  
-  Cached readonly computed state
-
-- `Effect`  
-  Automatically tracked reactive side effects
-
-- `AsyncMemo<T>`  
-    Cached asynchronous reactive value with loading/error state management
+| API            | Description                             |
+| -------------- | --------------------------------------- |
+| `Scope`        | Reactive lifecycle container            |
+| `Signal<T>`    | Readonly reactive state                 |
+| `MutSignal<T>` | Mutable reactive state                  |
+| `Computed<T>`  | Cached computed signal                  |
+| `Effect`       | Reactive side effect                    |
+| `AsyncMemo<T>` | Async reactive computed value           |
+| `Selector<T>`  | Key-based selective dependency tracking |
+| `Context<T>`   | Scoped dependency/context propagation   |
 
 ---
 
-## ReactiveFlow
+## Runtime Utilities
 
-Composable reactive stream operators.
-
-- `Filter()`  
-  Conditional filtering
-
-- `Map()`  
-  Data transformation
-
-- `Debounce(ms)`  
-  Debounce updates
-
-- `ThrottleLatest(ms)`  
-  Throttle and emit latest value
-
-- `PushEffect()`  
-  Subscribe and consume reactive flow
+| API              | Description                             |
+| ---------------- | --------------------------------------- |
+| `Rx.Batch()`     | Batch signal updates                    |
+| `Rx.Untrack()`   | Read values without dependency tracking |
+| `Rx.OnDispose()` | Register cleanup callbacks              |
 
 ---
+
+## ReactiveFlow Operators
+
+| API                | Description                            |
+| ------------------ | -------------------------------------- |
+| `Filter()`         | Conditional filtering                  |
+| `Map()`            | Value transformation                   |
+| `Debounce()`       | Debounced updates                      |
+| `ThrottleLatest()` | Throttled latest emission              |
+| `PushEffect()`     | Terminal effect subscription           |
+| `PushComputed()`   | Convert flow into computed state       |
+| `PushAsyncMemo()`  | Convert flow into async reactive state |
 
 ## Reactive Collections
 
@@ -247,18 +274,12 @@ Features:
 
 ---
 
-# Ecosystem
+## Inspirations
 
-- **NeHive.Reactive**  
-  Reactive runtime engine
+NeHive.Reactive is heavily inspired by the ideas and research behind:
 
-- **NeHive.UI.Avalonia**  
-  Cross-platform declarative UI DSL built on Avalonia
-    - Pure C# UI construction
-    - No XAML
-    - Tailwind-style string-based styling
-    - Built-in control flow components:
-      `ForEach`, `Show`, `Switch`, `Loading`
+* [SolidJS](https://github.com/solidjs/solid)
+* [ReactiveX](https://github.com/dotnet/reactive)
 
 ---
 
@@ -274,7 +295,4 @@ Features:
 ---
 
 # License
-
-**MIT License**
-
-Free for commercial and personal use.
+MIT

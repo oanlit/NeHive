@@ -1,3 +1,20 @@
+// Reactive array diffing utilities inspired by SolidJS and S-array.
+//
+// This implementation adapts SolidJS's reactive array reconciliation
+// strategy (mapArray / indexArray) to a .NET-based reactive runtime.
+//
+// Key differences from SolidJS:
+// - Custom Scope / EpochScope execution model
+// - Signal graph tracked via ExecuteNode instead of JS Proxy tracking
+// - Deterministic lifecycle management via Scope disposal tree
+//
+// References:
+// https://github.com/solidjs/solid
+// https://github.com/adamhaile/S-array
+//
+// This file is fully reimplemented for the NeHive reactive system
+// and is not a direct port.
+
 namespace NeHive.Reactive;
 
 using System.Collections;
@@ -83,14 +100,9 @@ public static class ArrayDiffUtil
         for (var newIndex = newSufIndex; newIndex >= preIndex; newIndex--)
         {
             var key = keyFn(newList[newIndex]);
-
-            // var lastRepeatIndex = newIndices.TryGetValue(key, out var v)
-            //     ? v
-            //     : noIndex;
             var lastRepeatIndex = newIndices.GetValueOrDefault(key, noIndex);
-
+            
             newIndicesNext[newIndex] = lastRepeatIndex;
-
             newIndices[key] = newIndex;
         }
 
@@ -98,10 +110,7 @@ public static class ArrayDiffUtil
         for (var oldIndex = preIndex; oldIndex <= oldSufIndex; oldIndex++)
         {
             var key = keyFn(oldList[oldIndex]);
-
-            var newIndex = newIndices.TryGetValue(key, out var v)
-                ? v
-                : noIndex;
+            var newIndex = newIndices.GetValueOrDefault(key, noIndex);
 
             if (newIndex == noIndex)
             {

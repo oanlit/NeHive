@@ -208,7 +208,9 @@ public static class StyleParser
 
         // 尺寸
         ["w-"] = ApplyWidth,
+        ["w-full"] = (_, set) => set.HorizontalAlignment = HorizontalAlignment.Stretch,
         ["h-"] = ApplyHeight,
+        ["h-full"] = (_, set) => set.VerticalAlignment = VerticalAlignment.Stretch,
         ["min-w-"] = ApplyMinWidth,
         ["max-w-"] = ApplyMaxWidth,
         ["min-h-"] = ApplyMinHeight,

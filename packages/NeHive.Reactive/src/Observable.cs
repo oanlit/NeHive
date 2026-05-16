@@ -1,3 +1,11 @@
+//-----------------------------------------------------------------------------
+// NeHive Reactive Flow & Observable Extensions
+//
+// This module implements reactive stream operators (Filter/Map/Debounce/Throttle)
+// inspired by ReactiveX (Rx.NET / RxJS) design patterns.
+// Implemented independently for NeHive reactive runtime.
+//-----------------------------------------------------------------------------
+
 namespace NeHive.Reactive;
 
 using System;
@@ -255,7 +263,7 @@ public static class ReactiveFlowExtensions
 }
 
 /// <summary>
-/// 只有调用这里，流才开始运行
+/// Only by calling here will the flow start to run.
 /// </summary>
 public static class ReactiveFlowTerminals
 {

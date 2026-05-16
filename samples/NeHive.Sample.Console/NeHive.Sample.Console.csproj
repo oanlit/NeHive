@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\NeHive.Reactive\src\NeHive.Reactive.csproj" />
-<!--        <ProjectReference Include="..\..\src\NeHive.Generator\src\NeHive.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />-->
+        <ProjectReference Include="..\..\packages\NeHive.Reactive\src\NeHive.Reactive.csproj" />
+<!--        <ProjectReference Include="..\..\packages\NeHive.Generator\src\NeHive.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />-->
     </ItemGroup>
 
     <PropertyGroup>

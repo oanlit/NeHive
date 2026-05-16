@@ -2,14 +2,16 @@
 
     <PropertyGroup>
         <TargetFrameworks>net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+        <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>NeHive.Reactive</RootNamespace>
 
         <PackageId>NeHive.Reactive</PackageId>
-        <Version>0.0.1</Version>
+        <Version>0.1.0</Version>
         <Authors>NeHive</Authors>
         <Description>A single-threaded reactive runtime based on scoped graphs and signal propagation.</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
 
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 
@@ -18,16 +20,16 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
-        <LangVersion>latest</LangVersion>
-
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.SourceLink.GitHub" Version="11.0.100-preview.3.26207.106">
-        <PrivateAssets>all</PrivateAssets>
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      </PackageReference>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+
+        <None Include="README.md" Pack="true" PackagePath="README.md"/>
+        <None Include="README-zh.md" Pack="true" PackagePath="README-zh.md"/>
     </ItemGroup>
 
 </Project>
