@@ -25,13 +25,13 @@ public static partial class ControlFlow
                 if (prop.IfFalse is null) return;
                 var fallback = prop.IfFalse();
                 panel.Children.Add(fallback.Content);
-                epochScope.OnDispose(fallback.Dispose);
+                epochScope.OnDispose += fallback.Dispose;
                 return;
             }
 
             var child = prop.IfTrue();
             panel.Children.Add(child.Content);
-            epochScope.OnDispose(child.Dispose);
+            epochScope.OnDispose += child.Dispose;
         });
         return new Element(uiScope, panel);
     }

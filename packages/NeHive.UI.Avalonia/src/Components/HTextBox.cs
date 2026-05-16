@@ -100,7 +100,7 @@ public static partial class BaseComponent
 
             textBox.Text = signal.RxValue;
 
-            uiScope.OnMount(() =>
+            uiScope.OnMount += () =>
             {
                 textBox.TextChanged += (_, _) =>
                 {
@@ -109,7 +109,7 @@ public static partial class BaseComponent
                     signal.RxValue = newText;
                     textChanged?.Invoke(newText);
                 };
-            });
+            };
 
             uiScope.CreateEffect(scope =>
             {
@@ -135,7 +135,7 @@ public static partial class BaseComponent
         }
 
         // 注册事件
-        uiScope.OnMount(() =>
+        uiScope.OnMount+=() =>
         {
             if (lostFocus != null)
                 textBox.LostFocus += (_, _) => lostFocus();
@@ -143,7 +143,7 @@ public static partial class BaseComponent
                 textBox.GotFocus += (_, _) => gotFocus();
             if (keyDown != null)
                 textBox.KeyDown += (_, e) => keyDown(e);
-        });
+        };
 
         // 这里没有子元素，所以不需要 ISingleChildrenProp 或集合初始化器
         return new Element(uiScope, textBox);
@@ -166,11 +166,11 @@ public static partial class BaseComponent
             if (styleValue.VerticalAlignment.HasValue)
                 textBox.VerticalAlignment = styleValue.VerticalAlignment.Value;
 
-            if (styleValue.TextAlignment.HasValue) 
+            if (styleValue.TextAlignment.HasValue)
                 textBox.TextAlignment = styleValue.TextAlignment.Value;
             if (styleValue.VerticalTextAlignment.HasValue)
                 textBox.VerticalContentAlignment = styleValue.VerticalTextAlignment.Value;
-            if (styleValue.TextWrapping.HasValue) 
+            if (styleValue.TextWrapping.HasValue)
                 textBox.TextWrapping = styleValue.TextWrapping.Value;
 
             if (styleValue.FontSize.HasValue) textBox.FontSize = styleValue.FontSize.Value;

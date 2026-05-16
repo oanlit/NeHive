@@ -49,7 +49,7 @@ public class Element : IElement
 
     private void OnDisposeContent(Control control)
     {
-        Scope.OnDispose(() =>
+        Scope.OnDispose += () =>
         {
             var parent = control.Parent;
             switch (parent)
@@ -68,7 +68,7 @@ public class Element : IElement
                         decorator.Child = null;
                     break;
             }
-        });
+        };
     }
 
     public static IElement WithScope(Func<UiScope, IElement> builder)

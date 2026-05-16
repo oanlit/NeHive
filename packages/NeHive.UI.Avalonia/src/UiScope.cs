@@ -8,20 +8,35 @@ public class UiScope(Scope? parentOwner = null) : Scope(parentOwner)
     private readonly List<Action> _onMountQueue = [];
     private bool _mounted;
 
-    public void OnMount(Action fn)
-    {
-        if (_mounted)
-        {
-            fn();
-            return;
-        }
+    // public void OnMount(Action fn)
+    // {
+    //     if (_mounted)
+    //     {
+    //         fn();
+    //         return;
+    //     }
+    //
+    //     _onMountQueue.Add(fn);
+    // }
 
-        _onMountQueue.Add(fn);
+    public event Action OnMount
+    {
+        add
+        {
+            if (_mounted)
+            {
+                value();
+                return;
+            }
+
+            _onMountQueue.Add(value);
+        }
+        remove => _onMountQueue.Remove(value);
     }
 
     public IElement RootElement(HStackPanelProp prop)
         => BaseComponent.RootElement(prop, this);
-    
+
     internal void RunMount()
     {
         if (_mounted) return;

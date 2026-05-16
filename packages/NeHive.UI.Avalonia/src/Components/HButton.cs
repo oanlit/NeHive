@@ -392,7 +392,7 @@ public static partial class BaseComponent
 
         var expose = new HButtonExpose();
         // 事件挂载
-        uiScope.OnMount(() =>
+        uiScope.OnMount += () =>
         {
             border.PointerPressed += (_, e) =>
             {
@@ -435,7 +435,7 @@ public static partial class BaseComponent
                 state.SetHoverStyle();
                 ApplyStyle(state.CurrentStyle);
             };
-        });
+        };
 
         return new Element<HButtonExpose>(uiScope, border, expose);
 

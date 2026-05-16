@@ -23,8 +23,9 @@ namespace NeHive.Reactive;
 internal interface ISignalState
 {
     List<ExecuteNode> Observers { get; }
+
     List<int> ObserverSlots { get; }
-    ExecuteNode? LastTracker { get; set; }
+
     internal void UpdateIfNeeded(ExecuteNode? ignore = null);
 }
 
@@ -61,8 +62,9 @@ internal static class Common
 internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : ISignalState<T>
 {
     public List<ExecuteNode> Observers { get; set; } = [];
+
     public List<int> ObserverSlots { get; } = [];
-    public ExecuteNode? LastTracker { get; set; } = null;
+
     public Func<T, T, bool> Comparator { get; init; } = comparator ?? Constant.EqualFn;
     public T Value { get; set; } = value;
 
@@ -294,7 +296,6 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         while (Sources.Count != 0)
         {
             var source = Util.RemoveLast(Sources);
-            source.LastTracker = null;
             var index = Util.RemoveLast(SourceSlots);
             var obs = source.Observers;
 
@@ -357,8 +358,7 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
 
     public void Pull(ISignalState signal)
     {
-        if (signal.LastTracker == this) return;
-        signal.LastTracker = this;
+        if (signal.Observers.Count > 0 && signal.Observers[^1] == this) return;
 
         // 建立 Computation 与 MutSignal 的双向引用
         var sSlot = signal.Observers.Count;
@@ -373,7 +373,7 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
 
     public T Pull<T>(ISignalState<T> signal)
     {
-        if (signal.LastTracker == this) return signal.Value;
+        if (signal.Observers.Count > 0 && signal.Observers[^1] == this) return signal.Value;
         Pull((ISignalState)signal);
         return signal.Value;
     }
@@ -704,7 +704,6 @@ internal class ComputedNode<T> : ExecuteNode<T>,
     public Func<T, T, bool> Comparator { get; }
     public List<ExecuteNode> Observers { get; }
     public List<int> ObserverSlots { get; }
-    public ExecuteNode? LastTracker { get; set; }
 
     protected override void UpdateValue(T value) => WriteSignal(value);
 

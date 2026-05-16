@@ -41,7 +41,7 @@ public static partial class ControlFlow
             }
         });
 
-        uiScope.OnDispose(memo.Dispose);
+        uiScope.OnDispose += () => memo.Dispose();
 
         return new Element(uiScope, panel);
     }

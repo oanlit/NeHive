@@ -36,7 +36,7 @@ public static partial class Rx
         var scope = new Scope();
         var signal = new MutSignal<T>(initialValue);
         var subscription = producer.Subscribe(new ObserverSignal<T>(signal));
-        scope.OnDispose(subscription.Dispose);
+        scope.OnDispose += subscription.Dispose;
         return signal;
     }
 

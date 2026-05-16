@@ -48,13 +48,14 @@ NeHive 由三大核心模块构成，分层解耦、各司其职：
 
 ---
 
-## 📦 子项目说明
-- [`src/NeHive.Reactive`](src/NeHive.Reactive)：响应式核心运行时
-- [`src/NeHive.UI.Avalonia`](src/NeHive.UI.Avalonia)：函数式 Avalonia UI 组件库
-- [`src/NeHive.Generator`](src/NeHive.Generator)：源码生成器
-- [`samples`](samples)：控制台 & Avalonia 完整示例工程
+## 📦 项目模块
 
----
+| 模块                                                         | 描述                        | 状态     |
+|------------------------------------------------------------|---------------------------|--------|
+| [`package/NeHive.Reactive`](package/NeHive.Reactive)       | 面向 .NET 的细粒度响应式运行时        | 公开预览版  |
+| [`package/NeHive.UI.Avalonia`](package/NeHive.UI.Avalonia) | 基于 Avalonia 的实验性函数式 UI 框架 | 实验性    |
+| [`package/NeHive.Generator`](package/NeHive.Generator)     | 简化响应式样板代码的源码生成器           | 早期开发阶段 |
+| [`samples`](samples)                                       | 控制台与 Avalonia 示例项目        | 活跃维护中  |
 
 ## 🚀 适用场景
 - 不想写 XAML、不想维护传统绑定的 Avalonia 桌面开发

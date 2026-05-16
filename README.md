@@ -48,12 +48,14 @@ NeHive consists of three core modules, decoupled and each with its own responsib
 
 ---
 
-## 📦 Subproject Description
-- [`src/NeHive.Reactive`](src/NeHive.Reactive): Core reactive runtime
-- [`src/NeHive.UI.Avalonia`](src/NeHive.UI.Avalonia): Functional Avalonia UI component library
-- [`src/NeHive.Generator`](src/NeHive.Generator): Source generator
-- [`samples`](samples): Console & Avalonia complete sample projects
+## 📦 Project Modules
 
+| Module                                                     | Description                                              | Status            |
+|------------------------------------------------------------|----------------------------------------------------------|-------------------|
+| [`package/NeHive.Reactive`](package/NeHive.Reactive)       | Fine-grained reactive runtime for .NET                   | Public Preview    |
+| [`package/NeHive.UI.Avalonia`](package/NeHive.UI.Avalonia) | Experimental functional UI framework built on Avalonia   | Experimental      |
+| [`package/NeHive.Generator`](package/NeHive.Generator)     | Source generator for reactive boilerplate simplification | Early Development |
+| [`samples`](samples)                                       | Console & Avalonia sample projects                       | Active            |
 ---
 
 ## 🚀 Use Cases

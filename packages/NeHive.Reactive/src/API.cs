@@ -39,7 +39,7 @@ public static partial class Rx
 
     public static void OnDispose(Action fn)
     {
-        Scope.CurrentScope.OnDispose(fn);
+        Scope.CurrentScope.OnDispose += fn;
     }
 
     public static T Untrack<T>(Func<T> fn)
@@ -219,7 +219,9 @@ public class MutSignal<T>(T value) : Signal<T>(new SignalState<T>(value)),
 public interface IScope : IDisposable
 {
     public bool IsDisposed { get; }
-    public void OnDispose(Action fn);
+
+    // public void OnDispose(Action fn);
+    public event Action OnDispose;
 }
 
 public class Scope : IScope
@@ -243,10 +245,20 @@ public class Scope : IScope
         ScopeHolder[InnerScopeNode] = this;
     }
 
-    public void OnDispose(Action fn)
+    // public void OnDispose(Action fn)
+    // {
+    //     if (IsDisposed) return;
+    //     InnerScopeNode.Cleanups.Add(fn);
+    // }
+
+    public event Action OnDispose
     {
-        if (IsDisposed) return;
-        InnerScopeNode.Cleanups.Add(fn);
+        add
+        {
+            if (IsDisposed) return;
+            InnerScopeNode.Cleanups.Add(value);
+        }
+        remove { }
     }
 
     public void Clean()
