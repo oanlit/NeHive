@@ -32,6 +32,13 @@ public readonly struct HgLen
 
 public class HGridStyle(
     Thickness? margin = null,
+    int? zIndex = null,
+    double? width = null,
+    double? height = null,
+    double? minWidth = null,
+    double? maxWidth = null,
+    double? minHeight = null,
+    double? maxHeight = null,
     double? columnSpacing = null,
     double? rowSpacing = null,
     HorizontalAlignment? horizontalAlignment = null,
@@ -41,6 +48,15 @@ public class HGridStyle(
 {
     // 边距
     public Thickness Margin { get; private set; } = margin ?? new(0);
+    public int? ZIndex { get; private set; } = zIndex;
+
+    public double? Width { get; private set; } = width;
+    public double? Height { get; private set; } = height;
+    public double? MinWidth { get; private set; } = minWidth;
+    public double? MaxWidth { get; private set; } = maxWidth;
+    public double? MinHeight { get; private set; } = minHeight;
+    public double? MaxHeight { get; private set; } = maxHeight;
+
     public double ColumnSpacing { get; private set; } = columnSpacing ?? 0;
     public double RowSpacing { get; private set; } = rowSpacing ?? 0;
 
@@ -50,8 +66,7 @@ public class HGridStyle(
 
     public VerticalAlignment VerticalAlignment { get; private set; } =
         verticalAlignment ?? VerticalAlignment.Stretch;
-
-
+    
     // 背景
     public IBrush? Background { get; private set; } = background;
 
@@ -61,6 +76,15 @@ public class HGridStyle(
     public HGridStyle Merge(HGridStyle style)
     {
         Margin = style.Margin;
+        ZIndex = style.ZIndex;
+
+        Width = style.Width;
+        Height = style.Height;
+        MinWidth = style.MinWidth;
+        MaxWidth = style.MaxWidth;
+        MinHeight = style.MinHeight;
+        MaxHeight = style.MaxHeight;
+
         ColumnSpacing = style.ColumnSpacing;
         RowSpacing = style.RowSpacing;
         HorizontalAlignment = style.HorizontalAlignment;
@@ -77,6 +101,13 @@ public class HGridStyle(
             var result = StyleParser.Parse(str);
             return new HGridStyle(
                 result.Margin,
+                result.ZIndex,
+                result.Width,
+                result.Height,
+                result.MinWidth,
+                result.MaxWidth,
+                result.MinHeight,
+                result.MaxHeight,
                 result.ColumnSpacing,
                 result.RowSpacing,
                 result.HorizontalAlignment,
@@ -145,8 +176,10 @@ public class HGridProp : IEnumerable<KeyValuePair<GridPosition, IElement>>
 
 public static partial class BaseComponent
 {
-    private static readonly Component<HGridProp> CompGrid = new((prop, uiScope) =>
+    public static IElement HGrid(HGridProp prop)
     {
+        var uiScope = new UiScope();
+        
         var grid = new Grid();
 
         // 应用响应式属性
@@ -171,16 +204,7 @@ public static partial class BaseComponent
         {
             if (prop.Style == null) return;
             var style = epochScope.Track(prop.Style);
-
-            grid.Margin = style.Margin;
-            grid.ColumnSpacing = style.ColumnSpacing;
-            grid.RowSpacing = style.RowSpacing;
-
-            grid.HorizontalAlignment = style.HorizontalAlignment;
-            grid.VerticalAlignment = style.VerticalAlignment;
-
-            if (style.Background != null)
-                grid.Background = style.Background;
+            ApplyGridStyle(style);
         });
 
         // 添加子元素并应用附加属性
@@ -195,8 +219,27 @@ public static partial class BaseComponent
         }
 
         return new Element(uiScope, grid);
-    });
 
-    public static IElement HGrid(HGridProp prop)
-        => CompGrid.Create(prop);
+        void ApplyGridStyle(HGridStyle style)
+        {
+            grid.Margin = style.Margin;
+            if (style.ZIndex is not null) grid.ZIndex = style.ZIndex.Value;
+
+            if (style.Width is not null) grid.Width = style.Width.Value;
+            if (style.Height is not null) grid.Height = style.Height.Value;
+            if (style.MinWidth is not null) grid.MinWidth = style.MinWidth.Value;
+            if (style.MaxWidth is not null) grid.MaxWidth = style.MaxWidth.Value;
+            if (style.MinHeight is not null) grid.MinHeight = style.MinHeight.Value;
+            if (style.MaxHeight is not null) grid.MaxHeight = style.MaxHeight.Value;
+
+            grid.ColumnSpacing = style.ColumnSpacing;
+            grid.RowSpacing = style.RowSpacing;
+
+            grid.HorizontalAlignment = style.HorizontalAlignment;
+            grid.VerticalAlignment = style.VerticalAlignment;
+
+            if (style.Background is not null)
+                grid.Background = style.Background;
+        }
+    }
 }

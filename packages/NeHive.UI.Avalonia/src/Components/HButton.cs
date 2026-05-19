@@ -156,144 +156,6 @@ public class HButtonExpose
     public Action<RoutedEventArgs> Click = _ => { };
 }
 
-// public static partial class BaseComponent
-// {
-//     public static IElement<HButtonExpose> HButton(
-//         Accessor<string>? text = null,
-//         Accessor<string>? strStyle = null,
-//         Accessor<HButtonStyle>? style = null,
-//         Action<RoutedEventArgs>? click = null)
-//     {
-//         text ??= "";
-//         if (style is not null && strStyle is not null)
-//         {
-//             style = new Computed<HButtonStyle>(() =>
-//                 HButtonStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
-//         }
-//         else if (strStyle != null)
-//         {
-//             style = HButtonStyle.Parse(strStyle);
-//         }
-//
-//         UiScope uiScope = new();
-//
-//         // 创建基础视觉元素
-//         var border = new Border
-//         {
-//             HorizontalAlignment = HorizontalAlignment.Left,
-//         };
-//
-//         var textBlock = new TextBlock();
-//         border.Child = textBlock;
-//
-//         uiScope.CreateEffect(() => { textBlock.Text = text.RxValue; });
-//         if (style is null)
-//         {
-//             ApplyStyle(new HButtonStyle()); // 应用默认样式
-//         }
-//         else
-//         {
-//             uiScope.CreateEffect(epochScope =>
-//             {
-//                 var styleValue = epochScope.Pull(style);
-//                 ApplyStyle(styleValue);
-//             });
-//         }
-//         
-//         var expose = new HButtonExpose();
-//
-//         // 鼠标交互状态（悬停、按下等）
-//         var isPressed = false;
-//
-//         // 统一触发点击的方法
-//         void RaiseClick()
-//         {
-//             var args = new RoutedEventArgs(Button.ClickEvent);
-//             click?.Invoke(args);
-//             expose.Click.Invoke(args);
-//         }
-//
-//         // 事件挂载
-//         uiScope.OnMount(() =>
-//         {
-//             border.PointerPressed += (_, e) =>
-//             {
-//                 if (!e.GetCurrentPoint(border).Properties.IsLeftButtonPressed)
-//                     return;
-//
-//                 isPressed = true;
-//                 border.Background = Brushes.DarkGray; // 按下效果
-//                 e.Handled = true;
-//             };
-//
-//             border.PointerReleased += (_, e) =>
-//             {
-//                 if (isPressed && border.IsPointerOver)
-//                 {
-//                     RaiseClick();
-//                 }
-//
-//                 isPressed = false;
-//                 border.Background = Brushes.LightGray; // 恢复
-//                 e.Handled = true;
-//             };
-//
-//             border.PointerExited += (_, _) =>
-//             {
-//                 isPressed = false; // 移出区域时取消按下状态
-//                 border.Background = style?.Value.Background ?? Brushes.LightGray;
-//             };
-//
-//             border.PointerEntered += (_, _) =>
-//             {
-//                 if (!isPressed)
-//                     border.Background = Brushes.LightGray; // 恢复（可选悬停变色）
-//             };
-//         });
-//
-//         return new Element<HButtonExpose>(uiScope, border, expose);
-//
-//         void ApplyStyle(HButtonStyle styleValue)
-//         {
-//             if (styleValue.Margin is not null) border.Margin = styleValue.Margin.RxValue;
-//
-//             if (styleValue.Width is not null) border.Width = styleValue.Width.RxValue;
-//             if (styleValue.Height is not null) border.Height = styleValue.Height.RxValue;
-//             if (styleValue.MaxWidth is not null) border.MaxWidth = styleValue.MaxWidth.RxValue;
-//             if (styleValue.MinWidth is not null) border.MinWidth = styleValue.MinWidth.RxValue;
-//             if (styleValue.MaxHeight is not null) border.MaxHeight = styleValue.MaxHeight.RxValue;
-//             if (styleValue.MinHeight is not null) border.MinHeight = styleValue.MinHeight.RxValue;
-//
-//             border.Padding = styleValue.Padding;
-//
-//             textBlock.HorizontalAlignment = styleValue.HorizontalAlignment;
-//             textBlock.VerticalAlignment = styleValue.VerticalAlignment;
-//
-//             textBlock.FontSize = styleValue.FontSize;
-//             if (styleValue.FontWeight is not null) textBlock.FontWeight = styleValue.FontWeight.RxValue;
-//             if (styleValue.FontStyle is not null) textBlock.FontStyle = styleValue.FontStyle.RxValue;
-//             textBlock.Foreground = styleValue.Foreground;
-//
-//             border.Background = styleValue.Background;
-//             border.BorderBrush = styleValue.BorderBrush;
-//             border.BorderThickness = styleValue.BorderThickness;
-//             border.CornerRadius = styleValue.CornerRadius;
-//         }
-//     }
-//
-//     public static IElement<HButtonExpose> HButton(
-//         out HButtonExpose expose,
-//         Accessor<string>? text = null,
-//         Accessor<string>? strStyle = null,
-//         Accessor<HButtonStyle>? style = null,
-//         Action<RoutedEventArgs>? click = null)
-//     {
-//         var el = HButton(text, strStyle, style, click);
-//         expose = el.Expose;
-//         return el;
-//     }
-// }
-
 public static partial class BaseComponent
 {
     private class HButtonState(StyleSet baseStyle)
@@ -349,7 +211,7 @@ public static partial class BaseComponent
         Accessor<string>? text = null,
         Accessor<string>? strStyle = null,
         Accessor<FullStyle>? style = null,
-        Action<RoutedEventArgs>? click = null)
+        Action<RoutedEventArgs>? onClick = null)
     {
         text ??= "";
         if (strStyle != null)
@@ -360,13 +222,14 @@ public static partial class BaseComponent
         UiScope uiScope = new();
 
         // 创建基础视觉元素
+        
         var textBlock = new TextBlock();
         var border = new Border
         {
             HorizontalAlignment = HorizontalAlignment.Left,
             Child = textBlock
         };
-        
+
         uiScope.CreateEffect(() => textBlock.Text = text.RxValue);
         
         HButtonState state;
@@ -443,13 +306,14 @@ public static partial class BaseComponent
         void RaiseClick()
         {
             var args = new RoutedEventArgs(Button.ClickEvent);
-            click?.Invoke(args);
+            onClick?.Invoke(args);
             expose.Click.Invoke(args);
         }
 
         void ApplyStyle(StyleSet styleValue)
         {
             if (styleValue.Margin is not null) border.Margin = styleValue.Margin.Value;
+            if (styleValue.ZIndex is not null) border.ZIndex = styleValue.ZIndex.Value;
 
             if (styleValue.Width is not null) border.Width = styleValue.Width.Value;
             if (styleValue.Height is not null) border.Height = styleValue.Height.Value;

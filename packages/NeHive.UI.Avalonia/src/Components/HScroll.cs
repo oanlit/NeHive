@@ -185,7 +185,7 @@ public class HScrollExpose(ScrollViewer scroll)
 
 public static partial class BaseComponent
 {
-    public static IElement HScrollViewer(out HScrollExpose expose, HScrollProp prop)
+    public static IElement<StackPanel> HScrollViewer(out HScrollExpose expose, HScrollProp prop)
     {
         var uiScope = new UiScope();
         var scroll = new ScrollViewer();
@@ -203,38 +203,21 @@ public static partial class BaseComponent
         foreach (var child in prop)
             stack.Children.Add(child.Content);
 
-        scroll.Content = stack;
-
-        scroll.ScrollToHome();
+        uiScope.OnMount += () =>
+        {
+            scroll.Content = stack;
+            scroll.ScrollToHome();
+        };
 
         expose = new HScrollExpose(scroll);
 
-        return new Element(uiScope, scroll);
+        return new Element<StackPanel>(uiScope, scroll, stack);
 
         void ApplyStyle(HScrollStyle style)
         {
-            var ori = style.Orientation;
-            if (ori == Orientation.Horizontal)
-            {
-                scroll.HorizontalScrollBarVisibility =
-                    prop.HorizontalScrollBarVisibility.RxValue;
-                scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-            }
-            else // Vertical
-            {
-                scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-                scroll.VerticalScrollBarVisibility =
-                    prop.VerticalScrollBarVisibility.RxValue;
-            }
-
             scroll.Margin = style.Margin;
-            // scroll.Padding = style.Padding;
             stack.Margin = style.Padding;
-            scroll.Background = style.Background;
-            scroll.BorderBrush = style.BorderBrush;
-            scroll.BorderThickness = style.BorderThickness;
-            if (style.CornerRadius.HasValue)
-                scroll.CornerRadius = style.CornerRadius.Value;
+
             if (style.Width.HasValue)
             {
                 scroll.Width = style.Width.Value;
@@ -244,32 +227,60 @@ public static partial class BaseComponent
             if (style.Height.HasValue)
             {
                 scroll.Height = style.Height.Value;
-                // stack.Height = style.Height.RxValue;
+                // stack.Height = style.Height.Value;
             }
 
             if (style.MinWidth.HasValue)
             {
                 scroll.MinWidth = style.MinWidth.Value;
-                // stack.MinWidth = style.MinWidth.RxValue;
+                // stack.MinWidth = style.MinWidth.Value;
             }
 
             if (style.MaxWidth.HasValue)
             {
                 scroll.MaxWidth = style.MaxWidth.Value;
-                // stack.MaxWidth = style.MaxWidth.RxValue;
+                // stack.MaxWidth = style.MaxWidth.Value;
             }
 
             if (style.MinHeight.HasValue)
             {
                 scroll.MinHeight = style.MinHeight.Value;
-                // stack.MinHeight = style.MinHeight.RxValue;
+                // stack.MinHeight = style.MinHeight.Value;
             }
 
             if (style.MaxHeight.HasValue)
             {
                 scroll.MaxHeight = style.MaxHeight.Value;
-                // stack.MaxHeight = style.MaxHeight.RxValue;
+                // stack.MaxHeight = style.MaxHeight.Value;
             }
+            
+            // if (style.Spacing is not null)
+            // {
+            //     scroll.MaxHeight = style.MaxHeight.Value;
+            //     // stack.MaxHeight = style.MaxHeight.Value;
+            // }
+            
+            stack.Spacing = style.Spacing;
+
+            var ori = style.Orientation;
+            if (ori == Orientation.Horizontal)
+            {
+                scroll.HorizontalScrollBarVisibility =
+                    prop.HorizontalScrollBarVisibility.Value;
+                scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+            }
+            else // Vertical
+            {
+                scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                scroll.VerticalScrollBarVisibility =
+                    prop.VerticalScrollBarVisibility.Value;
+            }
+
+            scroll.Background = style.Background;
+            scroll.BorderBrush = style.BorderBrush;
+            scroll.BorderThickness = style.BorderThickness;
+            if (style.CornerRadius.HasValue)
+                scroll.CornerRadius = style.CornerRadius.Value;
 
             if (style.Opacity.HasValue)
                 scroll.Opacity = style.Opacity.Value;
@@ -279,7 +290,7 @@ public static partial class BaseComponent
         }
     }
 
-    public static IElement HScrollViewer(HScrollProp prop)
+    public static IElement<StackPanel> HScrollViewer(HScrollProp prop)
     {
         return HScrollViewer(out _, prop);
     }

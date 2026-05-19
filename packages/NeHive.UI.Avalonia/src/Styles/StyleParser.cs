@@ -9,6 +9,7 @@ namespace NeHive.UI.Avalonia.Styles;
 public class StyleSet
 {
     public Thickness? Margin;
+    public int? ZIndex;
 
     public double? Width;
     public double? Height;
@@ -55,6 +56,7 @@ public class StyleSet
     public static void Copy(ref StyleSet target, StyleSet source)
     {
         target.Margin = source.Margin;
+        target.ZIndex = source.ZIndex;
 
         target.Width = source.Width;
         target.Height = source.Height;
@@ -97,6 +99,7 @@ public class StyleSet
         if (mergeNull)
         {
             Margin = other.Margin;
+            ZIndex = other.ZIndex;
 
             Width = other.Width;
             Height = other.Height;
@@ -137,6 +140,7 @@ public class StyleSet
         }
 
         if (other.Margin is not null) Margin = other.Margin;
+        if (other.ZIndex is not null) ZIndex = other.ZIndex;
 
         if (other.Width is not null) Width = other.Width;
         if (other.Height is not null) Height = other.Height;
@@ -205,6 +209,7 @@ public static class StyleParser
         ["mb-"] = ApplyMarginBottom,
         ["ml-"] = ApplyMarginLeft,
         ["mr-"] = ApplyMarginRight,
+        ["z-"] = ApplyZIndex,
 
         // 尺寸
         ["w-"] = ApplyWidth,
@@ -446,6 +451,12 @@ public static class StyleParser
         var val = ToVal(v[0]);
         var t = set.Margin ?? new Thickness(0);
         set.Margin = new Thickness(t.Left, t.Top, t.Right, val);
+    }
+
+    private static void ApplyZIndex(string[] v, StyleSet set)
+    {
+        var val = ToVal(v[0]);
+        set.ZIndex = (int)val;
     }
 
     private static void ApplyPadding(string[] v, StyleSet set)

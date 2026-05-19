@@ -1,6 +1,8 @@
 using System.Text;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia;
+using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Controls.Primitives;
 using NeHive.UI.Avalonia.Components;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
@@ -34,7 +36,7 @@ public static class DemoComponent
                           bg-green-300 hover:bg-green-400 click:bg-green-500
                           border-green-400 rounded-lg
                           """,
-                click: _ => count.RxValue++
+                onClick: _ => count.RxValue++
             ), // HButton
 
             HButton("Sub",
@@ -43,7 +45,7 @@ public static class DemoComponent
                           bg-pink-300 hover:bg-pink-400 click:bg-pink-500
                           border-pink-400 rounded-lg
                           """,
-                click: _ => count.RxValue--
+                onClick: _ => count.RxValue--
             ) // HButton
         }); // rootElement
 
@@ -74,7 +76,13 @@ public static class DemoComponent
             }), // HStackPanel
             ForEach<int>(new(items)
             {
-                ComponentItem = Counter
+                // Container = HStackPanel(new(strStyle: "gap-8 flex-row")),
+                Container = HScrollViewer(new(
+                    horizontalScrollBarVisibility: ScrollBarVisibility.Hidden,
+                    verticalScrollBarVisibility: ScrollBarVisibility.Visible,
+                    strStyle: "m-2 min-h-60 max-h-80 gap-8 p-3 vertical bg-gray-100 rounded-xl border border-gray-300"
+                )), // ForEach<int>.Container
+                ItemTemplate = Counter
             }) // ForEach<int>
         }); // rootElement
 
@@ -131,11 +139,11 @@ public static class DemoComponent
             {
                 HButton("Increase User Id",
                     strStyle: "px-3 py-1 bg-blue-400 fg-white rounded-lg",
-                    click: _ => userId.RxValue++
+                    onClick: _ => userId.RxValue++
                 ), // HButton
                 HButton("Decrease User Id",
                     strStyle: "px-3 py-1 bg-slate-400 fg-white rounded-lg",
-                    click: _ => userId.RxValue--
+                    onClick: _ => userId.RxValue--
                 ) // HButton
             }), // HStackPanel
 
@@ -149,7 +157,7 @@ public static class DemoComponent
                 Error = ex =>
                     HButton($"Retry: {ex.Message}",
                         strStyle: "mt-2 px-3 py-1 bg-rose-400 fg-white rounded-lg",
-                        click: _ => userMemo.Refetch()
+                        onClick: _ => userMemo.Refetch()
                     ) // HButton
                 // Loading<User>.Error
             }) // Loading<User>
@@ -180,7 +188,7 @@ public static class DemoComponent
                 [(row: 1, column: 0, rowSpan: 1, colSpan: 2)] =
                     HButton("Increase Horizontal Gap",
                         strStyle: "mt-2 px-3 py-1 bg-indigo-400 fg-white rounded-lg",
-                        click: _ => gapX.RxValue++
+                        onClick: _ => gapX.RxValue++
                     ) // HButton
             }) // HGrid
         }); // rootElement
@@ -203,9 +211,7 @@ public static class DemoComponent
                 strStyle: "text-lg font-bold fg-slate-800"
             ), // HTextBlock
 
-            HAbsolute(new(
-                width: 600,
-                height: 400)
+            HAbsolute(new(strStyle: "w-150 h-100 bg-gray-100")
             {
                 [new(left: 10, top: 10)] =
                     HTextBlock("Top Left (10,10)", strStyle: "text-sm fg-blue-700"),
@@ -213,7 +219,7 @@ public static class DemoComponent
                 [new(left: 450, top: 10)] =
                     HButton("Top Right Button",
                         strStyle: "px-2 py-1 fg-white bg-blue-300 rounded-lg",
-                        click: _ => Console.WriteLine("Top Right Button Clicked")
+                        onClick: _ => Console.WriteLine("Top Right Button Clicked")
                     ), // HButton
 
                 [new(left: 150, top: 150)] =
@@ -226,7 +232,7 @@ public static class DemoComponent
                 [new(left: 450, top: 340)] =
                     HButton("Bottom Right Button",
                         strStyle: "fg-white bg-pink-300 rounded-lg px-2 py-1",
-                        click: _ => Console.WriteLine("Bottom Right Button Clicked")
+                        onClick: _ => Console.WriteLine("Bottom Right Button Clicked")
                     ), // HButton
 
                 [new(left: 20, top: 300)] =
@@ -277,11 +283,11 @@ public static class DemoComponent
             {
                 HButton("⬆️ Top",
                     strStyle: "px-3 py-1 font-bold fg-sky-600 bg-sky-200 border-sky-400 rounded",
-                    click: _ => ScrollToHome()
+                    onClick: _ => ScrollToHome()
                 ), // HButton
                 HButton("⬇️ Bottom",
                     strStyle: "px-3 py-1 font-bold fg-green-600 bg-green-200 border-green-400 rounded",
-                    click: _ => ScrollToEnd()
+                    onClick: _ => ScrollToEnd()
                 ) // HButton
             }) // HStackPanel
         }); // rootElement
@@ -328,6 +334,445 @@ public static class DemoComponent
 
     #endregion
 
+    #region HCheckBox Demo
+
+    private static IElement CheckBoxComp(UiScope uiScope)
+    {
+        var threeState = new MutSignal<bool?>(null);
+
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HCheckBox(new(
+                bindIsChecked: threeState,
+                onClick: isChecked => Console.WriteLine($"Accept: {isChecked}"))
+            {
+                HTextBlock("I accept the terms")
+            }), // HCheckBox
+            HButton("Click Me!", onClick: _ => threeState.NotifySet(prev => prev is false))
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement CheckBoxDemo() => Element.WithScope(CheckBoxComp);
+
+    #endregion
+
+    #region RadioButton Demo
+
+    private static IElement RadioButtonComp(UiScope uiScope)
+    {
+        var threeState = new MutSignal<bool?>(null);
+
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HRadioButton(new(
+                bindIsChecked: threeState,
+                onClick: isChecked => Console.WriteLine($"Accept: {isChecked}"))
+            {
+                HTextBlock("I accept the terms")
+            }), // HRadioButton
+            HButton("OnCheckedChanged Me!", onClick: _ => threeState.NotifySet(prev => prev is false))
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement RadioButtonDemo() => Element.WithScope(RadioButtonComp);
+
+    #endregion
+
+    #region ToggleSwitch Demo
+
+    private static IElement ToggleSwitchComp(UiScope uiScope)
+    {
+        var wifiEnabled = new MutSignal<bool?>(null);
+
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HToggleSwitch(new(
+                bindIsChecked: wifiEnabled,
+                strStyle: "m-2",
+                onCheckedChanged: isOn => Console.WriteLine($"WiFi: {isOn}"))
+            {
+                HTextBlock("Enable WiFi")
+            }), // HToggleSwitch
+            HTextBlock(new(() => $"WiFi is {(wifiEnabled.RxValue is true ? "ON" : "OFF")}"))
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement ToggleSwitchDemo() => Element.WithScope(ToggleSwitchComp);
+
+    #endregion
+
+    #region FilePicker Demo
+
+    private static IElement FilePickerComp(UiScope uiScope)
+    {
+        FilePickerFilter[] filterFlies =
+        [
+            new("Images", "*.png", "*.jpg", "*.jpeg"),
+            new("All files", "*.*")
+        ];
+
+        var selectedFile = new MutSignal<string?>(null);
+
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HFilePicker(
+                bindSelectedPath: selectedFile,
+                title: "Choose an image",
+                filters: filterFlies
+            ), // HFilePicker
+            HTextBlock(new(() => $"Selected: {selectedFile.RxValue ?? string.Empty}")),
+            HUriImage(selectedFile, strStyle: "w-150 h-150 opacity-50")
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement FilePickerDemo() => Element.WithScope(FilePickerComp);
+
+    #endregion
+
+    #region ProgressBar Demo
+
+    private static IElement ProgressBarComp(UiScope uiScope)
+    {
+        var progress = new MutSignal<double>(0);
+
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HProgressBar(value: progress, strStyle: "w-full h-4"),
+            HButton("Increase", onClick: _ => progress.RxValue = Math.Min(100, progress.RxValue + 10))
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement ProgressBarDemo() => Element.WithScope(ProgressBarComp);
+
+    #endregion
+
+    #region SplitView Demo
+
+    private static IElement SplitViewComp(UiScope uiScope)
+    {
+        var isPaneOpen = new MutSignal<bool>(true);
+
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HSplitView(new(
+                isPaneOpen: isPaneOpen,
+                strStyle: "w-800 h-500",
+                displayMode: SplitViewDisplayMode.CompactInline,
+                openPaneLength: 200,
+                compactPaneLength: 48)
+            {
+                Pane = HStackPanel(new HStackPanelProp(strStyle: "gap-2 p-4 bg-gray-200")
+                {
+                    HButton("Home", onClick: _ => { }),
+                    HButton("Settings", onClick: _ => { })
+                }),
+                Content = HTextBlock("Main content", strStyle: "p-4")
+            }),
+            HButton("Toggle Pane", onClick: _ => isPaneOpen.RxValue = !isPaneOpen.RxValue)
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement SplitViewDemo() => Element.WithScope(SplitViewComp);
+
+    #endregion
+
+    #region SplitPanel Demo
+
+    private static IElement SplitPanelComp(UiScope uiScope)
+    {
+        var splitPos = new MutSignal<double>(200);
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HSplitPanel(new(strStyle: "h-400")
+            {
+                HTextBlock("Left Panel", strStyle: "bg-blue-200 p-4"),
+                HTextBlock("Right Panel", strStyle: "bg-green-200 p-4")
+            }), // HSplitPanel
+            HStackPanel(new(strStyle: "h-800 gap-x-8 flex-row")
+            {
+                HSplitPanel(new(
+                    orientation: Orientation.Vertical,
+                    splitFraction: 0.3,
+                    strStyle: "w-400 h-500")
+                {
+                    HTextBlock("Top Panel"),
+                    HTextBlock("Bottom Panel")
+                }), // HSplitPanel
+                HSplitPanel(new(strStyle: "w-600 h-400",
+                    orientation: Orientation.Horizontal,
+                    splitPosition: splitPos)
+                {
+                    HTextBlock("Left"),
+                    HTextBlock("Right")
+                }), // HSplitPanel
+            })
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement SplitPanelDemo() => Element.WithScope(SplitPanelComp);
+
+    #endregion
+
+    #region TabView Demo
+
+    private static IElement TabViewComp(UiScope uiScope)
+    {
+        var currentTab = new MutSignal<int>(0);
+
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HTabControl(new(bindSelectedIndex: currentTab)
+            {
+                ["Home"] = HTextBlock("欢迎页内容"),
+                ["Settings"] = HTextBlock("设置页面"),
+                ["Profile"] = HButton("编辑资料", onClick: _ => Console.WriteLine("编辑"))
+            }), // HTabControl
+            HButton("切换到第一页", onClick: _ => currentTab.RxValue = 0),
+            HButton("切换到第二页", onClick: _ => currentTab.RxValue = 1)
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement TabViewDemo() => Element.WithScope(TabViewComp);
+
+    #endregion
+
+    #region Slider Demo
+
+    private static IElement SliderComp(UiScope uiScope)
+    {
+        // 响应式双向绑定
+        var volume = new MutSignal<double>(50);
+
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        {
+            HSlider(
+                bindValue: volume,
+                minimum: 0,
+                maximum: 100,
+                isSnapToTickEnabled: true,
+                tickFrequency: 10,
+                tickPlacement: TickPlacement.Outside
+            ),
+            HTextBlock(new(() => $"音量: {volume.RxValue:F0}"))
+        }); // rootElement
+        return rootElement;
+    }
+
+    public static IElement SliderDemo() => Element.WithScope(SliderComp);
+
+    #endregion
+
+    #region TreeView Demo
+
+    public static IElement TreeViewDemo()
+    {
+        var treeView = HTreeView(
+            new HTreeViewProp(strStyle: "m-3 w-75 h-100")
+            {
+                new HTreeViewItemProp("Root 1")
+                {
+                    Children =
+                    {
+                        new HTreeViewItemProp("Child 1.1"),
+                        new HTreeViewItemProp("Child 1.2")
+                    } // Root 1.Children
+                }, // Root 1
+                new HTreeViewItemProp("Root 2", isExpanded: true)
+                {
+                    Children =
+                    {
+                        new HTreeViewItemProp("Child 2.1")
+                    } // Root 2.Children
+                } // Root 2
+            }); // HTreeView;
+
+        return treeView;
+    }
+
+    #endregion
+
+    #region ListBox Demo
+
+    public static IElement ListBoxDemo()
+    {
+        // 创建响应式数据源
+        var users = new MutSignal<IReadOnlyList<User>>([
+            new() { Name = "张三", Id = 28 },
+            new() { Name = "李四", Id = 32 },
+            new() { Name = "王五", Id = 25 }
+        ]);
+
+        var selectedUser = new MutSignal<User?>(null);
+
+        var listBox = HStackPanel(new()
+        {
+            HListBox<User>(new(
+                users,
+                bindBindSelectedItem: selectedUser,
+                selectionMode: SelectionMode.Single,
+                strStyle: "w-200 h-300 bg-gray-100"
+            )
+            {
+                ItemTemplate = user => HTextBlock($"User ID: {user.Id} User Name: {user.Name}", strStyle: "p-2")
+            }), // HListBox<User>
+            HTextBlock(new(() => $"选中：{selectedUser.RxValue?.Name ?? "无"}")),
+            HButton("添加用户", onClick: _ =>
+            {
+                var list = users.RxValue.ToList();
+                list.Add(new User { Name = $"用户{list.Count + 1}", Id = list.Count + 1 });
+                users.RxValue = list;
+            }) // HButton
+        }); // listBox
+
+        return listBox;
+    }
+
+    #endregion
+
+    #region ComboBox Demo
+
+    public static IElement ComboBoxDemo()
+    {
+        // 创建响应式数据源
+        var countries = new MutSignal<IReadOnlyList<Country>>([
+            new Country { Name = "中国", Code = "CN" },
+            new Country { Name = "美国", Code = "US" },
+            new Country { Name = "日本", Code = "JP" }
+        ]);
+
+        var selectedCountry = new MutSignal<Country?>(null);
+
+        var comboBox = HStackPanel(new(strStyle: "w-50")
+        {
+            HComboBox<Country>(new(
+                countries,
+                bindSelectedItem: selectedCountry,
+                placeholderText: "请选择国家"
+            )
+            {
+                ItemTemplate = c => HTextBlock($"{c.Name} ({c.Code})")
+            }), // HListBox<User>
+            HTextBlock(new(() => $"选中: {selectedCountry.RxValue?.Name ?? "未选"}"))
+        }); // listBox
+
+        return comboBox;
+    }
+
+    #endregion
+
+    #region Menu Demo
+
+    public static IElement MenuDemo()
+    {
+        var menu = HMenu(new()
+        {
+            new(header: "File")
+            {
+                new(header: "Open", onClick: () => Console.WriteLine("Open")),
+                new(header: "Save", onClick: () => Console.WriteLine("Save")),
+                new(header: "-"), // 分隔线（Header 为 "-" 时会自动渲染分隔符）
+                new(header: "Exit", onClick: () => Environment.Exit(0))
+            },
+            new(header: "Edit")
+            {
+                new(header: "Copy"),
+                new(header: "Paste")
+            }
+        });
+
+        return menu;
+    }
+
+    #endregion
+
+    #region GridSplitter Demo
+
+    public static IElement GridSplitterDemo()
+    {
+        return HGrid(new(
+            rowDefinitions: new([HgLen.Auto]),
+            columnDefinitions: new([100, HgLen.Auto, HgLen.Star()]),
+            strStyle: "m-2 gap-3 bg-gray-100 rounded-xl p-4")
+        {
+            [(0, 0)] = HTextBlock("Left"),
+            [(0, 1)] = HGridSplitter(
+                strStyle: "w-1 flex-row bg-gray-500"
+            ),
+            [(0, 2)] = HTextBlock("Right")
+        }); // HGrid
+    }
+
+    #endregion
+
+    #region UniformGrid Demo
+
+    public static IElement UniformGridDemo()
+    {
+        var columnsSig = new MutSignal<int>(3);
+        return HStackPanel(new()
+        {
+            HUniformGrid(new(
+                rows: 2, columns: columnsSig,
+                strStyle: "m-2 gap-3 bg-gray-100 rounded-xl p-4")
+            {
+                HTextBlock("1"),
+                HTextBlock("2"),
+                HTextBlock("3"),
+                HTextBlock("4"),
+                HTextBlock("5"),
+                HTextBlock("6")
+            }), // HUniformGrid
+            HStackPanel(new(strStyle: "flex-row")
+            {
+                HButton("add columns", onClick: _ => columnsSig.RxValue++),
+                HButton("sub columns", onClick: _ => columnsSig.RxValue--)
+            }) // HStackPanel
+        }); // HStackPanel
+    }
+
+    #endregion
+
+    #region DockPanel Demo
+
+    public static IElement DockPanelDemo()
+    {
+        return HDockPanel(new(strStyle: "w-170 h-100 bg-gray-100")
+        {
+            [Dock.Top] = HTextBlock("Top"),
+            [Dock.Bottom] = HTextBlock("Bottom"),
+            [Dock.Left] = HTextBlock("Left"),
+            [Dock.Right] = HTextBlock("Right"),
+            [Dock.Top] = HTextBlock("Fill area (last child fills remaining space)")
+        }); // HDockPanel
+    }
+
+    #endregion
+
+    #region WrapPanel Demo
+
+    public static IElement WrapPanelDemo()
+    {
+        return HWrapPanel(new(
+            itemWidth: 100,
+            strStyle: "w-60 gap-2 bg-gray-100")
+        {
+            HButton("1"),
+            HButton("2"),
+            HButton("3 with long text"),
+            HButton("4")
+        }); // HWrapPanel
+    }
+
+    #endregion
+
     #region Global Main Nav (Switch Demo As Entry)
 
     private static IElement MainNavDemoComp(UiScope uiScope)
@@ -335,53 +780,52 @@ public static class DemoComponent
         var currentView = new MutSignal<DemoView>(DemoView.SimpleCounter);
 
         var rootElement = uiScope.RootElement(new(
-            strStyle: "m-5 flex-col bg-gray-100 rounded-xl p-5")
+            strStyle: "m-5 flex-col rounded-xl p-5")
         {
             // Top global navigation bar
-            HStackPanel(new(strStyle: "my-4 gap-3 flex-row flex-wrap justify-center")
+            HScrollViewer(new(
+                verticalScrollBarVisibility: ScrollBarVisibility.Auto,
+                horizontalScrollBarVisibility: ScrollBarVisibility.Disabled,
+                strStyle: "max-h-70 bg-gray-100")
             {
-                HButton("Simple Counter",
-                    strStyle: "px-3 py-1.5 text-sm fg-white bg-blue-300 hover:bg-blue-400 border-blue-400 rounded-2xl",
-                    click: _ => currentView.RxValue = DemoView.SimpleCounter
-                ), // HButton
+                HUniformGrid(new(
+                    columns: 4,
+                    strStyle: "gap-3")
+                {
+                    NavButton("Simple Counter", DemoView.SimpleCounter, "bg-blue-300 border-blue-400"),
+                    NavButton("ForEach List", DemoView.ForEachDemo, "bg-green-300 border-green-400"),
+                    NavButton("Async Loading", DemoView.LoadingDemo, "bg-amber-300 border-amber-400"),
+                    NavButton("Grid Layout", DemoView.GridDemo, "bg-indigo-300 border-indigo-400"),
 
-                HButton("ForEach List",
-                    strStyle:
-                    "px-3 py-1.5 text-sm fg-white bg-green-300 hover:bg-green-400 border-green-400 rounded-2xl",
-                    click: _ => currentView.RxValue = DemoView.ForEachDemo
-                ), // HButton
+                    NavButton("Absolute Layout", DemoView.AbsoluteDemo, "bg-slate-300 border-slate-400"),
+                    NavButton("Scroll Viewer", DemoView.ScrollDemo, "bg-teal-300 border-teal-400"),
+                    NavButton("TextBox Input", DemoView.TextBoxDemo, "bg-rose-300 border-rose-400"),
+                    NavButton("CheckBox", DemoView.CheckBoxDemo, "bg-cyan-300 border-cyan-400"),
 
-                HButton("Async Loading",
-                    strStyle:
-                    "px-3 py-1.5 text-sm fg-white bg-amber-300 hover:bg-amber-400 border-amber-400 rounded-2xl",
-                    click: _ => currentView.RxValue = DemoView.LoadingDemo
-                ), // HButton
+                    NavButton("RadioButton", DemoView.RadioButtonDemo, "bg-fuchsia-300 border-fuchsia-400"),
+                    NavButton("ToggleSwitch", DemoView.ToggleSwitchDemo, "bg-lime-300 border-lime-400"),
+                    NavButton("FilePicker", DemoView.FilePickerDemo, "bg-orange-300 border-orange-400"),
+                    NavButton("ProgressBar", DemoView.ProgressBarDemo, "bg-emerald-300 border-emerald-400"),
 
-                HButton("Grid Layout",
-                    strStyle:
-                    "px-3 py-1.5 text-sm fg-white bg-indigo-300 hover:bg-indigo-400 border-indigo-400 rounded-2xl",
-                    click: _ => currentView.RxValue = DemoView.GridDemo
-                ), // HButton
+                    NavButton("SplitView", DemoView.SplitViewDemo, "bg-violet-300 border-violet-400"),
+                    NavButton("SplitPanel", DemoView.SplitPanelDemo, "bg-sky-300 border-sky-400"),
+                    NavButton("TabControl", DemoView.TabViewDemo, "bg-pink-300 border-pink-400"),
+                    NavButton("Slider", DemoView.SliderDemo, "bg-yellow-300 border-yellow-400"),
 
-                HButton("Absolute Layout",
-                    strStyle:
-                    "px-3 py-1.5 text-sm fg-white bg-slate-300 hover:bg-slate-400 border-slate-400 rounded-2xl",
-                    click: _ => currentView.RxValue = DemoView.AbsoluteDemo
-                ), // HButton
+                    NavButton("TreeView", DemoView.TreeViewDemo, "bg-red-300 border-red-400"),
+                    NavButton("ListBox", DemoView.ListBoxDemo, "bg-blue-400 border-blue-400"),
+                    NavButton("ComboBox", DemoView.ComboBoxDemo, "bg-green-400 border-green-500"),
+                    NavButton("Menu", DemoView.MenuDemo, "bg-purple-400 border-purple-500"),
 
-                HButton("Scroll Viewer",
-                    strStyle: "px-3 py-1.5 text-sm fg-white bg-teal-300 hover:bg-teal-400 border-teal-400 rounded-2xl",
-                    click: _ => currentView.RxValue = DemoView.ScrollDemo
-                ), // HButton
-
-                HButton("TextBox Input",
-                    strStyle: "px-3 py-1.5 text-sm fg-white bg-rose-300 hover:bg-rose-400 border-rose-400 rounded-2xl",
-                    click: _ => currentView.RxValue = DemoView.TextBoxDemo
-                ) // HButton
-            }), // HStackPanel
+                    NavButton("GridSplitter", DemoView.GridSplitterDemo, "bg-indigo-400 border-indigo-500"),
+                    NavButton("UniformGrid", DemoView.UniformGridDemo, "bg-orange-400 border-orange-500"),
+                    NavButton("DockPanel", DemoView.DockPanelDemo, "bg-cyan-400 border-cyan-500"),
+                    NavButton("WrapPanel", DemoView.WrapPanelDemo, "bg-pink-400 border-pink-500")
+                }) // HUniformGrid
+            }), // HScrollViewer
 
             // Page content container
-            HStackPanel(new(strStyle: "gap-3 bg-white rounded-xl p-4 shadow-sm")
+            HStackPanel(new(strStyle: " mt-8 min-h-120 gap-3 bg-white rounded-xl p-4 shadow-sm")
             {
                 Switch<DemoView>(new(currentView)
                 {
@@ -393,9 +837,26 @@ public static class DemoComponent
                         [DemoView.GridDemo] = GridDemo,
                         [DemoView.AbsoluteDemo] = AbsoluteDemo,
                         [DemoView.ScrollDemo] = ScrollDemo,
-                        [DemoView.TextBoxDemo] = TextBoxDemo
+                        [DemoView.TextBoxDemo] = TextBoxDemo,
+                        [DemoView.CheckBoxDemo] = CheckBoxDemo,
+                        [DemoView.RadioButtonDemo] = RadioButtonDemo,
+                        [DemoView.ToggleSwitchDemo] = ToggleSwitchDemo,
+                        [DemoView.FilePickerDemo] = FilePickerDemo,
+                        [DemoView.ProgressBarDemo] = ProgressBarDemo,
+                        [DemoView.SplitViewDemo] = SplitViewDemo,
+                        [DemoView.SplitPanelDemo] = SplitPanelDemo,
+                        [DemoView.TabViewDemo] = TabViewDemo,
+                        [DemoView.SliderDemo] = SliderDemo,
+                        [DemoView.TreeViewDemo] = TreeViewDemo,
+                        [DemoView.ListBoxDemo] = ListBoxDemo,
+                        [DemoView.ComboBoxDemo] = ComboBoxDemo,
+                        [DemoView.MenuDemo] = MenuDemo,
+                        [DemoView.GridSplitterDemo] = GridSplitterDemo,
+                        [DemoView.UniformGridDemo] = UniformGridDemo,
+                        [DemoView.DockPanelDemo] = DockPanelDemo,
+                        [DemoView.WrapPanelDemo] = WrapPanelDemo
                     }, // Switch<DemoView>.Cases
-                    Default = () => HTextBlock("Select a demo from navigation buttons",
+                    Default = () => HTextBlock("Select a component demo",
                         strStyle: "text-base fg-gray-500"
                     ) // Switch<DemoView>.Default
                 }) // Switch<DemoView>
@@ -403,6 +864,22 @@ public static class DemoComponent
         }); // rootElement
 
         return rootElement;
+
+        IElement NavButton(
+            string title,
+            DemoView view,
+            string colorClass)
+        {
+            return HButton(title,
+                strStyle: $$"""
+                            px-3 py-2 text-sm font-bold fg-white
+                            {{colorClass}}
+                            hover:opacity-80
+                            rounded-xl
+                            """,
+                onClick: _ => currentView.RxValue = view
+            );
+        }
     }
 
     public static IElement MainNavDemo()
@@ -413,6 +890,8 @@ public static class DemoComponent
 
 public record User(int? Id = null, string? Name = null);
 
+public record Country(string? Name = null, string? Code = null);
+
 public enum DemoView
 {
     SimpleCounter,
@@ -422,5 +901,27 @@ public enum DemoView
     AbsoluteDemo,
     ScrollDemo,
     TextBoxDemo,
+
+    CheckBoxDemo,
+    RadioButtonDemo,
+    ToggleSwitchDemo,
+    FilePickerDemo,
+    ProgressBarDemo,
+
+    SplitViewDemo,
+    SplitPanelDemo,
+    TabViewDemo,
+    SliderDemo,
+
+    TreeViewDemo,
+    ListBoxDemo,
+    ComboBoxDemo,
+    MenuDemo,
+
+    GridSplitterDemo,
+    UniformGridDemo,
+    DockPanelDemo,
+    WrapPanelDemo,
+
     Unknown
 }
