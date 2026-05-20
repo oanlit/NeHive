@@ -3,7 +3,6 @@ using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Layout;
 using Avalonia.Input;
-using Avalonia.Controls;
 using Avalonia.Animation;
 
 namespace NeHive.UI.Avalonia.Styles;
@@ -347,8 +346,18 @@ public static class StyleParser
         ["text-xl"] = (_, set) => set.FontSize = 20,
         ["text-2xl"] = (_, set) => set.FontSize = 24,
         ["text-3xl"] = (_, set) => set.FontSize = 30,
-        ["font-bold"] = (_, set) => set.FontWeight = FontWeight.Bold,
+
+        ["font-thin"] = (_, set) => set.FontWeight = FontWeight.Thin,
+        ["font-extralight"] = (_, set) => set.FontWeight = FontWeight.ExtraLight,
+        ["font-light"] = (_, set) => set.FontWeight = FontWeight.Light,
         ["font-normal"] = (_, set) => set.FontWeight = FontWeight.Normal,
+        ["font-medium"] = (_, set) => set.FontWeight = FontWeight.Medium,
+        ["font-semibold"] = (_, set) => set.FontWeight = FontWeight.SemiBold,
+        ["font-bold"] = (_, set) => set.FontWeight = FontWeight.Bold,
+        ["font-extrabold"] = (_, set) => set.FontWeight = FontWeight.ExtraBold,
+        ["font-black"] = (_, set) => set.FontWeight = FontWeight.Black,
+        ["font-extrablack"] = (_, set) => set.FontWeight = FontWeight.ExtraBlack,
+        
         ["italic"] = (_, set) => set.FontStyle = FontStyle.Italic,
         ["not-italic"] = (_, set) => set.FontStyle = FontStyle.Normal,
 

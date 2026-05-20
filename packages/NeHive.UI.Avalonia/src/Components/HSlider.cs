@@ -7,18 +7,8 @@ namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
-    /// <summary>
-    /// 创建滑块控件
-    /// </summary>
-    /// <param name="bindValue">当前值（支持双向绑定，传入 MutSignal 即可双向）</param>
-    /// <param name="minimum">最小值</param>
-    /// <param name="maximum">最大值</param>
-    /// <param name="orientation">方向（水平/垂直）</param>
-    /// <param name="isSnapToTickEnabled">是否对齐刻度</param>
-    /// <param name="tickFrequency">刻度间隔</param>
-    /// <param name="tickPlacement">刻度位置</param>
-    /// <param name="strStyle">样式字符串（如 "w-200 h-20"）</param>
     public static IElement HSlider(
+        Accessor<double>? value = null,
         MutSignal<double>? bindValue = null,
         Accessor<double>? minimum = null,
         Accessor<double>? maximum = null,
@@ -26,7 +16,8 @@ public static partial class BaseComponent
         Accessor<bool>? isSnapToTickEnabled = null,
         Accessor<double>? tickFrequency = null,
         Accessor<TickPlacement>? tickPlacement = null,
-        Accessor<string>? strStyle = null)
+        Accessor<string>? strStyle = null,
+        Action<double>? onValueChanged = null)
     {
         // 默认值
         minimum ??= 0.0;
@@ -40,7 +31,7 @@ public static partial class BaseComponent
         var slider = new Slider();
 
         // === 双向绑定 bindValue ===
-        if (bindValue != null)
+        if (bindValue is not null)
         {
             // 信号 -> 控件
             uiScope.CreateEffect(() => slider.Value = bindValue.RxValue);
@@ -53,6 +44,12 @@ public static partial class BaseComponent
                     bindValue.RxValue = newVal;
             };
         }
+        else if (value is not null)
+        {
+            uiScope.CreateEffect(() => slider.Value = value.RxValue);
+        }
+
+        slider.ValueChanged += (_, e) => { onValueChanged?.Invoke(e.NewValue); };
 
         // === 单向绑定其他属性 ===
         uiScope.CreateEffect(() => slider.Minimum = minimum.RxValue);

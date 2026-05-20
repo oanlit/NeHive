@@ -83,7 +83,11 @@ public static class DemoComponent
                     verticalScrollBarVisibility: ScrollBarVisibility.Visible,
                     strStyle: "m-2 min-h-60 max-h-80 gap-8 p-3 vertical bg-gray-100 rounded-xl border border-gray-300"
                 )), // ForEach<int>.Container
-                ItemTemplate = Counter
+                ItemTemplate = (id, index) =>
+                {
+                    Console.WriteLine($"index:{index.Value}");
+                    return Counter(id);
+                }
             }) // ForEach<int>
         }); // rootElement
 

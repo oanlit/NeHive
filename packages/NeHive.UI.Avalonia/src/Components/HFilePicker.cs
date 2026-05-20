@@ -104,7 +104,7 @@ public static partial class BaseComponent
             else
             {
                 bindSelectedPath.RxValue = null;
-                OnFileSelected?.Invoke(Array.Empty<string>());
+                OnFileSelected?.Invoke([]);
             }
         };
 

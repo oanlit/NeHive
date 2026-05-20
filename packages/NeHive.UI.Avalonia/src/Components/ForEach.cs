@@ -7,7 +7,7 @@ public struct ForEachProp<T>(Accessor<IReadOnlyList<T>> each)
 {
     public readonly Accessor<IReadOnlyList<T>> Each = each;
     public IElement<Panel>? Container;
-    public required Func<T, IElement> ItemTemplate;
+    public required Func<T, ISignal<int>, IElement> ItemTemplate;
 }
 
 public static partial class ControlFlow

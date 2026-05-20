@@ -6,20 +6,30 @@
         <Nullable>enable</Nullable>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+        <PublishAot>true</PublishAot>
+        <Optimize>true</Optimize>
+        <DebugSymbols>false</DebugSymbols>
+        <DebugType>none</DebugType>
+        <StripSymbols>true</StripSymbols>
+        <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+        <IlcTrimMetadata>true</IlcTrimMetadata>
+        <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="11.3.12"/>
-        <PackageReference Include="Avalonia.Desktop" Version="11.3.12"/>
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12"/>
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12"/>
+        <PackageReference Include="Avalonia" Version="11.3.12" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="Avalonia.Diagnostics" Version="11.3.12">
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
+        <PackageReference Include="LibVLCSharp.Avalonia" Version="3.9.0" />
         
-        <ProjectReference Include="..\..\packages\NeHive.Reactive\src\NeHive.Reactive.csproj"/>
-        <ProjectReference Include="..\..\packages\NeHive.UI.Avalonia\src\NeHive.UI.Avalonia.csproj"/>
+        <ProjectReference Include="..\..\packages\NeHive.Reactive\src\NeHive.Reactive.csproj" />
+        <ProjectReference Include="..\..\packages\NeHive.UI.Avalonia\src\NeHive.UI.Avalonia.csproj" />
     </ItemGroup>
 </Project>
