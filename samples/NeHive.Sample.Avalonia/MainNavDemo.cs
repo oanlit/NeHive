@@ -2,6 +2,7 @@ using System.Text;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Layout;
 using Avalonia.Controls.Primitives;
 using NeHive.UI.Avalonia.Components;
@@ -153,7 +154,7 @@ public static class DemoComponent
                     HTextBlock($"User Id: {user.Id}", strStyle: "mt-1.5 text-lg"),
                     HTextBlock($"Hello, {user.Name}", strStyle: "mt-1.5 fg-sky-600")
                 ), // Loading<User>.Success
-                Loading = () => HTextBlock("Fetching user data...", strStyle: "text-gray-500"),
+                Loading = () => HTextBlock("Fetching user data...", strStyle: "fg-gray-500"),
                 Error = ex =>
                     HButton($"Retry: {ex.Message}",
                         strStyle: "mt-2 px-3 py-1 bg-rose-400 fg-white rounded-lg",
@@ -424,7 +425,13 @@ public static class DemoComponent
                 filters: filterFlies
             ), // HFilePicker
             HTextBlock(new(() => $"Selected: {selectedFile.RxValue ?? string.Empty}")),
-            HUriImage(selectedFile, strStyle: "w-150 h-150 opacity-50")
+            HStackPanel(new(strStyle: "w-64 h-64 overflow-hidden")
+            {
+                HUriImage(selectedFile,
+                    stretch: Stretch.UniformToFill,
+                    strStyle: "transition-transform duration-300 hover:scale-110"
+                ) // HUriImage
+            }) // HStackPanel
         }); // rootElement
         return rootElement;
     }

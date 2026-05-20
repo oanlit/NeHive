@@ -18,6 +18,7 @@ public class HPanelStyle(
     double? minHeight = null,
     double? maxHeight = null,
     double? spacing = null,
+    OverflowHandle? overflowHandle = null,
     Orientation? orientation = null,
     HorizontalAlignment? horizontalAlignment = null,
     VerticalAlignment? verticalAlignment = null,
@@ -35,6 +36,7 @@ public class HPanelStyle(
     public double? MinHeight { get; private set; } = minHeight;
     public double? MaxHeight { get; private set; } = maxHeight;
 
+    public OverflowHandle? OverflowHandle = overflowHandle;
     public Orientation Orientation { get; private set; } = orientation ?? Orientation.Vertical;
 
     public HorizontalAlignment HorizontalAlignment { get; private set; } =
@@ -59,6 +61,7 @@ public class HPanelStyle(
 
         Spacing = style.Spacing;
 
+        OverflowHandle = style.OverflowHandle;
         Orientation = style.Orientation;
         HorizontalAlignment = style.HorizontalAlignment;
         VerticalAlignment = style.VerticalAlignment;
@@ -86,6 +89,7 @@ public class HPanelStyle(
                 result.MinHeight,
                 result.MaxHeight,
                 result.ColumnSpacing,
+                result.OverflowHandle,
                 result.Orientation,
                 result.HorizontalAlignment,
                 result.VerticalAlignment,
@@ -167,6 +171,15 @@ public static partial class BaseComponent
             if (style.MaxHeight is not null) stack.MaxHeight = style.MaxHeight.Value;
 
             stack.Spacing = style.Spacing;
+
+            var overflowHandle = style.OverflowHandle;
+            if (overflowHandle is not null)
+            {
+                if (overflowHandle is OverflowHandle.Visible)
+                    stack.ClipToBounds = false;
+                else if (overflowHandle is OverflowHandle.Hidden)
+                    stack.ClipToBounds = true;
+            }
 
             stack.Orientation = style.Orientation;
             stack.HorizontalAlignment = style.HorizontalAlignment;

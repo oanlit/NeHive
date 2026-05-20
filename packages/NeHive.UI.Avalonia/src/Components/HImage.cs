@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Media.Transformation;
+using Avalonia.Animation;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using NeHive.Reactive;
@@ -23,7 +25,8 @@ public class HImageStyle(
     Thickness? padding = null,
     HorizontalAlignment? horizontalAlignment = null,
     VerticalAlignment? verticalAlignment = null,
-    double? opacity = null
+    double? opacity = null,
+    AdvancedStyle? advanced = null
 )
 {
     public Thickness Margin { get; private set; } = margin ?? new Thickness(0);
@@ -40,9 +43,12 @@ public class HImageStyle(
     public HorizontalAlignment HorizontalAlignment { get; private set; } =
         horizontalAlignment ?? HorizontalAlignment.Left;
 
-    public VerticalAlignment VerticalAlignment { get; private set; } = verticalAlignment ?? VerticalAlignment.Top;
+    public VerticalAlignment VerticalAlignment { get; private set; } =
+        verticalAlignment ?? VerticalAlignment.Top;
 
     public double Opacity { get; private set; } = opacity ?? 1.0;
+
+    public AdvancedStyle? Advanced { get; private set; } = advanced;
 
     /// <summary>
     /// 合并新属性（用于组合样式）
@@ -59,7 +65,8 @@ public class HImageStyle(
         Thickness? padding = null,
         HorizontalAlignment? horizontalAlignment = null,
         VerticalAlignment? verticalAlignment = null,
-        double? opacity = null
+        double? opacity = null,
+        AdvancedStyle? advanced = null
     )
     {
         if (margin is not null) Margin = margin.Value;
@@ -102,10 +109,21 @@ public class HImageStyle(
         VerticalAlignment = style.VerticalAlignment;
 
         Opacity = style.Opacity;
+
+        Advanced = style.Advanced;
         return this;
     }
 
     public static HImageStyle Default => new();
+
+    public static StyleSet DefaultStyleSet()
+    {
+        return new StyleSet
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+    }
 
     /// <summary>
     /// 从样式字符串解析（复用 StyleParser，需扩展支持 stretch 等属性）
@@ -128,9 +146,8 @@ public class HImageStyle(
                 padding: result.Padding,
                 horizontalAlignment: result.HorizontalAlignment,
                 verticalAlignment: result.VerticalAlignment,
-                opacity: result.Opacity
-                // stretch: result.Stretch,      // 需要在 StyleParser 中支持
-                // stretchDirection: result.StretchDirection
+                opacity: result.Opacity,
+                advanced: result.Advanced
             );
         });
     }
@@ -138,22 +155,83 @@ public class HImageStyle(
 
 public static partial class BaseComponent
 {
+    private class HImageState
+    {
+        private StyleSet _currentStyle;
+        public bool ResetCurrentStyle;
+        public StyleSet BaseStyle;
+
+        public StyleSet CurrentStyle
+        {
+            get
+            {
+                if (ResetCurrentStyle)
+                {
+                    _currentStyle = StyleSet.Copy(BaseStyle);
+                    ResetCurrentStyle = false;
+                }
+
+                return _currentStyle;
+            }
+        }
+
+        public Dictionary<string, List<string>>? Variants;
+
+        // 鼠标交互状态（悬停、按下等）
+        public bool IsHover;
+
+        public HImageState(StyleSet baseStyle)
+        {
+            BaseStyle = baseStyle;
+            _currentStyle = StyleSet.Copy(BaseStyle);
+        }
+
+        public void ResetSetStyle()
+        {
+            CurrentStyle.Merge(BaseStyle);
+        }
+
+        // public void SetCurrentStyle()
+        // {
+        //     if (Variants == null) return;
+        //     List<string>? strs;
+        //     if (IsHover && Variants.TryGetValue("hover", out strs))
+        //     {
+        //         StyleParser.Parse(strs, ref CurrentStyle);
+        //     }
+        // }
+
+        public void SetHoverStyle()
+        {
+            if (Variants == null) return;
+            if (IsHover && Variants.TryGetValue("hover", out var strs))
+            {
+                StyleParser.Parse(strs, ref _currentStyle);
+            }
+        }
+    }
+
     public static IElement HImage(
         Accessor<Bitmap?> source,
         Accessor<Stretch>? stretch = null,
         Accessor<string>? strStyle = null,
-        Accessor<HImageStyle>? style = null
+        Accessor<FullStyle>? style = null
     )
     {
         // 样式优先级：如果同时提供了 strStyle 和 style，则合并
-        if (style is not null && strStyle is not null)
+        // if (style is not null && strStyle is not null)
+        // {
+        //     style = new Computed<HImageStyle>(() =>
+        //         HImageStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
+        // }
+        // else if (strStyle is not null)
+        // {
+        //     style = HImageStyle.Parse(strStyle);
+        // }
+
+        if (strStyle != null)
         {
-            style = new Computed<HImageStyle>(() =>
-                HImageStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
-        }
-        else if (strStyle is not null)
-        {
-            style = HImageStyle.Parse(strStyle);
+            style = HButtonStyle.ParseFull(strStyle);
         }
 
         var uiScope = new UiScope();
@@ -163,13 +241,25 @@ public static partial class BaseComponent
 
         uiScope.CreateEffect(() => image.Source = source.RxValue);
 
-        // 绑定样式
-        if (style is not null)
+        HImageState state;
+
+        if (style is null)
         {
+            state = new HImageState(HButtonStyle.DefaultStyleSet());
+            ApplyStyle(image, state.BaseStyle);
+        }
+        // 绑定样式
+        else
+        {
+            state = new HImageState(style.Value.Base);
             uiScope.CreateEffect(epochScope =>
             {
                 var styleValue = epochScope.Track(style);
-                ApplyImageStyle(image, styleValue);
+                state.BaseStyle = styleValue.Base;
+                state.Variants = styleValue.Variants;
+                state.ResetCurrentStyle = true;
+                // state.CurrentStyle = StyleSet.Copy(state.BaseStyle);
+                ApplyStyle(image, styleValue.Base);
             });
         }
 
@@ -182,12 +272,30 @@ public static partial class BaseComponent
             });
         }
 
+        // 事件挂载
+        uiScope.OnMount += () =>
+        {
+            image.PointerExited += (_, _) =>
+            {
+                state.IsHover = false;
+                state.ResetSetStyle();
+                ApplyStyle(image, state.CurrentStyle);
+            };
+
+            image.PointerEntered += (_, _) =>
+            {
+                state.IsHover = true;
+                state.SetHoverStyle();
+                ApplyStyle(image, state.CurrentStyle);
+            };
+        };
+
         return new Element(uiScope, image);
 
-        void ApplyImageStyle(Image img, HImageStyle styleValue)
+        void ApplyStyle(Image img, StyleSet styleValue)
         {
             // 布局属性
-            img.Margin = styleValue.Margin;
+            if (styleValue.Margin is not null) img.Margin = styleValue.Margin.Value;
             if (styleValue.ZIndex is not null) img.ZIndex = styleValue.ZIndex.Value;
 
             if (styleValue.Width is not null) img.Width = styleValue.Width.Value;
@@ -199,13 +307,45 @@ public static partial class BaseComponent
 
             // if (styleValue.Padding is not null) img.Padding = styleValue.Padding.Value;
 
-            img.HorizontalAlignment = styleValue.HorizontalAlignment;
-            img.VerticalAlignment = styleValue.VerticalAlignment;
+            if (styleValue.HorizontalAlignment is not null)
+                img.HorizontalAlignment = styleValue.HorizontalAlignment.Value;
+            if (styleValue.VerticalAlignment is not null)
+                img.VerticalAlignment = styleValue.VerticalAlignment.Value;
 
-            img.Opacity = styleValue.Opacity;
+            if (styleValue.Opacity is not null)
+                img.Opacity = styleValue.Opacity.Value;
 
             // Image 特有属性
             // img.StretchDirection = styleValue.StretchDirection;
+
+            if (styleValue.Advanced is null) return;
+            var advanced = styleValue.Advanced;
+
+            img.RenderTransformOrigin = advanced.RelativePoint ?? RelativePoint.Center;
+
+            if (advanced.Transform is not null) img.RenderTransform = advanced.Transform;
+
+            var kind = advanced.TransitionKind;
+            if (kind is not null)
+            {
+                advanced.Transition ??= new TransformOperationsTransition();
+                if (kind == TransitionKind.Transform)
+                {
+                    advanced.Transition.Property = Image.RenderTransformProperty;
+                }
+            }
+
+            if (advanced.Transition is not null)
+            {
+                img.Transitions =
+                [
+                    advanced.Transition
+                ];
+            }
+
+            if (advanced.Effect is not null) img.Effect = advanced.Effect;
+            if (advanced.Cursor is not null) img.Cursor = advanced.Cursor;
+            if (advanced.FlowDirection is not null) img.FlowDirection = advanced.FlowDirection.Value;
         }
     }
 
@@ -214,7 +354,7 @@ public static partial class BaseComponent
         Accessor<string?> uri,
         Accessor<Stretch>? stretch = null,
         Accessor<string>? strStyle = null,
-        Accessor<HImageStyle>? style = null
+        Accessor<FullStyle>? style = null
     )
     {
         var sourceSignal = new Computed<Bitmap?>(() =>

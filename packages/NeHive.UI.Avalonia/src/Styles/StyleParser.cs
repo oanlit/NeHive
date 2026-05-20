@@ -1,7 +1,10 @@
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.Transformation;
 using Avalonia.Layout;
 using Avalonia.Input;
+using Avalonia.Controls;
+using Avalonia.Animation;
 
 namespace NeHive.UI.Avalonia.Styles;
 
@@ -21,6 +24,8 @@ public class StyleSet
     public Thickness? Padding;
     public double? RowSpacing;
     public double? ColumnSpacing;
+
+    public OverflowHandle? OverflowHandle;
 
     public Orientation? Orientation;
     public HorizontalAlignment? HorizontalAlignment;
@@ -42,9 +47,8 @@ public class StyleSet
 
     public double? Opacity;
     public bool? IsVisible;
-    public IEffect? Effect; // 阴影等效果
-    public Cursor? Cursor;
-    public FlowDirection? FlowDirection;
+
+    public AdvancedStyle? Advanced;
 
     public static StyleSet Copy(StyleSet other)
     {
@@ -89,9 +93,9 @@ public class StyleSet
 
         target.Opacity = source.Opacity;
         target.IsVisible = source.IsVisible;
-        target.Effect = source.Effect;
-        target.Cursor = source.Cursor;
-        target.FlowDirection = source.FlowDirection;
+
+        if (source.Advanced is null) target.Advanced = null;
+        else target.Advanced = AdvancedStyle.Copy(ref source.Advanced);
     }
 
     public void Merge(StyleSet other, bool mergeNull = false)
@@ -132,9 +136,8 @@ public class StyleSet
 
             Opacity = other.Opacity;
             IsVisible = other.IsVisible;
-            Effect = other.Effect;
-            Cursor = other.Cursor;
-            FlowDirection = other.FlowDirection;
+
+            Advanced = other.Advanced;
 
             return;
         }
@@ -173,9 +176,30 @@ public class StyleSet
 
         if (other.Opacity is not null) Opacity = other.Opacity;
         if (other.IsVisible is not null) IsVisible = other.IsVisible;
-        if (other.Effect is not null) Effect = other.Effect;
-        if (other.Cursor is not null) Cursor = other.Cursor;
-        if (other.FlowDirection is not null) FlowDirection = other.FlowDirection;
+
+        if (other.Advanced is null) return;
+
+        if (Advanced is null)
+        {
+            Advanced = other.Advanced;
+            return;
+        }
+
+        var otherAdvanced = other.Advanced;
+
+        if (otherAdvanced.RelativePoint is not null) Advanced.RelativePoint = otherAdvanced.RelativePoint;
+
+        if (otherAdvanced.ScaleTransform is not null) Advanced.ScaleTransform = otherAdvanced.ScaleTransform;
+        if (otherAdvanced.RotateTransform is not null) Advanced.RotateTransform = otherAdvanced.RotateTransform;
+        if (otherAdvanced.SkewTransform is not null) Advanced.SkewTransform = otherAdvanced.SkewTransform;
+        if (otherAdvanced.MatrixTransform is not null) Advanced.MatrixTransform = otherAdvanced.MatrixTransform;
+
+        if (otherAdvanced.Transform is not null) Advanced.Transform = otherAdvanced.Transform;
+        if (otherAdvanced.Transition is not null) Advanced.Transition = otherAdvanced.Transition;
+
+        if (otherAdvanced.Effect is not null) Advanced.Effect = otherAdvanced.Effect;
+        if (otherAdvanced.Cursor is not null) Advanced.Cursor = otherAdvanced.Cursor;
+        if (otherAdvanced.FlowDirection is not null) Advanced.FlowDirection = otherAdvanced.FlowDirection;
     }
 
     public void MergeMany(bool mergeNull, params StyleSet[] styles)
@@ -184,6 +208,59 @@ public class StyleSet
         {
             Merge(style, mergeNull);
         }
+    }
+}
+
+public enum OverflowHandle
+{
+    Visible,
+    Hidden
+}
+
+public enum TransitionKind
+{
+    Transform,
+    Colors
+}
+
+public sealed class AdvancedStyle
+{
+    public TransitionKind? TransitionKind;
+    public double? Duration;
+
+    public RelativePoint? RelativePoint;
+
+    public ITransform? Transform;
+    public TranslateTransform? TranslateTransform;
+    public ScaleTransform? ScaleTransform;
+    public RotateTransform? RotateTransform;
+    public SkewTransform? SkewTransform;
+    public MatrixTransform? MatrixTransform;
+
+    public TransformOperationsTransition? Transition;
+
+    public IEffect? Effect;
+    public Cursor? Cursor;
+    public FlowDirection? FlowDirection;
+
+    public static AdvancedStyle Copy(ref AdvancedStyle style)
+    {
+        return new AdvancedStyle
+        {
+            TransitionKind = style.TransitionKind,
+            Duration = style.Duration,
+            RelativePoint = style.RelativePoint,
+            Transform = style.Transform,
+            TranslateTransform = style.TranslateTransform,
+            ScaleTransform = style.ScaleTransform,
+            RotateTransform = style.RotateTransform,
+            SkewTransform = style.SkewTransform,
+            MatrixTransform = style.MatrixTransform,
+            Transition = style.Transition,
+            Effect = style.Effect,
+            Cursor = style.Cursor,
+            FlowDirection = style.FlowDirection
+        };
     }
 }
 
@@ -233,6 +310,9 @@ public static class StyleParser
         ["gap-y-"] = ApplyGapY,
         ["gap-"] = ApplyGap,
 
+        ["overflow-visible"] = (_, set) => set.OverflowHandle = OverflowHandle.Visible,
+        ["overflow-hidden"] = (_, set) => set.OverflowHandle = OverflowHandle.Hidden,
+
         ["flex-row"] = (_, set) => set.Orientation = Orientation.Horizontal,
         ["flex-col"] = (_, set) => set.Orientation = Orientation.Vertical,
         ["horizontal"] = (_, set) => set.Orientation = Orientation.Horizontal,
@@ -260,6 +340,13 @@ public static class StyleParser
         // 文本样式
         ["fg-"] = ApplyForeground,
         ["text-"] = ApplyText,
+        ["text-xs"] = (_, set) => set.FontSize = 12,
+        ["text-sm"] = (_, set) => set.FontSize = 14,
+        ["text-base"] = (_, set) => set.FontSize = 16,
+        ["text-lg"] = (_, set) => set.FontSize = 18,
+        ["text-xl"] = (_, set) => set.FontSize = 20,
+        ["text-2xl"] = (_, set) => set.FontSize = 24,
+        ["text-3xl"] = (_, set) => set.FontSize = 30,
         ["font-bold"] = (_, set) => set.FontWeight = FontWeight.Bold,
         ["font-normal"] = (_, set) => set.FontWeight = FontWeight.Normal,
         ["italic"] = (_, set) => set.FontStyle = FontStyle.Italic,
@@ -275,6 +362,11 @@ public static class StyleParser
         ["border-l-"] = ApplyBorderLeftWidth,
         ["rounded"] = (_, set) => set.CornerRadius = new CornerRadius(4),
         ["rounded-"] = ApplyCornerRadius,
+        ["rounded-sm"] = (_, set) => set.CornerRadius = new CornerRadius(2),
+        ["rounded-lg"] = (_, set) => set.CornerRadius = new CornerRadius(8),
+        ["rounded-xl"] = (_, set) => set.CornerRadius = new CornerRadius(12),
+        ["rounded-2xl"] = (_, set) => set.CornerRadius = new CornerRadius(16),
+        ["rounded-full"] = (_, set) => set.CornerRadius = new CornerRadius(9999),
 
         // 透明度 & 可见性
         ["opacity-"] = ApplyOpacity,
@@ -286,11 +378,37 @@ public static class StyleParser
         ["shadow-sm"] = ApplyShadow,
         ["shadow-lg"] = ApplyShadow,
         ["shadow-xl"] = ApplyShadow,
-        ["shadow-none"] = (_, set) => set.Effect = null,
+        ["shadow-none"] = (_, set) => set.Advanced?.Effect = null,
+
+        // 过渡
+        ["transition-transform"] = (_, set) => EnsureAdvanced(set).TransitionKind = TransitionKind.Transform,
+        ["duration-"] = ApplyDuration,
+
+        // 几何变换
+        ["origin-top-left"] = (_, set) => SetRelativePoint(0, 0, set),
+        ["origin-left"] = (_, set) => SetRelativePoint(0, 0.5, set),
+        ["origin-bottom-left"] = (_, set) => SetRelativePoint(0, 1, set),
+        ["origin-top"] = (_, set) => SetRelativePoint(0.5, 0, set),
+        ["origin-center"] = (_, set) => SetRelativePoint(0.5, 0.5, set),
+        ["origin-bottom"] = (_, set) => SetRelativePoint(0.5, 1, set),
+        ["origin-top-right"] = (_, set) => SetRelativePoint(1, 0, set),
+        ["origin-right"] = (_, set) => SetRelativePoint(1, 0.5, set),
+        ["origin-bottom-right"] = (_, set) => SetRelativePoint(1, 1, set),
+
+        ["translate-"] = ApplyTranslate,
+        ["translate-x-"] = ApplyTranslateX,
+        ["translate-y-"] = ApplyTranslateY,
+        ["scale-"] = ApplyScale,
+        ["scale-x-"] = ApplyScaleX,
+        ["scale-y-"] = ApplyScaleY,
+        ["rotate-"] = ApplyRotate,
+        ["skew-"] = ApplySkew,
+        ["skew-x-"] = ApplySkewX,
+        ["skew-y-"] = ApplySkewY,
 
         // 光标
-        ["cursor-pointer"] = (_, set) => set.Cursor = new Cursor(StandardCursorType.Hand),
-        ["cursor-default"] = (_, set) => set.Cursor = new Cursor(StandardCursorType.Arrow),
+        ["cursor-pointer"] = (_, set) => EnsureAdvanced(set).Cursor = new Cursor(StandardCursorType.Hand),
+        ["cursor-default"] = (_, set) => EnsureAdvanced(set).Cursor = new Cursor(StandardCursorType.Arrow),
     };
 
     // 样式缓存
@@ -334,6 +452,8 @@ public static class StyleParser
         {
             ParsePart(part, ref set);
         }
+
+        MergeTransform(ref set);
     }
 
     public static void Parse(string strStyle, ref StyleSet set)
@@ -359,6 +479,8 @@ public static class StyleParser
         var set = new StyleSet();
 
         Parse(strStyle, ref set);
+
+        MergeTransform(ref set);
 
         lock (StyleCache)
         {
@@ -403,109 +525,198 @@ public static class StyleParser
 
             variants[key] = [value];
         }
+
+        MergeTransform(ref baseStyle);
+    }
+
+    public static void MergeTransform(ref StyleSet styles)
+    {
+        var advanced = styles.Advanced;
+        if (advanced is null) return;
+
+        var builder = TransformOperations.CreateBuilder(4);
+
+        if (advanced.TranslateTransform is not null)
+            builder.AppendTranslate(advanced.TranslateTransform.X, advanced.TranslateTransform.Y);
+        if (advanced.ScaleTransform is not null)
+            builder.AppendScale(advanced.ScaleTransform.ScaleX, advanced.ScaleTransform.ScaleY);
+        if (advanced.RotateTransform is not null)
+            builder.AppendRotate(advanced.RotateTransform.Angle);
+        if (advanced.SkewTransform is not null)
+            builder.AppendSkew(advanced.SkewTransform.AngleX, advanced.SkewTransform.AngleY);
+
+        // if (advanced.MatrixTransform is not null) 
+        //     builder.AppendMatrix(advanced.MatrixTransform);
+
+        var ops = builder.Build();
+        if (ops.Operations.Count > 0)
+        {
+            advanced.Transform = ops;
+        }
+
+        var kind = advanced.TransitionKind;
+        if (kind is null) return;
+
+        if (advanced.Transform is null)
+        {
+            builder.AppendScale(1, 1);
+            advanced.Transform = builder.Build();
+        }
+
+        var duration = advanced.Duration;
+        if (duration is null) return;
+
+        advanced.Transition ??= new TransformOperationsTransition();
+        advanced.Transition.Duration = TimeSpan.FromMilliseconds(duration.Value);
     }
 
     private static void ApplyMargin(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
-        set.Margin = new Thickness(val);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.Margin = new Thickness(val.Value);
     }
 
     private static void ApplyMarginX(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Margin ?? new Thickness(0);
-        set.Margin = new Thickness(val, t.Top, val, t.Bottom);
+        set.Margin = new Thickness(val.Value, t.Top, val.Value, t.Bottom);
     }
 
     private static void ApplyMarginY(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Margin ?? new Thickness(0);
-        set.Margin = new Thickness(t.Left, val, t.Right, val);
+        set.Margin = new Thickness(t.Left, val.Value, t.Right, val.Value);
     }
 
     private static void ApplyMarginLeft(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Margin ?? new Thickness(0);
-        set.Margin = new Thickness(val, t.Top, t.Right, t.Bottom);
+        set.Margin = new Thickness(val.Value, t.Top, t.Right, t.Bottom);
     }
 
     private static void ApplyMarginTop(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        // var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Margin ?? new Thickness(0);
-        set.Margin = new Thickness(t.Left, val, t.Right, t.Bottom);
+        set.Margin = new Thickness(t.Left, val.Value, t.Right, t.Bottom);
     }
 
     private static void ApplyMarginRight(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Margin ?? new Thickness(0);
-        set.Margin = new Thickness(t.Left, t.Top, val, t.Bottom);
+        set.Margin = new Thickness(t.Left, t.Top, val.Value, t.Bottom);
     }
 
     private static void ApplyMarginBottom(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Margin ?? new Thickness(0);
-        set.Margin = new Thickness(t.Left, t.Top, t.Right, val);
+        set.Margin = new Thickness(t.Left, t.Top, t.Right, val.Value);
     }
 
     private static void ApplyZIndex(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
-        set.ZIndex = (int)val;
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.ZIndex = (int)val.Value;
     }
 
     private static void ApplyPadding(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
-        set.Padding = new Thickness(val);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.Padding = new Thickness(val.Value);
     }
 
     private static void ApplyPaddingX(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Padding ?? new Thickness(0);
-        set.Padding = new Thickness(val, t.Top, val, t.Bottom);
+        set.Padding = new Thickness(val.Value, t.Top, val.Value, t.Bottom);
     }
 
     private static void ApplyPaddingY(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Padding ?? new Thickness(0);
-        set.Padding = new Thickness(t.Left, val, t.Right, val);
+        set.Padding = new Thickness(t.Left, val.Value, t.Right, val.Value);
     }
 
     private static void ApplyPaddingLeft(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Padding ?? new Thickness(0);
-        set.Padding = new Thickness(val, t.Top, t.Right, t.Bottom);
+        set.Padding = new Thickness(val.Value, t.Top, t.Right, t.Bottom);
     }
 
     private static void ApplyPaddingTop(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Padding ?? new Thickness(0);
-        set.Padding = new Thickness(t.Left, val, t.Right, t.Bottom);
+        set.Padding = new Thickness(t.Left, val.Value, t.Right, t.Bottom);
     }
 
     private static void ApplyPaddingRight(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Padding ?? new Thickness(0);
-        set.Padding = new Thickness(t.Left, t.Top, val, t.Bottom);
+        set.Padding = new Thickness(t.Left, t.Top, val.Value, t.Bottom);
     }
 
 
     private static void ApplyPaddingBottom(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
         var t = set.Padding ?? new Thickness(0);
-        set.Padding = new Thickness(t.Left, t.Top, t.Right, val);
+        set.Padding = new Thickness(t.Left, t.Top, t.Right, val.Value);
     }
 
     private static void ApplyBackground(string[] color, StyleSet set)
@@ -533,48 +744,49 @@ public static class StyleParser
 
     private static void ApplyGap(string[] v, StyleSet set)
     {
-        var val = ToVal(v[0]);
-        set.RowSpacing = val;
-        set.ColumnSpacing = val;
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.RowSpacing = val.Value;
+        set.ColumnSpacing = val.Value;
     }
 
     private static void ApplyGapX(string[] v, StyleSet set)
     {
-        set.ColumnSpacing = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.ColumnSpacing = val.Value;
     }
 
     private static void ApplyGapY(string[] v, StyleSet set)
     {
-        set.RowSpacing = ToVal(v[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.RowSpacing = val.Value;
     }
 
     private static void ApplyText(string[] v, StyleSet set)
     {
-        set.FontSize = v[0] switch
-        {
-            "xs" => 12,
-            "sm" => 14,
-            "base" => 16,
-            "lg" => 18,
-            "xl" => 20,
-            "2xl" => 24,
-            "3xl" => 30,
-            _ => ToVal(v[0])
-        };
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.FontSize = val.Value;
     }
 
     private static void ApplyCornerRadius(string[] v, StyleSet set)
     {
-        var r = v[0] switch
-        {
-            "sm" => 2,
-            "lg" => 8,
-            "xl" => 12,
-            "2xl" => 16,
-            "full" => 9999,
-            _ => ToVal(v[0])
-        };
-        set.CornerRadius = new CornerRadius(r);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.FontSize = val.Value;
+        set.CornerRadius = new CornerRadius(val.Value);
     }
 
     private static void ApplyBorderBrush(string[] color, StyleSet set)
@@ -586,34 +798,53 @@ public static class StyleParser
 
     private static void ApplyBorderWidth(string[] widthStr, StyleSet set)
     {
-        var w = ToVal(widthStr[0]);
-        set.BorderThickness = new Thickness(w);
+        if (widthStr.Length != 1) return;
+        var val = TryParseValue(widthStr[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.BorderThickness = new Thickness(val.Value);
     }
 
     private static void ApplyBorderLeftWidth(string[] widthStr, StyleSet set)
     {
-        var w = ToVal(widthStr[0]);
+        if (widthStr.Length != 1) return;
+        var val = TryParseValue(widthStr[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        var w = val.Value;
         var t = set.BorderThickness ?? new Thickness(0);
         set.BorderThickness = new Thickness(w, t.Top, t.Right, t.Bottom);
     }
 
     private static void ApplyBorderTopWidth(string[] widthStr, StyleSet set)
     {
-        var w = ToVal(widthStr[0]);
+        if (widthStr.Length != 1) return;
+        var val = TryParseValue(widthStr[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        var w = val.Value;
         var t = set.BorderThickness ?? new Thickness(0);
         set.BorderThickness = new Thickness(t.Left, w, t.Right, t.Bottom);
     }
 
     private static void ApplyBorderRightWidth(string[] widthStr, StyleSet set)
     {
-        var w = ToVal(widthStr[0]);
+        if (widthStr.Length != 1) return;
+        var val = TryParseValue(widthStr[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        var w = val.Value;
         var t = set.BorderThickness ?? new Thickness(0);
         set.BorderThickness = new Thickness(t.Left, t.Top, w, t.Bottom);
     }
 
     private static void ApplyBorderBottomWidth(string[] widthStr, StyleSet set)
     {
-        var w = ToVal(widthStr[0]);
+        if (widthStr.Length != 1) return;
+        var val = TryParseValue(widthStr[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        var w = val.Value;
         var t = set.BorderThickness ?? new Thickness(0);
         set.BorderThickness = new Thickness(t.Left, t.Top, t.Right, w);
     }
@@ -665,12 +896,152 @@ public static class StyleParser
             "xl" => 12,
             _ => 4 // 默认 shadow 或 shadow-md
         };
-        set.Effect = new DropShadowEffect { BlurRadius = blur, Opacity = 0.3 };
+        EnsureAdvanced(set).Effect = new DropShadowEffect { BlurRadius = blur, Opacity = 0.3 };
     }
 
-    private static double ToVal(string v)
+    private static AdvancedStyle EnsureAdvanced(StyleSet set)
     {
-        return double.TryParse(v, out var num) ? num * UnitScale : 0;
+        set.Advanced ??= new AdvancedStyle();
+        return set.Advanced;
+    }
+
+    private static void ApplyDuration(string[] vals, StyleSet set)
+    {
+        if (vals.Length != 1) return;
+        var val = TryParseValue(vals[0]);
+        if (val is null) return;
+
+        EnsureAdvanced(set).Duration = val.Value;
+    }
+
+    private static void SetRelativePoint(double x, double y, StyleSet set)
+    {
+        var advanced = EnsureAdvanced(set);
+        advanced.RelativePoint = new RelativePoint(x, y, RelativeUnit.Relative);
+    }
+
+    private static void ApplyTranslate(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var translate = TryParseValue(val);
+        if (translate is null) return;
+
+        translate *= UnitScale;
+        EnsureAdvanced(set).TranslateTransform = new TranslateTransform { X = translate.Value, Y = translate.Value };
+    }
+
+    private static void ApplyTranslateX(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var translate = TryParseValue(val);
+        if (translate is null) return;
+
+        translate *= UnitScale;
+        var advanced = EnsureAdvanced(set);
+        var translateTransform = advanced.TranslateTransform ?? new TranslateTransform();
+        translateTransform.X = translate.Value;
+        advanced.TranslateTransform = translateTransform;
+    }
+
+    private static void ApplyTranslateY(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var translate = TryParseValue(val);
+        if (translate is null) return;
+
+        translate *= UnitScale;
+        var advanced = EnsureAdvanced(set);
+        var translateTransform = advanced.TranslateTransform ?? new TranslateTransform();
+        translateTransform.Y = translate.Value;
+        advanced.TranslateTransform = translateTransform;
+    }
+
+    private static void ApplyScale(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var scale = TryParseValue(val);
+        if (scale is null) return;
+
+        scale /= 100.0;
+        EnsureAdvanced(set).ScaleTransform = new ScaleTransform { ScaleX = scale.Value, ScaleY = scale.Value };
+    }
+
+    private static void ApplyScaleX(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var scale = TryParseValue(val);
+        if (scale is null) return;
+
+        scale /= 100.0;
+        var advanced = EnsureAdvanced(set);
+        var scaleTransform = advanced.ScaleTransform ?? new ScaleTransform();
+        scaleTransform.ScaleX = scale.Value;
+        advanced.ScaleTransform = scaleTransform;
+    }
+
+    private static void ApplyScaleY(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var scale = TryParseValue(val);
+        if (scale is null) return;
+
+        scale /= 100.0;
+        var advanced = EnsureAdvanced(set);
+        var scaleTransform = advanced.ScaleTransform ?? new ScaleTransform();
+        scaleTransform.ScaleY = scale.Value;
+        advanced.ScaleTransform = scaleTransform;
+    }
+
+    private static void ApplyRotate(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var rotate = TryParseValue(val);
+        if (rotate is null) return;
+
+        EnsureAdvanced(set).RotateTransform = new RotateTransform { Angle = rotate.Value };
+    }
+
+    private static void ApplySkew(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var skew = TryParseValue(val);
+        if (skew is null) return;
+
+        EnsureAdvanced(set).SkewTransform = new SkewTransform { AngleX = skew.Value, AngleY = skew.Value };
+    }
+
+    private static void ApplySkewX(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var skew = TryParseValue(val);
+        if (skew is null) return;
+
+        var advanced = EnsureAdvanced(set);
+        var scaleTransform = advanced.SkewTransform ?? new SkewTransform();
+        scaleTransform.AngleX = skew.Value;
+        advanced.SkewTransform = scaleTransform;
+    }
+
+    private static void ApplySkewY(string[] vals, StyleSet set)
+    {
+        if (vals.Length > 1) return;
+        var val = vals[0];
+        var skew = TryParseValue(val);
+        if (skew is null) return;
+
+        var advanced = EnsureAdvanced(set);
+        var scaleTransform = advanced.SkewTransform ?? new SkewTransform();
+        scaleTransform.AngleY = skew.Value;
+        advanced.SkewTransform = scaleTransform;
     }
 
     private static double? TryParseLength(string s)
@@ -679,6 +1050,24 @@ public static class StyleParser
         if (s.EndsWith("px") && double.TryParse(s[..^2], out var px)) return px;
         if (double.TryParse(s, out var val)) return val * UnitScale;
         return null;
+    }
+
+    private static readonly Dictionary<string, double> ValueResultCache = new();
+
+    private static double? TryParseValue(string val)
+    {
+        if (ValueResultCache.TryGetValue(val, out var cacheValue)) return cacheValue;
+
+        var cacheKey = new string(val);
+        if (val.StartsWith('['))
+        {
+            if (!val.EndsWith(']')) return null;
+            val = val[1..^1];
+        }
+
+        if (!double.TryParse(val, out var result)) return null;
+        ValueResultCache[cacheKey] = result;
+        return result;
     }
 
     private static readonly Dictionary<string, Color> ColorResultCache = new();
