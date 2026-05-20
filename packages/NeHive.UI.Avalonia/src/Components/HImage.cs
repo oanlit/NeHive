@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media.Transformation;
 using Avalonia.Animation;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -157,23 +156,11 @@ public static partial class BaseComponent
 {
     private class HImageState
     {
-        private StyleSet _currentStyle;
-        public bool ResetCurrentStyle;
+        // private StyleSet _currentStyle;
+        // public bool ResetCurrentStyle;
         public StyleSet BaseStyle;
 
-        public StyleSet CurrentStyle
-        {
-            get
-            {
-                if (ResetCurrentStyle)
-                {
-                    _currentStyle = StyleSet.Copy(BaseStyle);
-                    ResetCurrentStyle = false;
-                }
-
-                return _currentStyle;
-            }
-        }
+        public StyleSet CurrentStyle;
 
         public Dictionary<string, List<string>>? Variants;
 
@@ -183,7 +170,7 @@ public static partial class BaseComponent
         public HImageState(StyleSet baseStyle)
         {
             BaseStyle = baseStyle;
-            _currentStyle = StyleSet.Copy(BaseStyle);
+            CurrentStyle = StyleSet.Copy(BaseStyle);
         }
 
         public void ResetSetStyle()
@@ -206,7 +193,7 @@ public static partial class BaseComponent
             if (Variants == null) return;
             if (IsHover && Variants.TryGetValue("hover", out var strs))
             {
-                StyleParser.Parse(strs, ref _currentStyle);
+                StyleParser.Parse(strs, ref CurrentStyle);
             }
         }
     }
@@ -257,9 +244,8 @@ public static partial class BaseComponent
                 var styleValue = epochScope.Track(style);
                 state.BaseStyle = styleValue.Base;
                 state.Variants = styleValue.Variants;
-                state.ResetCurrentStyle = true;
-                // state.CurrentStyle = StyleSet.Copy(state.BaseStyle);
                 ApplyStyle(image, styleValue.Base);
+                state.CurrentStyle = StyleSet.Copy(state.BaseStyle);
             });
         }
 

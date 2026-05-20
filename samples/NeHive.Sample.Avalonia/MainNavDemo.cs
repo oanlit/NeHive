@@ -429,7 +429,7 @@ public static class DemoComponent
             {
                 HUriImage(selectedFile,
                     stretch: Stretch.UniformToFill,
-                    strStyle: "transition-transform duration-300 hover:scale-110"
+                    strStyle: "transition-transform duration-200 hover:scale-110"
                 ) // HUriImage
             }) // HStackPanel
         }); // rootElement
