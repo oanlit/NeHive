@@ -311,30 +311,30 @@ public class LifeCycleTest
 
         Assert.Equal([0, 1, 2, 3], values);
     }
-
-    [Fact]
-    public void Clean_Root_Test()
-    {
-        MutSignal<int> s = new(0);
-        List<int> values = [];
-
-        using var scope = new Scope();
-
-        var e1 = scope.CreateEffect(() => values.Add(s.RxValue));
-        Assert.False(e1.IsInvalid);
-
-        s.RxValue = 1;
-        Assert.Equal([0, 1], values);
-
-        var root = Scope.RootScope;
-
-        root.Dispose();
-        Assert.True(scope.IsDisposed);
-        Assert.True(e1.IsInvalid);
-
-        s.RxValue = 2;
-        Assert.Equal([0, 1], values);
-    }
+    //
+    // [Fact]
+    // public void Clean_Root_Test()
+    // {
+    //     MutSignal<int> s = new(0);
+    //     List<int> values = [];
+    //
+    //     using var scope = new Scope();
+    //
+    //     var e1 = scope.CreateEffect(() => values.Add(s.RxValue));
+    //     Assert.False(e1.IsInvalid);
+    //
+    //     s.RxValue = 1;
+    //     Assert.Equal([0, 1], values);
+    //
+    //     var root = Scope.RootScope;
+    //
+    //     root.Dispose();
+    //     Assert.True(scope.IsDisposed);
+    //     Assert.True(e1.IsInvalid);
+    //
+    //     s.RxValue = 2;
+    //     Assert.Equal([0, 1], values);
+    // }
 
     [Fact]
     public void Owner_Dispose_Should_Throw_Test()

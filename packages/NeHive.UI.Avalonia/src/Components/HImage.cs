@@ -218,21 +218,27 @@ public static partial class BaseComponent
 
         if (strStyle != null)
         {
-            style = HButtonStyle.ParseFull(strStyle);
+            style = StyleParser.ParseFull(strStyle);
         }
 
         var uiScope = new UiScope();
+
         var image = new Image();
-
+        
+        var border = new Border
+        {
+            Child = image,
+            ClipToBounds = true
+        };
+        
         // 绑定 Source
-
         uiScope.CreateEffect(() => image.Source = source.RxValue);
 
         HImageState state;
 
         if (style is null)
         {
-            state = new HImageState(HButtonStyle.DefaultStyleSet());
+            state = new HImageState(new StyleSet());
             ApplyStyle(image, state.BaseStyle);
         }
         // 绑定样式
@@ -276,27 +282,52 @@ public static partial class BaseComponent
             };
         };
 
-        return new Element(uiScope, image);
+        return new Element(uiScope, border);
 
         void ApplyStyle(Image img, StyleSet styleValue)
         {
             // 布局属性
-            if (styleValue.Margin is not null) img.Margin = styleValue.Margin.Value;
-            if (styleValue.ZIndex is not null) img.ZIndex = styleValue.ZIndex.Value;
+            if (styleValue.Margin is not null) border.Margin = styleValue.Margin.Value;
+            if (styleValue.ZIndex is not null) border.ZIndex = styleValue.ZIndex.Value;
 
-            if (styleValue.Width is not null) img.Width = styleValue.Width.Value;
-            if (styleValue.Height is not null) img.Height = styleValue.Height.Value;
-            if (styleValue.MinWidth is not null) img.MinWidth = styleValue.MinWidth.Value;
-            if (styleValue.MaxWidth is not null) img.MaxWidth = styleValue.MaxWidth.Value;
-            if (styleValue.MinHeight is not null) img.MinHeight = styleValue.MinHeight.Value;
-            if (styleValue.MaxHeight is not null) img.MaxHeight = styleValue.MaxHeight.Value;
+            if (styleValue.Width is not null)
+            {
+                image.Width = styleValue.Width.Value;
+            }
 
-            // if (styleValue.Padding is not null) img.Padding = styleValue.Padding.Value;
+            if (styleValue.Height is not null)
+            {
+                image.Height = styleValue.Height.Value;
+            }
+            if (styleValue.MinWidth is not null)
+            {
+                image.MinWidth = styleValue.MinWidth.Value;
+            }
+            if (styleValue.MaxWidth is not null)
+            {
+                image.MaxWidth = styleValue.MaxWidth.Value;
+            }
+            if (styleValue.MinHeight is not null)
+            {
+                image.MinHeight = styleValue.MinHeight.Value;
+            }
+            if (styleValue.MaxHeight is not null)
+            {
+                image.MaxHeight = styleValue.MaxHeight.Value;
+            }
+
+            if (styleValue.Padding.HasValue) border.Padding = styleValue.Padding.Value;
 
             if (styleValue.HorizontalAlignment is not null)
                 img.HorizontalAlignment = styleValue.HorizontalAlignment.Value;
             if (styleValue.VerticalAlignment is not null)
                 img.VerticalAlignment = styleValue.VerticalAlignment.Value;
+
+            if (styleValue.BorderBrush is not null) border.BorderBrush = styleValue.BorderBrush;
+            if (styleValue.BorderThickness.HasValue) border.BorderThickness = styleValue.BorderThickness.Value;
+            if (styleValue.CornerRadius is not null) border.CornerRadius = styleValue.CornerRadius.Value;
+
+            // border.Child = img;
 
             if (styleValue.Opacity is not null)
                 img.Opacity = styleValue.Opacity.Value;

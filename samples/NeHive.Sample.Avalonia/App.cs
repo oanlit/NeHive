@@ -4,7 +4,6 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
-// using Avalonia.Controls.Primitives;
 
 namespace NeHive.Sample.Avalonia;
 

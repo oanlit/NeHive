@@ -4,6 +4,7 @@ using Avalonia.Media.Transformation;
 using Avalonia.Layout;
 using Avalonia.Input;
 using Avalonia.Animation;
+using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Styles;
 
@@ -357,7 +358,7 @@ public static class StyleParser
         ["font-extrabold"] = (_, set) => set.FontWeight = FontWeight.ExtraBold,
         ["font-black"] = (_, set) => set.FontWeight = FontWeight.Black,
         ["font-extrablack"] = (_, set) => set.FontWeight = FontWeight.ExtraBlack,
-        
+
         ["italic"] = (_, set) => set.FontStyle = FontStyle.Italic,
         ["not-italic"] = (_, set) => set.FontStyle = FontStyle.Normal,
 
@@ -577,6 +578,21 @@ public static class StyleParser
 
         advanced.Transition ??= new TransformOperationsTransition();
         advanced.Transition.Duration = TimeSpan.FromMilliseconds(duration.Value);
+    }
+
+    public static Accessor<FullStyle> ParseFull(Accessor<string> text)
+    {
+        var fullStyle = new FullStyle();
+
+        return new Computed<FullStyle>(() =>
+        {
+            var str = text.RxValue;
+            fullStyle.Base = new StyleSet();
+            fullStyle.Variants = [];
+            ParseFullStyle(str, ref fullStyle);
+
+            return fullStyle;
+        });
     }
 
     private static void ApplyMargin(string[] v, StyleSet set)

@@ -23,7 +23,7 @@ public static partial class ControlFlow
     private static IElement DefaultError(Exception ex)
         => HTextBlock(new($"RxError: {ex.Message}"));
 
-    private static Element LoadingComp<T>(LoadingProp<T> prop, UiScope uiScope) where T : notnull
+    private static Element LoadingComp<T>(LoadingProp<T> prop, UiScope uiScope)
     {
         var container = new Panel();
 
@@ -75,6 +75,6 @@ public static partial class ControlFlow
         return new Element(uiScope, container);
     }
 
-    public static IElement Loading<T>(LoadingProp<T> prop) where T : notnull
+    public static IElement Loading<T>(LoadingProp<T> prop)
         => Element.WithScope(LoadingComp, prop);
 }

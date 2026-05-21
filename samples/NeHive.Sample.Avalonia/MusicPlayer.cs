@@ -2,15 +2,37 @@ using LibVLCSharp.Shared;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia;
 using Avalonia.Threading;
+using Avalonia.Media;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
 using static NeHive.UI.Avalonia.Components.ControlFlow;
 
 namespace NeHive.Sample.Avalonia;
 
+public static class MediaPlayerExtensions
+{
+    extension(Scope scope)
+    {
+        public (LibVLC, MediaPlayer) CreateMediaPlayer()
+        {
+            var libVlc = new LibVLC();
+            var mediaPlayer = new MediaPlayer(libVlc);
+
+            scope.OnDispose += () =>
+            {
+                mediaPlayer.Dispose();
+                libVlc.Dispose();
+            };
+
+            return (libVlc, mediaPlayer);
+        }
+    }
+}
+
 public static class MusicPlayerDemo
 {
-    // private static readonly MutSignal<string?> LibVlcPath = new("D:/Software/VideoLAN/VLC");
-    private static readonly MutSignal<string?> LibVlcPath = new("D:/Software/VideoLAN/VLC/");
+    private static readonly MutSignal<string?> LibVlcPath = new("D:/Software/VideoLAN/VLC");
+
+    // private static readonly MutSignal<string?> LibVlcPath = new(null);
     private static Scope _scope = new();
 
     static MusicPlayerDemo()
@@ -27,18 +49,47 @@ public static class MusicPlayerDemo
     private static IElement CorePlayerComp(UiScope uiScope)
     {
         // ---------- 播放引擎 ----------
-        var libVlc = new LibVLC();
-        var mediaPlayer = new MediaPlayer(libVlc);
+        var (libVlc, mediaPlayer) = uiScope.CreateMediaPlayer();
 
         // ---------- 状态 ----------
+
         var playlist = new MutSignal<IReadOnlyList<TrackInfo>>([]);
-        var currentIndex = new MutSignal<int>(-1);
-        var isPlaying = new MutSignal<bool>(false);
+        var currentIndex = new MutSignal<int>(-1,
+            onSet: (_, newValue, setter) => Dispatcher.UIThread.Post(() => setter(newValue)));
+        var isPlaying = new MutSignal<bool>(false,
+            onSet: (_, newValue, setter) => Dispatcher.UIThread.Post(() => setter(newValue)));
         var volume = new MutSignal<int>(50);
-        var position = new MutSignal<TimeSpan>(TimeSpan.Zero);
-        var duration = new MutSignal<TimeSpan>(TimeSpan.FromSeconds(1));
+        var position = new MutSignal<TimeSpan>(TimeSpan.Zero,
+            onSet: (_, newValue, setter) => Dispatcher.UIThread.Post(() => setter(newValue)));
+        var duration = new MutSignal<TimeSpan>(TimeSpan.FromSeconds(1),
+            onSet: (_, newValue, setter) => Dispatcher.UIThread.Post(() => setter(newValue)));
         var selectedPath = new MutSignal<string?>(null);
-        var trackName = new MutSignal<string>("未选择曲目");
+
+        var currentMedia = new MutSignal<Media?>(null,
+            onSet: (_, newValue, setter) => Dispatcher.UIThread.Post(() => setter(newValue)));
+
+        var triggerAsyncMemo = new MutSignal<bool>(false);
+        var songInfo = uiScope.CreateAsyncMemo<SongInfo?>(async epochScope =>
+        {
+            _ = epochScope.Pull(triggerAsyncMemo);
+            var indexValue = epochScope.Pull(currentIndex);
+            if (indexValue < 0) return null;
+
+            var list = playlist.Value;
+            var media = new Media(libVlc, list[indexValue].FilePath);
+
+            await media.Parse(timeout: 5000);
+
+            var title = media.Meta(MetadataType.Title) ?? "未知标题";
+            var artist = media.Meta(MetadataType.Artist) ?? "未知歌手";
+            var album = media.Meta(MetadataType.Album) ?? "未知专辑";
+
+            var coverPath = media.Meta(MetadataType.ArtworkURL);
+            if (coverPath is not null) coverPath = new Uri(coverPath).LocalPath;
+
+            currentMedia.RxValue = media;
+            return new SongInfo(title, artist, album, coverPath);
+        });
 
         // ---------- UI ----------
         var rootElement = uiScope.RootElement(new(strStyle: "m-6 gap-5 flex-col bg-gray-50 rounded-2xl p-6")
@@ -46,83 +97,14 @@ public static class MusicPlayerDemo
             HTextBlock("🎵 NeHive Music Player", strStyle: "text-xl font-bold fg-sky-800 mb-2"),
 
             // 播放控制区
-            HStackPanel(new(strStyle: "gap-6 flex-row items-center justify-between bg-white rounded-xl p-4 shadow-sm")
+            HStackPanel(new(strStyle: "p-4 flex-row items-center justify-between bg-white rounded-xl shadow-sm")
             {
-                // 专辑封面 + 曲目信息
-                HStackPanel(new(strStyle: "gap-4 flex-row items-center")
+                Loading<SongInfo?>(new(songInfo)
                 {
-                    HButton(strStyle: "w-20 h-20 bg-gray-200 rounded-lg"),
-                    HStackPanel(new(strStyle: "gap-1 flex-col")
-                    {
-                        HTextBlock(trackName, strStyle: "text-base font-semibold fg-gray-800"),
-                        HTextBlock("未知艺术家", strStyle: "text-sm fg-gray-500")
-                    }) // HStackPanel
-                }), // HStackPanel
-
-                // 中间：按钮 + 进度
-                HStackPanel(new(strStyle: "gap-3 flex-col flex-1")
-                {
-                    // 播放按钮组
-                    HStackPanel(new(strStyle: "gap-3 flex-row justify-center")
-                    {
-                        HButton("⏮",
-                            strStyle: "px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-lg",
-                            onClick: _ => PlayLast()
-                        ),
-                        HButton(new(() => isPlaying.RxValue ? "⏸" : "▶️"),
-                            strStyle:
-                            "px-4 py-2 bg-sky-500 hover:bg-sky-600 click:bg-sky-700 fg-white rounded-full text-lg",
-                            onClick: _ => isPlaying.RxValue = !isPlaying.Value
-                        ), // HButton
-                        HButton("⏭",
-                            strStyle: "px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-lg",
-                            onClick: _ => PlayNext()
-                        ) // HButton
-                    }), // HStackPanel
-
-                    // 进度条
-                    HStackPanel(new(strStyle: "gap-2 flex-row items-center")
-                    {
-                        HTextBlock(
-                            new(() => position.RxValue.ToString(@"mm\:ss")),
-                            strStyle: "text-xs fg-gray-500 w-12 text-right"
-                        ), // HTextBlock
-                        HSlider(
-                            value: new(() => position.RxValue.TotalMilliseconds),
-                            minimum: 0,
-                            maximum: new(() => duration.RxValue.TotalMilliseconds),
-                            strStyle: "w-64 flex-row",
-                            onValueChanged: val =>
-                            {
-                                if (Math.Abs(val - position.Value.TotalMilliseconds) > 1000)
-                                    mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(val));
-                            }
-                        ), // HSlider
-                        HTextBlock(
-                            new(() => duration.RxValue.ToString(@"mm\:ss")),
-                            strStyle: "text-xs fg-gray-500 w-12"
-                        ) // HTextBlock
-                    }) // HStackPanel
-                }), // HStackPanel
-
-                // 音量
-                HStackPanel(new(strStyle: "gap-2 flex-row items-center")
-                {
-                    HTextBlock("🔊", strStyle: "text-base"),
-                    HSlider(
-                        value: new Computed<double>(() => volume.RxValue),
-                        minimum: 0,
-                        maximum: 100,
-                        strStyle: "w-24",
-                        onValueChanged: val =>
-                        {
-                            var v = (int)val;
-                            volume.RxValue = v;
-                            mediaPlayer.Volume = v;
-                        }
-                    ), // HSlider
-                    HTextBlock(new(() => $"{volume.RxValue}%"), strStyle: "text-xs fg-gray-500 w-10")
-                }) // HStackPanel
+                    Success = Audio,
+                    Loading = () => Audio(null),
+                    Error = _ => Audio(null),
+                }) // Loading<SongInfo?>
             }), // HStackPanel
 
             // 播放列表操作
@@ -145,7 +127,6 @@ public static class MusicPlayerDemo
                         {
                             mediaPlayer.Stop();
                             playlist.RxValue = [];
-                            Console.WriteLine("HButton(清空列表) 执行了 currentIndex 的修改");
                             currentIndex.RxValue = -1;
                         }
                     ) // HButton
@@ -165,37 +146,90 @@ public static class MusicPlayerDemo
                                     return
                                         $"px-3 py-2 text-left rounded-lg {(isActive ? "bg-sky-100 fg-sky-800 font-semibold" : "bg-transparent fg-gray-700 hover:bg-gray-100")}";
                                 }),
-                                onClick: _ =>
-                                {
-                                    Console.WriteLine("HButton(点击曲目) 执行了 currentIndex 的修改");
-                                    currentIndex.RxValue = index.Value;
-                                    PlayTrack(track);
-                                }
+                                onClick: _ => currentIndex.RxValue = index.Value
                             ) // HButton
                         // ForEach<TrackInfo>.ItemTemplate
                     }) // ForEach<TrackInfo>
                 }) // HScrollViewer
+            }), // HStackPanel
+
+            // 中间：按钮 + 进度
+            HStackPanel(new(strStyle: "gap-3 flex-col flex-1")
+            {
+                // 播放按钮组
+                HStackPanel(new(strStyle: "gap-3 flex-row justify-center")
+                {
+                    HButton("⏮",
+                        strStyle: "px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-lg",
+                        onClick: _ => PlayLast()
+                    ),
+                    HButton(new(() => isPlaying.RxValue ? "⏸" : "▶️"),
+                        strStyle:
+                        "px-4 py-2 bg-sky-500 hover:bg-sky-600 click:bg-sky-700 fg-white rounded-full text-lg",
+                        onClick: _ => isPlaying.RxValue = !isPlaying.Value
+                    ), // HButton
+                    HButton("⏭",
+                        strStyle: "px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-lg text-lg",
+                        onClick: _ => PlayNext()
+                    ) // HButton
+                }), // HStackPanel
+
+                // 进度条
+                HStackPanel(new(strStyle: "gap-2 flex-row items-center")
+                {
+                    HTextBlock(
+                        new(() => position.RxValue.ToString(@"mm\:ss")),
+                        strStyle: "text-xs fg-gray-500 w-12 text-right"
+                    ), // HTextBlock
+                    HSlider(
+                        value: new(() => position.RxValue.TotalMilliseconds),
+                        minimum: 0,
+                        maximum: new(() => duration.RxValue.TotalMilliseconds),
+                        strStyle: "w-64 flex-row",
+                        onValueChanged: val =>
+                        {
+                            if (Math.Abs(val - position.Value.TotalMilliseconds) > 1000)
+                                mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(val));
+                        }
+                    ), // HSlider
+                    HTextBlock(
+                        new(() => duration.RxValue.ToString(@"mm\:ss")),
+                        strStyle: "text-xs fg-gray-500 w-12"
+                    ) // HTextBlock
+                }) // HStackPanel
+            }), // HStackPanel
+
+            // 音量
+            HStackPanel(new(strStyle: "gap-2 flex-row items-center")
+            {
+                HTextBlock("🔊", strStyle: "text-base"),
+                HSlider(
+                    value: new Computed<double>(() => volume.RxValue),
+                    minimum: 0,
+                    maximum: 100,
+                    strStyle: "w-24",
+                    onValueChanged: val =>
+                    {
+                        var v = (int)val;
+                        volume.RxValue = v;
+                        mediaPlayer.Volume = v;
+                    }
+                ), // HSlider
+                HTextBlock(new(() => $"{volume.RxValue}%"), strStyle: "text-xs fg-gray-500 w-10")
             }) // HStackPanel
         }); // rootElement
 
         // 引擎事件 → 信号
-        mediaPlayer.Playing += (_, _) => isPlaying.PostToUi(true);
-        mediaPlayer.Paused += (_, _) => isPlaying.PostToUi(false);
+        mediaPlayer.Playing += (_, _) => isPlaying.RxValue = true;
+        mediaPlayer.Paused += (_, _) => isPlaying.RxValue = false;
         mediaPlayer.Stopped += (_, _) =>
         {
-            Dispatcher.UIThread.Post(() =>
-            {
-                isPlaying.RxValue = false;
-                position.RxValue = TimeSpan.Zero;
-            });
+            isPlaying.RxValue = false;
+            position.RxValue = TimeSpan.Zero;
         };
-        mediaPlayer.TimeChanged += (_, e) => position.PostToUi(TimeSpan.FromMilliseconds(e.Time));
-        mediaPlayer.LengthChanged += (_, e) => duration.PostToUi(TimeSpan.FromMilliseconds(e.Length));
-        mediaPlayer.EndReached += (_, _) =>
-        {
-            Console.WriteLine("mediaPlayer.EndReached 事件触发");
-            PlayNext();
-        };
+        mediaPlayer.TimeChanged += (_, e) => position.RxValue = TimeSpan.FromMilliseconds(e.Time);
+        mediaPlayer.LengthChanged += (_, e) => duration.RxValue = TimeSpan.FromMilliseconds(e.Length);
+        mediaPlayer.EndReached += (_, _) => PlayNext();
 
         uiScope.CreateEffect(epochScope =>
         {
@@ -216,59 +250,53 @@ public static class MusicPlayerDemo
             {
                 var list = playlist.Value;
                 if (list.Count > 0 && currentIndex.Value < 0)
-                {
-                    Console.WriteLine("CreateEffect(isPlayingValue) 执行了 currentIndex 的修改");
                     currentIndex.RxValue = 0;
-                    PlayTrack(list[0]);
-                }
+
                 else mediaPlayer.Play();
             }
         });
 
-
-        uiScope.OnDispose += () =>
+        uiScope.CreateEffect(epochScope =>
         {
-            mediaPlayer.Dispose();
-            libVlc.Dispose();
-        };
+            var media = epochScope.Pull(currentMedia);
+            if (media is null) return;
+
+            mediaPlayer.Play(media);
+        });
 
         return rootElement;
 
         void PlayLast()
         {
-            Dispatcher.UIThread.Post(() =>
+            position.RxValue = TimeSpan.Zero;
+            var list = playlist.Value;
+            if (list.Count == 0) return;
+            if (list.Count == 1)
             {
-                position.RxValue = TimeSpan.Zero;
-                var list = playlist.Value;
-                if (list.Count == 0) return;
-                var idx = currentIndex.Value <= 0 ? list.Count - 1 : currentIndex.Value - 1;
-                Console.WriteLine("PlayLast 执行了 currentIndex 的修改");
-                currentIndex.RxValue = idx;
-                PlayTrack(list[idx]);
-            });
+                mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(0));
+                triggerAsyncMemo.RxValue = !triggerAsyncMemo.Value;
+                return;
+            }
+
+            var idx = currentIndex.Value <= 0 ? list.Count - 1 : currentIndex.Value - 1;
+            currentIndex.RxValue = idx;
         }
 
         void PlayNext()
         {
-            Dispatcher.UIThread.Post(() =>
-            {
-                position.RxValue = TimeSpan.Zero;
-                var list = playlist.Value;
-                if (list.Count == 0) return;
-                var idx = (currentIndex.Value + 1) % list.Count;
-                Console.WriteLine("PlayNext 执行了 currentIndex 的修改");
-                currentIndex.RxValue = idx;
-                PlayTrack(list[idx]);
-            });
-        }
+            position.RxValue = TimeSpan.Zero;
 
-        void PlayTrack(TrackInfo track)
-        {
-            Dispatcher.UIThread.Post(() =>
+            var list = playlist.Value;
+            if (list.Count == 0) return;
+            if (list.Count == 1)
             {
-                mediaPlayer.Play(new Media(libVlc, track.FilePath));
-                trackName.RxValue = track.Title;
-            });
+                // mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(0));
+                triggerAsyncMemo.RxValue = !triggerAsyncMemo.Value;
+                return;
+            }
+
+            var idx = (currentIndex.Value + 1) % list.Count;
+            currentIndex.RxValue = idx;
         }
     }
 
@@ -298,13 +326,29 @@ public static class MusicPlayerDemo
         });
     }
 
-    private record TrackInfo(string Title, string FilePath);
-}
-
-public static class ThreadSafeExtensions
-{
-    public static void PostToUi<T>(this MutSignal<T> signal, T value)
+    // 专辑封面 + 曲目信息
+    private static IElement Audio(SongInfo? song)
     {
-        Dispatcher.UIThread.Post(() => signal.RxValue = value);
+        return HStackPanel(new(strStyle: "w-110 gap-4 flex-row items-center")
+        {
+            Show(new(song?.CoverPath is not null)
+            {
+                IfFalse = () => HButton(strStyle: "w-32 h-32 bg-gray-200 rounded-xl"),
+                IfTrue = () => HUriImage(song?.CoverPath,
+                    stretch: Stretch.UniformToFill,
+                    strStyle: "w-32 h-32 rounded-xl transition-transform duration-200 hover:scale-110")
+            }),
+
+            HStackPanel(new(strStyle: "gap-1 flex-col")
+            {
+                HTextBlock(song?.Title ?? "未知标题", strStyle: "max-w-100 text-base font-semibold fg-gray-800"),
+                HTextBlock(song?.Artist ?? "未知歌手", strStyle: "max-w-75 text-sm fg-gray-500"),
+                HTextBlock(song?.Album ?? "未知专辑", strStyle: "max-w-50 text-xs fg-gray-500")
+            }) // HStackPanel
+        }); // HStackPanel
     }
+
+    private record TrackInfo(string Title, string FilePath);
+
+    private record SongInfo(string Title, string Artist, string Album, string? CoverPath);
 }

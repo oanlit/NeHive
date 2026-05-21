@@ -148,9 +148,12 @@ internal class ScopeNode
 internal static class ReactiveContext
 {
     public static ScopeNode CurrentScope = Constant.RootScopeTree; // 当前正在执行的所有者
+
     public static ExecuteNode? CurrentExecute; // 当前计算节点
-    public static readonly Action BeforeFlush = () => { };
-    public static readonly Action AfterFlush = () => { };
+    // public static readonly Action BeforeTrigger = () => { };
+    // public static readonly Action AfterTrigger = () => { };
+
+    public static Action<Action>? Scheduler;
 
     internal static T RunInContext<T>(Func<T> fn, ScopeNode root, ExecuteNode? node)
     {
@@ -397,14 +400,14 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         public static string? Error = null;
     }
 
-    private static void Flush()
+    private static void Trigger()
     {
         if (SchedulerContext.BatchCount != 1) return;
 
         var effectFromIndex = 0;
         try
         {
-            ReactiveContext.BeforeFlush();
+            // ReactiveContext.BeforeTrigger();
             while (true)
             {
                 RunUpdates();
@@ -418,7 +421,7 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
                 effectFromIndex = effectToIndex;
             }
 
-            ReactiveContext.AfterFlush();
+            // ReactiveContext.AfterTrigger();
         }
         catch (InfiniteReactiveLoopException)
         {
@@ -434,6 +437,10 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         }
     }
 
+    // internal static void StartBatch()
+    // {
+    // Interlocked.Increment(ref SchedulerContext.BatchCount);
+    // }
     internal static void StartBatch()
         => SchedulerContext.BatchCount++;
 
@@ -449,11 +456,20 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         if (batchCount > 1)
         {
             SchedulerContext.BatchCount--;
+            // Interlocked.Decrement(ref SchedulerContext.BatchCount);
             return;
         }
 
         // batchCount == 1
-        Flush();
+        if (ReactiveContext.Scheduler is not null)
+        {
+            ReactiveContext.Scheduler(Trigger);
+        }
+        else
+        {
+            Trigger();
+        }
+
         SchedulerContext.BatchCount = 0;
     }
 
@@ -463,8 +479,8 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         var fromIndex = SchedulerContext.UpdateFromIndex;
 
         if (fromIndex == queues.Count) return;
-        SchedulerContext.ExecCount++;
 
+        SchedulerContext.ExecCount++;
         try
         {
             RunUpdateQueue(fromIndex);

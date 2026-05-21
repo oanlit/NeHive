@@ -1,7 +1,4 @@
-// using Avalonia;
 using Avalonia.Controls;
-// using Avalonia.Input;
-// using Avalonia.Controls.Primitives;
 using NeHive.UI.Avalonia;
 
 namespace NeHive.Sample.Avalonia;
@@ -13,7 +10,7 @@ public class MainWindow : Window
     public MainWindow()
     {
         Width = 1000;
-        Height = 600;
+        Height = 700;
         Title = "NeHive UI Avalonia Demo";
         // _mainNavDemo = DemoComponent.MainNavDemo();
         _mainNavDemo = MusicPlayerDemo.MusicPlayer();

@@ -51,13 +51,18 @@ public static partial class Rx
         fn();
         ExecuteNode.EndBatch();
     }
-    
+
     public static T Batch<T>(Func<T> fn)
     {
         ExecuteNode.StartBatch();
         var result = fn();
         ExecuteNode.EndBatch();
         return result;
+    }
+
+    public static void SetScheduler(Action<Action> scheduler)
+    {
+        ReactiveContext.Scheduler = scheduler;
     }
 
     /// <summary>
@@ -198,7 +203,7 @@ public interface ISignal<out T>
     /// When accessed inside an Effect or Computed, it automatically creates a dependency.
     /// </summary>
     public T RxValue { get; }
-    
+
     /// <summary>
     /// Gets the current value **without reactive tracking**.
     /// Accessing Value never creates dependencies, so Effects or Computed will not react to changes.
@@ -292,7 +297,7 @@ public class Signal<T> : Signal, ISignal<T>
 /// </summary>
 /// <typeparam name="T">Value type</typeparam>
 /// <param name="value">Initial value</param>
-public class MutSignal<T>(T value) : Signal<T>(new SignalState<T>(value)),
+public class MutSignal<T>(T value, Action<T, T, Action<T>>? onSet = null) : Signal<T>(new SignalState<T>(value)),
     ISetOnlySignal<T>
 {
     /// <summary>
@@ -310,12 +315,27 @@ public class MutSignal<T>(T value) : Signal<T>(new SignalState<T>(value)),
     public new T RxValue
     {
         get => InternalSignal.ReadSignal();
-        set => InternalSignal.WriteSignal(value);
+        set
+        {
+            if (onSet is null)
+            {
+                InternalSignal.WriteSignal(value);
+                return;
+            }
+
+            onSet(InternalSignal.Value, value, val => InternalSignal.WriteSignal(val));
+        }
     }
-    
+
     public void NotifySet(T value)
     {
-        InternalSignal.WriteSignal(value);
+        if (onSet is null)
+        {
+            InternalSignal.WriteSignal(value);
+            return;
+        }
+
+        onSet(InternalSignal.Value, value, val => InternalSignal.WriteSignal(val));
     }
 
     /// <summary>
@@ -330,7 +350,13 @@ public class MutSignal<T>(T value) : Signal<T>(new SignalState<T>(value)),
     /// </example>
     public void NotifySet(Func<T, T> value)
     {
-        InternalSignal.WriteSignal(value(InternalSignal.Value));
+        if (onSet is null)
+        {
+            InternalSignal.WriteSignal(value(InternalSignal.Value));
+            return;
+        }
+
+        onSet(InternalSignal.Value, value(InternalSignal.Value), val => InternalSignal.WriteSignal(val));
     }
 
     internal bool HasObserver => InternalSignal.Observers.Count > 0;
@@ -479,7 +505,7 @@ public class Scope : IScope
 public class EpochScope : Scope
 {
     private readonly ExecuteNode _tracker;
-    
+
     internal EpochScope(ExecuteNode tracker) : base(tracker)
     {
         _tracker = tracker;
