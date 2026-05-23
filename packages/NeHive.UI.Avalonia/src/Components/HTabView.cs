@@ -121,7 +121,7 @@ public class HTabViewStyle(
         return new Computed<FullStyle>(() =>
         {
             var str = text.RxValue;
-            fullStyle.Base = DefaultStyleSet();
+            fullStyle.Normal = DefaultStyleSet();
             fullStyle.Variants = [];
             StyleParser.ParseFullStyle(str, ref fullStyle);
 
@@ -208,7 +208,7 @@ public static partial class BaseComponent
             uiScope.CreateEffect(epochScope =>
             {
                 var style = epochScope.Track(prop.Style);
-                ApplyStyle(style.Base);
+                ApplyStyle(style.Normal);
             });
         }
         

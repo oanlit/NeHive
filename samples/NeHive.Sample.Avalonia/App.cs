@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
+using NeHive.UI.Avalonia;
 
 namespace NeHive.Sample.Avalonia;
 
@@ -11,19 +12,9 @@ public class App : Application
 {
     public override void Initialize()
     {
+        NeHiveContext.SetProjBaseUri("avares://NeHive.Sample.Avalonia/");
         RequestedThemeVariant = ThemeVariant.Default;
         Styles.Add(new FluentTheme());
-        // var style = new Style(x => x.OfType<ScrollViewer>().Child().OfType<ScrollBar>());
-        // style.Setters.Add(new Setter(ScrollBar.BackgroundProperty, new SolidColorBrush(Colors.LightGray)));
-        // style.Setters.Add(new Setter(ScrollBar.CornerRadiusProperty, new CornerRadius(4)));
-        //
-        // // 针对滑块（Thumb）的样式
-        // var thumbStyle = new Style(x => x.OfType<ScrollViewer>().Descendant().OfType<Thumb>());
-        // thumbStyle.Setters.Add(new Setter(Thumb.BackgroundProperty, new SolidColorBrush(Color.Parse("#4A90E2"))));
-        // thumbStyle.Setters.Add(new Setter(Thumb.CornerRadiusProperty, new CornerRadius(2)));
-        //
-        // Styles.Add(style);
-        // Styles.Add(thumbStyle);
     }
 
     public override void OnFrameworkInitializationCompleted()

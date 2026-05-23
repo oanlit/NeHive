@@ -1,11 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Animation;
+using Avalonia.Platform;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -224,13 +225,13 @@ public static partial class BaseComponent
         var uiScope = new UiScope();
 
         var image = new Image();
-        
+
         var border = new Border
         {
             Child = image,
             ClipToBounds = true
         };
-        
+
         // 绑定 Source
         uiScope.CreateEffect(() => image.Source = source.RxValue);
 
@@ -239,18 +240,18 @@ public static partial class BaseComponent
         if (style is null)
         {
             state = new HImageState(new StyleSet());
-            ApplyStyle(image, state.BaseStyle);
+            ApplyStyle(state.BaseStyle);
         }
         // 绑定样式
         else
         {
-            state = new HImageState(style.Value.Base);
+            state = new HImageState(style.Value.Normal);
             uiScope.CreateEffect(epochScope =>
             {
                 var styleValue = epochScope.Track(style);
-                state.BaseStyle = styleValue.Base;
+                state.BaseStyle = styleValue.Normal;
                 state.Variants = styleValue.Variants;
-                ApplyStyle(image, styleValue.Base);
+                ApplyStyle(styleValue.Normal);
                 state.CurrentStyle = StyleSet.Copy(state.BaseStyle);
             });
         }
@@ -271,98 +272,22 @@ public static partial class BaseComponent
             {
                 state.IsHover = false;
                 state.ResetSetStyle();
-                ApplyStyle(image, state.CurrentStyle);
+                ApplyStyle(state.CurrentStyle);
             };
 
             image.PointerEntered += (_, _) =>
             {
                 state.IsHover = true;
                 state.SetHoverStyle();
-                ApplyStyle(image, state.CurrentStyle);
+                ApplyStyle(state.CurrentStyle);
             };
         };
 
         return new Element(uiScope, border);
 
-        void ApplyStyle(Image img, StyleSet styleValue)
+        void ApplyStyle(StyleSet styleValue)
         {
-            // 布局属性
-            if (styleValue.Margin is not null) border.Margin = styleValue.Margin.Value;
-            if (styleValue.ZIndex is not null) border.ZIndex = styleValue.ZIndex.Value;
-
-            if (styleValue.Width is not null)
-            {
-                image.Width = styleValue.Width.Value;
-            }
-
-            if (styleValue.Height is not null)
-            {
-                image.Height = styleValue.Height.Value;
-            }
-            if (styleValue.MinWidth is not null)
-            {
-                image.MinWidth = styleValue.MinWidth.Value;
-            }
-            if (styleValue.MaxWidth is not null)
-            {
-                image.MaxWidth = styleValue.MaxWidth.Value;
-            }
-            if (styleValue.MinHeight is not null)
-            {
-                image.MinHeight = styleValue.MinHeight.Value;
-            }
-            if (styleValue.MaxHeight is not null)
-            {
-                image.MaxHeight = styleValue.MaxHeight.Value;
-            }
-
-            if (styleValue.Padding.HasValue) border.Padding = styleValue.Padding.Value;
-
-            if (styleValue.HorizontalAlignment is not null)
-                img.HorizontalAlignment = styleValue.HorizontalAlignment.Value;
-            if (styleValue.VerticalAlignment is not null)
-                img.VerticalAlignment = styleValue.VerticalAlignment.Value;
-
-            if (styleValue.BorderBrush is not null) border.BorderBrush = styleValue.BorderBrush;
-            if (styleValue.BorderThickness.HasValue) border.BorderThickness = styleValue.BorderThickness.Value;
-            if (styleValue.CornerRadius is not null) border.CornerRadius = styleValue.CornerRadius.Value;
-
-            // border.Child = img;
-
-            if (styleValue.Opacity is not null)
-                img.Opacity = styleValue.Opacity.Value;
-
-            // Image 特有属性
-            // img.StretchDirection = styleValue.StretchDirection;
-
-            if (styleValue.Advanced is null) return;
-            var advanced = styleValue.Advanced;
-
-            img.RenderTransformOrigin = advanced.RelativePoint ?? RelativePoint.Center;
-
-            if (advanced.Transform is not null) img.RenderTransform = advanced.Transform;
-
-            var kind = advanced.TransitionKind;
-            if (kind is not null)
-            {
-                advanced.Transition ??= new TransformOperationsTransition();
-                if (kind == TransitionKind.Transform)
-                {
-                    advanced.Transition.Property = Image.RenderTransformProperty;
-                }
-            }
-
-            if (advanced.Transition is not null)
-            {
-                img.Transitions =
-                [
-                    advanced.Transition
-                ];
-            }
-
-            if (advanced.Effect is not null) img.Effect = advanced.Effect;
-            if (advanced.Cursor is not null) img.Cursor = advanced.Cursor;
-            if (advanced.FlowDirection is not null) img.FlowDirection = advanced.FlowDirection.Value;
+            StyleUtil.ApplyStyle(styleValue, image, border);
         }
     }
 
@@ -378,10 +303,15 @@ public static partial class BaseComponent
         {
             var u = uri.RxValue;
             if (string.IsNullOrEmpty(u)) return null;
-            // 这里需要根据你的项目实现实际的图像加载逻辑
-            // 例如：new Bitmap(u) 或使用 AssetLoader
-            return LoadBitmapFromUri(u);
+
+            if (!u.StartsWith("avares://")) return LoadBitmapFromUri(u);
+
+            var avaresUri = new Uri(u);
+
+            using var stream = AssetLoader.Open(avaresUri);
+            return new Bitmap(stream);
         });
+
         return HImage(sourceSignal, stretch, strStyle, style);
     }
 

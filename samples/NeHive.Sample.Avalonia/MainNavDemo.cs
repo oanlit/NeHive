@@ -433,7 +433,7 @@ public static class DemoComponent
             {
                 HUriImage(selectedFile,
                     stretch: Stretch.UniformToFill,
-                    strStyle: "transition-transform duration-200 hover:scale-110"
+                    strStyle: "transition-transform ease-in-out duration-500 hover:scale-120"
                 ) // HUriImage
             }) // HStackPanel
         }); // rootElement
@@ -571,7 +571,7 @@ public static class DemoComponent
                 isSnapToTickEnabled: true,
                 tickFrequency: 10,
                 tickPlacement: TickPlacement.Outside
-            ),
+            ), // HSlider
             HTextBlock(new(() => $"音量: {volume.RxValue:F0}"))
         }); // rootElement
         return rootElement;
@@ -779,6 +779,29 @@ public static class DemoComponent
             HButton("2"),
             HButton("3 with long text"),
             HButton("4")
+        }); // HWrapPanel
+    }
+    
+    public static IElement SvgDemo()
+    {
+        return HStackPanel(new(
+            strStyle: "w-60 gap-2 flex-row")
+        {
+            HSvgImage("~/Assets/play.svg", 
+                strStyle:"""
+                         w-16 h-16 p-2.5 pl-3.5 
+                         font-normal
+                         fg-gradient-r fg-from-blue-400 fg-to-red-800
+                         bg-gradient-br bg-from-blue-200 bg-to-violet-800
+                         border-sky-100 
+                         border-w-0.75 rounded-full
+                         """),
+            HSvgImage("~/Assets/skip-back.svg", 
+                strStyle:"w-16 h-16 fg-orange-200 hover:fg-orange-300"),
+            HSvgImage("~/Assets/skip-forward.svg", 
+                strStyle:"w-16 h-16 fg-yellow-200 hover:fg-yellow-300"),
+            HSvgImage("~/Assets/stretch-vertical.svg", 
+                strStyle:"w-16 h-16 fg-red-200 hover:fg-red-300"),
         }); // HWrapPanel
     }
 

@@ -32,4 +32,8 @@
         <ProjectReference Include="..\..\packages\NeHive.Reactive\src\NeHive.Reactive.csproj" />
         <ProjectReference Include="..\..\packages\NeHive.UI.Avalonia\src\NeHive.UI.Avalonia.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**\*" />
+    </ItemGroup>
 </Project>

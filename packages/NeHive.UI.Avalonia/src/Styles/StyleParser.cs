@@ -4,272 +4,10 @@ using Avalonia.Media.Transformation;
 using Avalonia.Layout;
 using Avalonia.Input;
 using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Styles;
-
-// 定位 → 尺寸 → 内间距 → 布局排版 → 文字 → 颜色 → 边框 → 特效
-public class StyleSet
-{
-    public Thickness? Margin;
-    public int? ZIndex;
-
-    public double? Width;
-    public double? Height;
-    public double? MinWidth;
-    public double? MaxWidth;
-    public double? MinHeight;
-    public double? MaxHeight;
-
-    public Thickness? Padding;
-    public double? RowSpacing;
-    public double? ColumnSpacing;
-
-    public OverflowHandle? OverflowHandle;
-
-    public Orientation? Orientation;
-    public HorizontalAlignment? HorizontalAlignment;
-    public VerticalAlignment? VerticalAlignment;
-
-    public TextAlignment? TextAlignment;
-    public VerticalAlignment? VerticalTextAlignment;
-    public TextWrapping? TextWrapping;
-
-    public double? FontSize;
-    public FontWeight? FontWeight;
-    public FontStyle? FontStyle;
-    public IBrush? Foreground;
-
-    public IBrush? Background;
-    public IBrush? BorderBrush;
-    public Thickness? BorderThickness;
-    public CornerRadius? CornerRadius;
-
-    public double? Opacity;
-    public bool? IsVisible;
-
-    public AdvancedStyle? Advanced;
-
-    public static StyleSet Copy(StyleSet other)
-    {
-        var result = new StyleSet();
-        Copy(ref result, other);
-        return result;
-    }
-
-    public static void Copy(ref StyleSet target, StyleSet source)
-    {
-        target.Margin = source.Margin;
-        target.ZIndex = source.ZIndex;
-
-        target.Width = source.Width;
-        target.Height = source.Height;
-        target.MinWidth = source.MinWidth;
-        target.MaxWidth = source.MaxWidth;
-        target.MinHeight = source.MinHeight;
-        target.MaxHeight = source.MaxHeight;
-
-        target.Padding = source.Padding;
-        target.RowSpacing = source.RowSpacing;
-        target.ColumnSpacing = source.ColumnSpacing;
-
-        target.Orientation = source.Orientation;
-        target.HorizontalAlignment = source.HorizontalAlignment;
-        target.VerticalAlignment = source.VerticalAlignment;
-
-        target.TextAlignment = source.TextAlignment;
-        target.VerticalTextAlignment = source.VerticalTextAlignment;
-        target.TextWrapping = source.TextWrapping;
-
-        target.FontSize = source.FontSize;
-        target.FontWeight = source.FontWeight;
-        target.FontStyle = source.FontStyle;
-        target.Foreground = source.Foreground;
-
-        target.Background = source.Background;
-        target.BorderBrush = source.BorderBrush;
-        target.BorderThickness = source.BorderThickness;
-        target.CornerRadius = source.CornerRadius;
-
-        target.Opacity = source.Opacity;
-        target.IsVisible = source.IsVisible;
-
-        if (source.Advanced is null) target.Advanced = null;
-        else target.Advanced = AdvancedStyle.Copy(ref source.Advanced);
-    }
-
-    public void Merge(StyleSet other, bool mergeNull = false)
-    {
-        if (mergeNull)
-        {
-            Margin = other.Margin;
-            ZIndex = other.ZIndex;
-
-            Width = other.Width;
-            Height = other.Height;
-            MinWidth = other.MinWidth;
-            MaxWidth = other.MaxWidth;
-            MinHeight = other.MinHeight;
-            MaxHeight = other.MaxHeight;
-
-            Padding = other.Padding;
-            RowSpacing = other.RowSpacing;
-            ColumnSpacing = other.ColumnSpacing;
-
-            Orientation = other.Orientation;
-            HorizontalAlignment = other.HorizontalAlignment;
-            VerticalAlignment = other.VerticalAlignment;
-
-            TextAlignment = other.TextAlignment;
-            VerticalTextAlignment = other.VerticalTextAlignment;
-            TextWrapping = other.TextWrapping;
-
-            FontSize = other.FontSize;
-            FontWeight = other.FontWeight;
-            FontStyle = other.FontStyle;
-            Foreground = other.Foreground;
-
-            Background = other.Background;
-            BorderBrush = other.BorderBrush;
-            BorderThickness = other.BorderThickness;
-            CornerRadius = other.CornerRadius;
-
-            Opacity = other.Opacity;
-            IsVisible = other.IsVisible;
-
-            Advanced = other.Advanced;
-
-            return;
-        }
-
-        if (other.Margin is not null) Margin = other.Margin;
-        if (other.ZIndex is not null) ZIndex = other.ZIndex;
-
-        if (other.Width is not null) Width = other.Width;
-        if (other.Height is not null) Height = other.Height;
-        if (other.MinWidth is not null) MinWidth = other.MinWidth;
-        if (other.MaxWidth is not null) MaxWidth = other.MaxWidth;
-        if (other.MinHeight is not null) MinHeight = other.MinHeight;
-        if (other.MaxHeight is not null) MaxHeight = other.MaxHeight;
-
-        if (other.Padding is not null) Padding = other.Padding;
-        if (other.RowSpacing is not null) RowSpacing = other.RowSpacing;
-        if (other.ColumnSpacing is not null) ColumnSpacing = other.ColumnSpacing;
-
-        if (other.Orientation is not null) Orientation = other.Orientation;
-        if (other.HorizontalAlignment is not null) HorizontalAlignment = other.HorizontalAlignment;
-        if (other.VerticalAlignment is not null) VerticalAlignment = other.VerticalAlignment;
-
-        if (other.TextAlignment is not null) TextAlignment = other.TextAlignment;
-        if (other.VerticalTextAlignment is not null) VerticalTextAlignment = other.VerticalTextAlignment;
-        if (other.TextWrapping is not null) TextWrapping = other.TextWrapping;
-
-        if (other.FontSize is not null) FontSize = other.FontSize;
-        if (other.FontWeight is not null) FontWeight = other.FontWeight;
-        if (other.FontStyle is not null) FontStyle = other.FontStyle;
-        if (other.Foreground is not null) Foreground = other.Foreground;
-
-        if (other.Background is not null) Background = other.Background;
-        if (other.BorderBrush is not null) BorderBrush = other.BorderBrush;
-        if (other.BorderThickness is not null) BorderThickness = other.BorderThickness;
-        if (other.CornerRadius is not null) CornerRadius = other.CornerRadius;
-
-        if (other.Opacity is not null) Opacity = other.Opacity;
-        if (other.IsVisible is not null) IsVisible = other.IsVisible;
-
-        if (other.Advanced is null) return;
-
-        if (Advanced is null)
-        {
-            Advanced = other.Advanced;
-            return;
-        }
-
-        var otherAdvanced = other.Advanced;
-
-        if (otherAdvanced.RelativePoint is not null) Advanced.RelativePoint = otherAdvanced.RelativePoint;
-
-        if (otherAdvanced.ScaleTransform is not null) Advanced.ScaleTransform = otherAdvanced.ScaleTransform;
-        if (otherAdvanced.RotateTransform is not null) Advanced.RotateTransform = otherAdvanced.RotateTransform;
-        if (otherAdvanced.SkewTransform is not null) Advanced.SkewTransform = otherAdvanced.SkewTransform;
-        if (otherAdvanced.MatrixTransform is not null) Advanced.MatrixTransform = otherAdvanced.MatrixTransform;
-
-        if (otherAdvanced.Transform is not null) Advanced.Transform = otherAdvanced.Transform;
-        if (otherAdvanced.Transition is not null) Advanced.Transition = otherAdvanced.Transition;
-
-        if (otherAdvanced.Effect is not null) Advanced.Effect = otherAdvanced.Effect;
-        if (otherAdvanced.Cursor is not null) Advanced.Cursor = otherAdvanced.Cursor;
-        if (otherAdvanced.FlowDirection is not null) Advanced.FlowDirection = otherAdvanced.FlowDirection;
-    }
-
-    public void MergeMany(bool mergeNull, params StyleSet[] styles)
-    {
-        foreach (var style in styles)
-        {
-            Merge(style, mergeNull);
-        }
-    }
-}
-
-public enum OverflowHandle
-{
-    Visible,
-    Hidden
-}
-
-public enum TransitionKind
-{
-    Transform,
-    Colors
-}
-
-public sealed class AdvancedStyle
-{
-    public TransitionKind? TransitionKind;
-    public double? Duration;
-
-    public RelativePoint? RelativePoint;
-
-    public ITransform? Transform;
-    public TranslateTransform? TranslateTransform;
-    public ScaleTransform? ScaleTransform;
-    public RotateTransform? RotateTransform;
-    public SkewTransform? SkewTransform;
-    public MatrixTransform? MatrixTransform;
-
-    public TransformOperationsTransition? Transition;
-
-    public IEffect? Effect;
-    public Cursor? Cursor;
-    public FlowDirection? FlowDirection;
-
-    public static AdvancedStyle Copy(ref AdvancedStyle style)
-    {
-        return new AdvancedStyle
-        {
-            TransitionKind = style.TransitionKind,
-            Duration = style.Duration,
-            RelativePoint = style.RelativePoint,
-            Transform = style.Transform,
-            TranslateTransform = style.TranslateTransform,
-            ScaleTransform = style.ScaleTransform,
-            RotateTransform = style.RotateTransform,
-            SkewTransform = style.SkewTransform,
-            MatrixTransform = style.MatrixTransform,
-            Transition = style.Transition,
-            Effect = style.Effect,
-            Cursor = style.Cursor,
-            FlowDirection = style.FlowDirection
-        };
-    }
-}
-
-public struct FullStyle
-{
-    public StyleSet Base;
-
-    public Dictionary<string, List<string>> Variants;
-}
 
 public static class StyleParser
 {
@@ -338,7 +76,6 @@ public static class StyleParser
         ["wrap-overflow"] = (_, set) => set.TextWrapping = TextWrapping.WrapWithOverflow,
 
         // 文本样式
-        ["fg-"] = ApplyForeground,
         ["text-"] = ApplyText,
         ["text-xs"] = (_, set) => set.FontSize = 12,
         ["text-sm"] = (_, set) => set.FontSize = 14,
@@ -362,9 +99,28 @@ public static class StyleParser
         ["italic"] = (_, set) => set.FontStyle = FontStyle.Italic,
         ["not-italic"] = (_, set) => set.FontStyle = FontStyle.Normal,
 
-        // 背景边框
+        ["fg-"] = ApplyForeground,
+        ["fg-gradient-"] = (vals, set) => EnsureAdvanced(set).FgGradientDir = TryGetDir(vals),
+        ["fg-from-"] = (vals, set) => EnsureAdvanced(set).FgFromColor = ParseColor(vals),
+        ["fg-to-"] = (vals, set) => EnsureAdvanced(set).FgToColor = ParseColor(vals),
+
+        // 背景
         ["bg-"] = ApplyBackground,
+        ["bg-gradient-"] = (vals, set) => EnsureAdvanced(set).BgGradientDir = TryGetDir(vals),
+        ["bg-from-"] = (vals, set) => EnsureAdvanced(set).BgFromColor = ParseColor(vals),
+        ["bg-to-"] = (vals, set) => EnsureAdvanced(set).BgToColor = ParseColor(vals),
+        ["gradient-"] = (vals, set) => EnsureAdvanced(set).BgGradientDir = TryGetDir(vals),
+        ["from-"] = (vals, set) => EnsureAdvanced(set).BgFromColor = ParseColor(vals),
+        ["to-"] = (vals, set) => EnsureAdvanced(set).BgToColor = ParseColor(vals),
+        ["bg-center"] = (_, set) => set.BackgroundSizing = BackgroundSizing.CenterBorder,
+        ["bg-inner"] = (_, set) => set.BackgroundSizing = BackgroundSizing.InnerBorderEdge,
+        ["bg-outer"] = (_, set) => set.BackgroundSizing = BackgroundSizing.OuterBorderEdge,
+        
+        // 边框
         ["border-"] = ApplyBorderBrush,
+        ["border-gradient-"] = (vals, set) => EnsureAdvanced(set).BorderGradientDir = TryGetDir(vals),
+        ["border-from-"] = (vals, set) => EnsureAdvanced(set).BorderFromColor = ParseColor(vals),
+        ["border-to-"] = (vals, set) => EnsureAdvanced(set).BorderToColor = ParseColor(vals),
         ["border-w-"] = ApplyBorderWidth, // 如 border-w-2
         ["border-t-"] = ApplyBorderTopWidth,
         ["border-r-"] = ApplyBorderRightWidth,
@@ -383,16 +139,39 @@ public static class StyleParser
         ["visible"] = (_, set) => set.IsVisible = true,
         ["hidden"] = (_, set) => set.IsVisible = false,
 
+        // 模糊
+        ["blur-sm"] = (_, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 4 },
+        ["blur"] = (_, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 8 },
+        ["blur-md"] = (_, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 8 },
+        ["blur-lg"] = (_, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 16 },
+        ["blur-xl"] = (_, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 32 },
+        ["blur-none"] = (_, set) => set.Advanced?.Effect = null,
+
         // 阴影
-        ["shadow"] = ApplyShadow, // 默认 md
-        ["shadow-sm"] = ApplyShadow,
-        ["shadow-lg"] = ApplyShadow,
-        ["shadow-xl"] = ApplyShadow,
-        ["shadow-none"] = (_, set) => set.Advanced?.Effect = null,
+        ["shadow-sm"] = (_, set) => ApplyShadow(set, 2, new Vector(0, 1)),
+        ["shadow"] = (_, set) => ApplyShadow(set, 4, new Vector(0, 2)),
+        ["shadow-md"] = (_, set) => ApplyShadow(set, 6, new Vector(0, 3)),
+        ["shadow-lg"] = (_, set) => ApplyShadow(set, 10, new Vector(0, 6)),
+        ["shadow-xl"] =(_, set) => ApplyShadow(set, 18, new Vector(0, 10)),
+        ["shadow-none"] = (_, set) => set.Advanced?.BoxShadows = null,
+
+        // 光标
+        ["cursor-pointer"] = (_, set) => EnsureAdvanced(set).Cursor = new Cursor(StandardCursorType.Hand),
+        ["cursor-default"] = (_, set) => EnsureAdvanced(set).Cursor = new Cursor(StandardCursorType.Arrow),
 
         // 过渡
-        ["transition-transform"] = (_, set) => EnsureAdvanced(set).TransitionKind = TransitionKind.Transform,
+        ["transition-none"] = (_, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.None,
+        ["transition-all"] = (_, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.All,
+        ["transition-opacity"] = (_, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.Opacity,
+        ["transition-transform"] = (_, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.Transform,
+        ["transition-colors"] = (_, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.Colors,
+        ["transition-shadow"] = (_, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.Shadow,
         ["duration-"] = ApplyDuration,
+        ["linear"] = (_, set) => EnsureAdvanced(set).Easing = new LinearEasing(),
+        ["ease"] = (_, set) => EnsureAdvanced(set).Easing = new QuadraticEaseInOut(),
+        ["ease-in"] = (_, set) => EnsureAdvanced(set).Easing = new QuadraticEaseIn(),
+        ["ease-out"] = (_, set) => EnsureAdvanced(set).Easing = new QuadraticEaseOut(),
+        ["ease-in-out"] = (_, set) => EnsureAdvanced(set).Easing = new QuadraticEaseInOut(),
 
         // 几何变换
         ["origin-top-left"] = (_, set) => SetRelativePoint(0, 0, set),
@@ -414,11 +193,7 @@ public static class StyleParser
         ["rotate-"] = ApplyRotate,
         ["skew-"] = ApplySkew,
         ["skew-x-"] = ApplySkewX,
-        ["skew-y-"] = ApplySkewY,
-
-        // 光标
-        ["cursor-pointer"] = (_, set) => EnsureAdvanced(set).Cursor = new Cursor(StandardCursorType.Hand),
-        ["cursor-default"] = (_, set) => EnsureAdvanced(set).Cursor = new Cursor(StandardCursorType.Arrow),
+        ["skew-y-"] = ApplySkewY
     };
 
     // 样式缓存
@@ -463,7 +238,7 @@ public static class StyleParser
             ParsePart(part, ref set);
         }
 
-        MergeTransform(ref set);
+        MergeAdvanced(ref set);
     }
 
     public static void Parse(string strStyle, ref StyleSet set)
@@ -490,7 +265,7 @@ public static class StyleParser
 
         Parse(strStyle, ref set);
 
-        MergeTransform(ref set);
+        MergeAdvanced(ref set);
 
         lock (StyleCache)
         {
@@ -503,7 +278,7 @@ public static class StyleParser
     // 实现伪类
     public static void ParseFullStyle(string strStyle, ref FullStyle fullStyle)
     {
-        var baseStyle = fullStyle.Base;
+        var baseStyle = fullStyle.Normal;
         var variants = fullStyle.Variants;
 
         var parts = strStyle.Split(
@@ -536,13 +311,47 @@ public static class StyleParser
             variants[key] = [value];
         }
 
-        MergeTransform(ref baseStyle);
+        MergeAdvanced(ref baseStyle);
     }
 
-    public static void MergeTransform(ref StyleSet styles)
+
+    public static Accessor<FullStyle> ParseFull(Accessor<string> text)
+    {
+        var fullStyle = new FullStyle();
+
+        return new Computed<FullStyle>(() =>
+        {
+            var str = text.RxValue;
+            fullStyle.Normal = new StyleSet();
+            fullStyle.Variants = [];
+            ParseFullStyle(str, ref fullStyle);
+
+            return fullStyle;
+        });
+    }
+
+    public static void MergeAdvanced(ref StyleSet styles)
     {
         var advanced = styles.Advanced;
         if (advanced is null) return;
+
+        var gradientDir = advanced.FgGradientDir;
+        var fromColor = advanced.FgFromColor;
+        var toColor = advanced.FgToColor;
+        var foreground = GetGradientBrush(gradientDir, fromColor, toColor);
+        if (foreground is not null) styles.Foreground = foreground;
+
+        gradientDir = advanced.BgGradientDir;
+        fromColor = advanced.BgFromColor;
+        toColor = advanced.BgToColor;
+        var background = GetGradientBrush(gradientDir, fromColor, toColor);
+        if (background is not null) styles.Background = background;
+
+        gradientDir = advanced.BorderGradientDir;
+        fromColor = advanced.BorderFromColor;
+        toColor = advanced.BorderToColor;
+        var borderBrush = GetGradientBrush(gradientDir, fromColor, toColor);
+        if (borderBrush is not null) styles.BorderBrush = borderBrush;
 
         var builder = TransformOperations.CreateBuilder(4);
 
@@ -564,7 +373,7 @@ public static class StyleParser
             advanced.Transform = ops;
         }
 
-        var kind = advanced.TransitionKind;
+        var kind = advanced.TransitionScope;
         if (kind is null) return;
 
         if (advanced.Transform is null)
@@ -578,21 +387,9 @@ public static class StyleParser
 
         advanced.Transition ??= new TransformOperationsTransition();
         advanced.Transition.Duration = TimeSpan.FromMilliseconds(duration.Value);
-    }
 
-    public static Accessor<FullStyle> ParseFull(Accessor<string> text)
-    {
-        var fullStyle = new FullStyle();
-
-        return new Computed<FullStyle>(() =>
-        {
-            var str = text.RxValue;
-            fullStyle.Base = new StyleSet();
-            fullStyle.Variants = [];
-            ParseFullStyle(str, ref fullStyle);
-
-            return fullStyle;
-        });
+        if (advanced.Easing is null) return;
+        advanced.Transition.Easing = advanced.Easing;
     }
 
     private static void ApplyMargin(string[] v, StyleSet set)
@@ -674,6 +471,64 @@ public static class StyleParser
         set.ZIndex = (int)val.Value;
     }
 
+    private static void ApplyWidth(string[] val, StyleSet set)
+    {
+        set.Width = TryParseLength(val[0]);
+    }
+
+    private static void ApplyHeight(string[] val, StyleSet set)
+    {
+        set.Height = TryParseLength(val[0]);
+    }
+
+    private static void ApplyMinWidth(string[] val, StyleSet set)
+    {
+        set.MinWidth = TryParseLength(val[0]);
+    }
+
+    private static void ApplyMaxWidth(string[] val, StyleSet set)
+    {
+        set.MaxWidth = TryParseLength(val[0]);
+    }
+
+    private static void ApplyMinHeight(string[] val, StyleSet set)
+    {
+        set.MinHeight = TryParseLength(val[0]);
+    }
+
+    private static void ApplyMaxHeight(string[] val, StyleSet set)
+    {
+        set.MaxHeight = TryParseLength(val[0]);
+    }
+
+    private static void ApplyGap(string[] v, StyleSet set)
+    {
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.RowSpacing = val.Value;
+        set.ColumnSpacing = val.Value;
+    }
+
+    private static void ApplyGapX(string[] v, StyleSet set)
+    {
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.ColumnSpacing = val.Value;
+    }
+
+    private static void ApplyGapY(string[] v, StyleSet set)
+    {
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.RowSpacing = val.Value;
+    }
+
     private static void ApplyPadding(string[] v, StyleSet set)
     {
         if (v.Length != 1) return;
@@ -744,57 +599,6 @@ public static class StyleParser
         set.Padding = new Thickness(t.Left, t.Top, t.Right, val.Value);
     }
 
-    private static void ApplyBackground(string[] color, StyleSet set)
-    {
-        var c = ParseColor(color);
-        if (c is null) return;
-        set.Background = new SolidColorBrush(c.Value);
-    }
-
-    private static void ApplyForeground(string[] color, StyleSet set)
-    {
-        try
-        {
-            var c = ParseColor(color);
-            if (c is null) return;
-            set.Foreground = new SolidColorBrush(c.Value);
-        }
-        catch (Exception e)
-        {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine(e.ToString());
-            Console.ResetColor();
-        }
-    }
-
-    private static void ApplyGap(string[] v, StyleSet set)
-    {
-        if (v.Length != 1) return;
-        var val = TryParseValue(v[0]);
-        if (val is null) return;
-        val *= UnitScale;
-        set.RowSpacing = val.Value;
-        set.ColumnSpacing = val.Value;
-    }
-
-    private static void ApplyGapX(string[] v, StyleSet set)
-    {
-        if (v.Length != 1) return;
-        var val = TryParseValue(v[0]);
-        if (val is null) return;
-        val *= UnitScale;
-        set.ColumnSpacing = val.Value;
-    }
-
-    private static void ApplyGapY(string[] v, StyleSet set)
-    {
-        if (v.Length != 1) return;
-        var val = TryParseValue(v[0]);
-        if (val is null) return;
-        val *= UnitScale;
-        set.RowSpacing = val.Value;
-    }
-
     private static void ApplyText(string[] v, StyleSet set)
     {
         if (v.Length != 1) return;
@@ -804,14 +608,18 @@ public static class StyleParser
         set.FontSize = val.Value;
     }
 
-    private static void ApplyCornerRadius(string[] v, StyleSet set)
+    private static void ApplyForeground(string[] color, StyleSet set)
     {
-        if (v.Length != 1) return;
-        var val = TryParseValue(v[0]);
-        if (val is null) return;
-        val *= UnitScale;
-        set.FontSize = val.Value;
-        set.CornerRadius = new CornerRadius(val.Value);
+        var c = ParseColor(color);
+        if (c is null) return;
+        set.Foreground = new SolidColorBrush(c.Value);
+    }
+
+    private static void ApplyBackground(string[] color, StyleSet set)
+    {
+        var c = ParseColor(color);
+        if (c is null) return;
+        set.Background = new SolidColorBrush(c.Value);
     }
 
     private static void ApplyBorderBrush(string[] color, StyleSet set)
@@ -874,34 +682,14 @@ public static class StyleParser
         set.BorderThickness = new Thickness(t.Left, t.Top, t.Right, w);
     }
 
-    private static void ApplyWidth(string[] val, StyleSet set)
+    private static void ApplyCornerRadius(string[] v, StyleSet set)
     {
-        set.Width = TryParseLength(val[0]);
-    }
-
-    private static void ApplyHeight(string[] val, StyleSet set)
-    {
-        set.Height = TryParseLength(val[0]);
-    }
-
-    private static void ApplyMinWidth(string[] val, StyleSet set)
-    {
-        set.MinWidth = TryParseLength(val[0]);
-    }
-
-    private static void ApplyMaxWidth(string[] val, StyleSet set)
-    {
-        set.MaxWidth = TryParseLength(val[0]);
-    }
-
-    private static void ApplyMinHeight(string[] val, StyleSet set)
-    {
-        set.MinHeight = TryParseLength(val[0]);
-    }
-
-    private static void ApplyMaxHeight(string[] val, StyleSet set)
-    {
-        set.MaxHeight = TryParseLength(val[0]);
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+        val *= UnitScale;
+        set.FontSize = val.Value;
+        set.CornerRadius = new CornerRadius(val.Value);
     }
 
     private static void ApplyOpacity(string[] val, StyleSet set)
@@ -912,16 +700,18 @@ public static class StyleParser
         else if (val[0] == "100") set.Opacity = 1;
     }
 
-    private static void ApplyShadow(string[] level, StyleSet set)
+    private static void ApplyShadow(StyleSet set, double blurRadius, Vector offset)
     {
-        var blur = level[0] switch
+        var advanced = EnsureAdvanced(set);
+
+        advanced.BoxShadows ??= [];
+        advanced.BoxShadows.Add(new BoxShadow
         {
-            "sm" => 2,
-            "lg" => 8,
-            "xl" => 12,
-            _ => 4 // 默认 shadow 或 shadow-md
-        };
-        EnsureAdvanced(set).Effect = new DropShadowEffect { BlurRadius = blur, Opacity = 0.3 };
+            Blur = blurRadius,
+            OffsetX = offset.X,
+            OffsetY = offset.Y,
+            Color = Color.Parse("#40000000")
+        });
     }
 
     private static AdvancedStyle EnsureAdvanced(StyleSet set)
@@ -1095,6 +885,23 @@ public static class StyleParser
         return result;
     }
 
+    private static double? TryGetDir(string[] vals)
+    {
+        if (vals.Length != 1) return null;
+        return vals[0] switch
+        {
+            "r" => 180,
+            "l" => 0,
+            "t" => 90,
+            "b" => 270,
+            "tr" => 135,
+            "tl" => 45,
+            "br" => 225,
+            "bl" => 315,
+            _ => TryParseValue(vals[0])
+        };
+    }
+
     private static readonly Dictionary<string, Color> ColorResultCache = new();
 
     private static Color? ParseColor(string[] colors)
@@ -1102,6 +909,7 @@ public static class StyleParser
         try
         {
             if (colors.Length > 2) return null;
+
             var cacheKey = string.Join("-", colors);
             if (ColorResultCache.TryGetValue(cacheKey, out var cacheValue)) return cacheValue;
 
@@ -1157,5 +965,50 @@ public static class StyleParser
             Console.ResetColor();
             return null;
         }
+    }
+
+    private static readonly Dictionary<double, (RelativePoint Start, RelativePoint End)> GradientPointsResultCache =
+        new();
+
+    private static IBrush? GetGradientBrush(double? gradientDir, Color? fromColor, Color? toColor)
+    {
+        if (gradientDir is null || fromColor is null || toColor is null) return null;
+
+        var (start, end) = GetGradientPoints(gradientDir.Value);
+
+        return new LinearGradientBrush
+        {
+            StartPoint = start,
+            EndPoint = end,
+            GradientStops =
+            {
+                new GradientStop(fromColor.Value, 0.0f),
+                new GradientStop(toColor.Value, 1.0f)
+            }
+        };
+    }
+
+    private static (RelativePoint Start, RelativePoint End) GetGradientPoints(double angle)
+    {
+        if (GradientPointsResultCache.TryGetValue(angle, out var cacheValue)) return cacheValue;
+        // 标准渐变数学计算：角度 → 方向向量
+        var radians = angle * Math.PI / 180.0;
+        var cos = Math.Cos(radians);
+        var sin = Math.Sin(radians);
+
+        // 中心点 (0.5, 0.5) 发射渐变（标准模式）
+        var startX = 0.5 + cos * 0.5;
+        var startY = 0.5 + sin * 0.5;
+        var endX = 0.5 - cos * 0.5;
+        var endY = 0.5 - sin * 0.5;
+
+        var result = (
+            new RelativePoint(startX, startY, RelativeUnit.Relative),
+            new RelativePoint(endX, endY, RelativeUnit.Relative)
+        );
+
+        GradientPointsResultCache[angle] = result;
+
+        return result;
     }
 }

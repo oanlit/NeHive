@@ -121,7 +121,7 @@ public class HButtonStyle(
         return new Computed<FullStyle>(() =>
         {
             var str = text.RxValue;
-            fullStyle.Base = DefaultStyleSet();
+            fullStyle.Normal = DefaultStyleSet();
             fullStyle.Variants = [];
             StyleParser.ParseFullStyle(str, ref fullStyle);
 
@@ -241,12 +241,12 @@ public static partial class BaseComponent
         }
         else
         {
-            state = new HButtonState(style.Value.Base);
+            state = new HButtonState(style.Value.Normal);
             ApplyStyle(state.CurrentStyle);
             uiScope.CreateEffect(epochScope =>
             {
                 var styleValue = epochScope.Track(style);
-                state.BaseStyle = styleValue.Base;
+                state.BaseStyle = styleValue.Normal;
                 state.Variants = styleValue.Variants;
                 state.CurrentStyle = StyleSet.Copy(state.BaseStyle);
                 ApplyStyle(state.CurrentStyle);
