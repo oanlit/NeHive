@@ -8,147 +8,20 @@ using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HButtonStyle(
-    Thickness? margin = null,
-    double? width = null,
-    double? height = null,
-    double? minWidth = null,
-    double? maxWidth = null,
-    double? minHeight = null,
-    double? maxHeight = null,
-    Thickness? padding = null,
-    HorizontalAlignment? horizontalAlignment = null,
-    VerticalAlignment? verticalAlignment = null,
-    double? fontSize = null,
-    FontWeight? fontWeight = null,
-    FontStyle? fontStyle = null,
-    IBrush? foreground = null,
-    IBrush? background = null,
-    IBrush? borderBrush = null,
-    Thickness? borderThickness = null,
-    CornerRadius? cornerRadius = null
-)
+public static class HButtonStyle
 {
-    public Thickness? Margin = margin;
-
-    public double? Width = width;
-    public double? Height = height;
-    public double? MinWidth = minWidth;
-    public double? MaxWidth = maxWidth;
-    public double? MinHeight = minHeight;
-    public double? MaxHeight = maxHeight;
-
-    public Thickness Padding = padding ?? new Thickness(8, 4);
-
-    public HorizontalAlignment HorizontalAlignment =
-        horizontalAlignment ?? HorizontalAlignment.Left;
-
-    public VerticalAlignment VerticalAlignment =
-        verticalAlignment ?? VerticalAlignment.Top;
-
-    public double FontSize = fontSize ?? 12;
-    public FontWeight? FontWeight = fontWeight;
-    public FontStyle? FontStyle = fontStyle;
-    public IBrush Foreground = foreground ?? Brushes.Black;
-
-    public IBrush Background = background ?? Brushes.LightGray;
-    public IBrush BorderBrush = borderBrush ?? Brushes.Gray;
-    public Thickness BorderThickness = borderThickness ?? new Thickness(1);
-    public CornerRadius CornerRadius = cornerRadius ?? new CornerRadius(4);
-
-    public HButtonStyle Merge(HButtonStyle style)
+    public static StyleSet DefaultStyleSet => new()
     {
-        Margin = style.Margin;
-
-        Width = style.Width;
-        Height = style.Height;
-        MinWidth = style.MinWidth;
-        MaxWidth = style.MaxWidth;
-        MinHeight = style.MinHeight;
-        MaxHeight = style.MaxHeight;
-
-        Padding = style.Padding;
-
-        HorizontalAlignment = style.HorizontalAlignment;
-        VerticalAlignment = style.VerticalAlignment;
-
-        FontSize = style.FontSize;
-        FontWeight = style.FontWeight;
-        FontStyle = style.FontStyle;
-        Foreground = style.Foreground;
-
-        Background = style.Background;
-        BorderBrush = style.BorderBrush;
-        BorderThickness = style.BorderThickness;
-        CornerRadius = style.CornerRadius;
-        return this;
-    }
-
-    public static Accessor<HButtonStyle> Parse(Accessor<string> text)
-    {
-        var result = new StyleSet();
-        return new Computed<HButtonStyle>(() =>
-        {
-            var str = text.RxValue;
-            StyleParser.Parse(str, ref result);
-            return new HButtonStyle(
-                result.Margin,
-                result.Width,
-                result.Height,
-                result.MinWidth,
-                result.MaxWidth,
-                result.MinHeight,
-                result.MinHeight,
-                result.Padding,
-                result.HorizontalAlignment,
-                result.VerticalAlignment,
-                result.FontSize,
-                result.FontWeight,
-                result.FontStyle,
-                result.Foreground,
-                result.Background,
-                result.BorderBrush,
-                result.BorderThickness,
-                result.CornerRadius
-            );
-        });
-    }
-
-    public static Accessor<FullStyle> ParseFull(Accessor<string> text)
-    {
-        var fullStyle = new FullStyle();
-
-        return new Computed<FullStyle>(() =>
-        {
-            var str = text.RxValue;
-            fullStyle.Normal = DefaultStyleSet();
-            fullStyle.Variants = [];
-            StyleParser.ParseFullStyle(str, ref fullStyle);
-
-            return fullStyle;
-        });
-    }
-
-    public static StyleSet DefaultStyleSet()
-    {
-        return new StyleSet
-        {
-            Padding = new Thickness(8, 4),
-
-            HorizontalAlignment = HorizontalAlignment.Left,
-
-            VerticalAlignment = VerticalAlignment.Top,
-
-            FontSize = 12,
-
-            Foreground = Brushes.Black,
-
-            Background = Brushes.LightGray,
-            BorderBrush = Brushes.Gray,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
-        };
-    }
+        Padding = new Thickness(8, 4),
+        HorizontalAlignment = HorizontalAlignment.Left,
+        VerticalAlignment = VerticalAlignment.Top,
+        FontSize = 12,
+        Foreground = Brushes.Black,
+        Background = Brushes.LightGray,
+        BorderBrush = Brushes.Gray,
+        BorderThickness = new Thickness(1),
+        CornerRadius = new CornerRadius(4)
+    };
 }
 
 public class HButtonExpose
@@ -161,7 +34,7 @@ public static partial class BaseComponent
     private class HButtonState(StyleSet baseStyle)
     {
         public StyleSet BaseStyle = baseStyle;
-        public StyleSet CurrentStyle = StyleSet.Copy(baseStyle);
+        public StyleSet CurrentStyle = StyleUtil.Copy(baseStyle);
         public Dictionary<string, List<string>>? Variants;
 
         // 鼠标交互状态（悬停、按下等）
@@ -176,8 +49,7 @@ public static partial class BaseComponent
         public void SetCurrentStyle()
         {
             if (Variants == null) return;
-            List<string>? strs;
-            if (IsHover && Variants.TryGetValue("hover", out strs))
+            if (IsHover && Variants.TryGetValue("hover", out var strs))
             {
                 StyleParser.Parse(strs, ref CurrentStyle);
             }
@@ -216,13 +88,13 @@ public static partial class BaseComponent
         text ??= "";
         if (strStyle != null)
         {
-            style = HButtonStyle.ParseFull(strStyle);
+            style = StyleParser.ParseFull(strStyle);
         }
 
         UiScope uiScope = new();
 
         // 创建基础视觉元素
-        
+
         var textBlock = new TextBlock();
         var border = new Border
         {
@@ -231,12 +103,12 @@ public static partial class BaseComponent
         };
 
         uiScope.CreateEffect(() => textBlock.Text = text.RxValue);
-        
+
         HButtonState state;
 
         if (style is null)
         {
-            state = new HButtonState(HButtonStyle.DefaultStyleSet());
+            state = new HButtonState(HButtonStyle.DefaultStyleSet);
             ApplyStyle(state.CurrentStyle); // 应用默认样式
         }
         else
@@ -248,7 +120,7 @@ public static partial class BaseComponent
                 var styleValue = epochScope.Track(style);
                 state.BaseStyle = styleValue.Normal;
                 state.Variants = styleValue.Variants;
-                state.CurrentStyle = StyleSet.Copy(state.BaseStyle);
+                state.CurrentStyle = StyleUtil.Copy(state.BaseStyle);
                 ApplyStyle(state.CurrentStyle);
             });
         }
@@ -265,7 +137,6 @@ public static partial class BaseComponent
                 state.IsClicked = true;
                 state.SetClickStyle();
                 ApplyStyle(state.CurrentStyle);
-                // border.Background = Brushes.DarkGray; // 按下效果
                 e.Handled = true;
             };
 
@@ -287,7 +158,6 @@ public static partial class BaseComponent
             {
                 state.IsHover = false;
                 state.IsClicked = false; // 移出区域时取消按下状态
-                // border.Background = style?.Value.Background ?? Brushes.LightGray;
                 state.ResetSetStyle();
                 ApplyStyle(state.CurrentStyle);
             };
@@ -312,32 +182,18 @@ public static partial class BaseComponent
 
         void ApplyStyle(StyleSet styleValue)
         {
-            if (styleValue.Margin is not null) border.Margin = styleValue.Margin.Value;
-            if (styleValue.ZIndex is not null) border.ZIndex = styleValue.ZIndex.Value;
+            StyleUtil.ApplyStyle(styleValue, textBlock, border);
 
-            if (styleValue.Width is not null) border.Width = styleValue.Width.Value;
-            if (styleValue.Height is not null) border.Height = styleValue.Height.Value;
-            if (styleValue.MaxWidth is not null) border.MaxWidth = styleValue.MaxWidth.Value;
-            if (styleValue.MinWidth is not null) border.MinWidth = styleValue.MinWidth.Value;
-            if (styleValue.MaxHeight is not null) border.MaxHeight = styleValue.MaxHeight.Value;
-            if (styleValue.MinHeight is not null) border.MinHeight = styleValue.MinHeight.Value;
-
-            if (styleValue.Padding is not null) border.Padding = styleValue.Padding.Value;
-
-            if (styleValue.HorizontalAlignment is not null)
-                textBlock.HorizontalAlignment = styleValue.HorizontalAlignment.Value;
-            if (styleValue.VerticalAlignment is not null)
-                textBlock.VerticalAlignment = styleValue.VerticalAlignment.Value;
+            if (styleValue.TextAlignment is not null) textBlock.TextAlignment = styleValue.TextAlignment.Value;
+            if (styleValue.VerticalTextAlignment is not null)
+                border.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
+            if (styleValue.TextWrapping is not null) textBlock.TextWrapping = styleValue.TextWrapping.Value;
+            if (styleValue.Foreground is not null) textBlock.Foreground = styleValue.Foreground;
 
             if (styleValue.FontSize is not null) textBlock.FontSize = styleValue.FontSize.Value;
             if (styleValue.FontWeight is not null) textBlock.FontWeight = styleValue.FontWeight.Value;
             if (styleValue.FontStyle is not null) textBlock.FontStyle = styleValue.FontStyle.Value;
-            textBlock.Foreground = styleValue.Foreground;
-
-            border.Background = styleValue.Background;
-            border.BorderBrush = styleValue.BorderBrush;
-            if (styleValue.BorderThickness is not null) border.BorderThickness = styleValue.BorderThickness.Value;
-            if (styleValue.CornerRadius is not null) border.CornerRadius = styleValue.CornerRadius.Value;
+            if (styleValue.Foreground is not null) textBlock.Foreground = styleValue.Foreground;
         }
     }
 

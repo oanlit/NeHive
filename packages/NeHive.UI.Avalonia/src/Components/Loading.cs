@@ -10,7 +10,7 @@ public struct LoadingProp<TData>(AsyncMemo<TData> dataSource)
 
     public required Func<TData, IElement> Success { get; init; }
 
-    public Func<IElement>? Loading { get; init; }
+    public Func<TData?, IElement>? Loading { get; init; }
 
     public Func<Exception, IElement>? Error { get; init; }
 }
@@ -34,19 +34,20 @@ public static partial class ControlFlow
             var state = epochScope.Track(() => memo.RxState); // 追踪状态
 
             IElement? newChild;
+            T? data = default;
 
             switch (state)
             {
                 case AsyncMemoState.Pending:
                 case AsyncMemoState.Refreshing:
-                    var loadingContent = prop.Loading?.Invoke() ?? DefaultLoading();
+                    var loadingContent = prop.Loading?.Invoke(data) ?? DefaultLoading();
                     newChild = loadingContent;
                     break;
 
                 case AsyncMemoState.Ready:
                     try
                     {
-                        var data = memo.RxValue!; // 就绪时取值（可能是信号，直接读当前值）
+                        data = memo.RxValue!; // 就绪时取值（可能是信号，直接读当前值）
                         newChild = prop.Success(data);
                     }
                     catch (Exception ex)
@@ -58,7 +59,6 @@ public static partial class ControlFlow
                     break;
 
                 case AsyncMemoState.Errored:
-                    // 若 AsyncMemo 支持异常存储，此处可获取；这里简化为从 RxValue 的捕获异常
                     var exception = memo.RxError ?? new Exception("Unknown error");
                     newChild = prop.Error?.Invoke(exception) ?? DefaultError(exception);
                     break;

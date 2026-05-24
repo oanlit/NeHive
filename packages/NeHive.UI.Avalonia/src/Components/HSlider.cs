@@ -17,6 +17,7 @@ public static partial class BaseComponent
         Accessor<double>? tickFrequency = null,
         Accessor<TickPlacement>? tickPlacement = null,
         Accessor<string>? strStyle = null,
+        Accessor<FullStyle>? style = null,
         Action<double>? onValueChanged = null)
     {
         // 默认值
@@ -26,9 +27,18 @@ public static partial class BaseComponent
         isSnapToTickEnabled ??= false;
         tickFrequency ??= 1.0;
         tickPlacement ??= TickPlacement.None;
+        
+        if (strStyle != null)
+        {
+            style = StyleParser.ParseFull(strStyle);
+        }
 
         var uiScope = new UiScope();
         var slider = new Slider();
+        var border = new Border
+        {
+            Child = slider
+        };
 
         // === 双向绑定 bindValue ===
         if (bindValue is not null)
@@ -60,43 +70,33 @@ public static partial class BaseComponent
         uiScope.CreateEffect(() => slider.TickPlacement = tickPlacement.RxValue);
 
         // === 应用样式字符串 ===
-        if (strStyle != null)
+        if (style is not null)
         {
-            uiScope.CreateEffect(scope =>
+            uiScope.CreateEffect(epochScope =>
             {
-                var styleStr = scope.Track(strStyle);
-                ApplySliderStyle(slider, styleStr);
+                var styleValue = epochScope.Track(style).Normal;
+                StyleUtil.ApplyStyle(styleValue, slider, border);
+                if (styleValue.Width is not null)
+                    slider.Width = styleValue.Width.Value;
+
+                if (styleValue.Height is not null)
+                    slider.Height = styleValue.Height.Value;
+
+                if (styleValue.MinWidth is not null)
+                    slider.MinWidth = styleValue.MinWidth.Value;
+
+                if (styleValue.MaxWidth is not null)
+                    slider.MaxWidth = styleValue.MaxWidth.Value;
+
+                if (styleValue.MinHeight is not null)
+                    slider.MinHeight = styleValue.MinHeight.Value;
+
+                if (styleValue.MaxHeight is not null)
+                    slider.MaxHeight = styleValue.MaxHeight.Value;
             });
         }
 
-        return new Element(uiScope, slider);
-    }
-
-    // 样式解析辅助函数（复用你现有的 StyleParser）
-    private static void ApplySliderStyle(Slider slider, string styleStr)
-    {
-        var result = new StyleSet();
-        StyleParser.Parse(styleStr, ref result);
-
-        // 布局属性
-        if (result.Margin is not null) slider.Margin = result.Margin.Value;
-        if (result.ZIndex is not null) slider.ZIndex = result.ZIndex.Value;
-
-        if (result.Width is not null) slider.Width = result.Width.Value;
-        if (result.Height is not null) slider.Height = result.Height.Value;
-        if (result.MinWidth is not null) slider.MinWidth = result.MinWidth.Value;
-        if (result.MaxWidth is not null) slider.MaxWidth = result.MaxWidth.Value;
-        if (result.MinHeight is not null) slider.MinHeight = result.MinHeight.Value;
-        if (result.MaxHeight is not null) slider.MaxHeight = result.MaxHeight.Value;
-
-        if (result.Padding is not null) slider.Padding = result.Padding.Value;
-
-        if (result.HorizontalAlignment is not null) slider.HorizontalAlignment = result.HorizontalAlignment.Value;
-        if (result.VerticalAlignment is not null) slider.VerticalAlignment = result.VerticalAlignment.Value;
-
-        if (result.Background is not null) slider.Background = result.Background;
-
-        // Slider 特有样式（可通过 StyleParser 扩展支持，如 tick-placement, orientation 等）
-        // 此处保留扩展点
+        return new Element(uiScope, border);
+        
     }
 }

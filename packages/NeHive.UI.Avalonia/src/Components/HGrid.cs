@@ -66,7 +66,7 @@ public class HGridStyle(
 
     public VerticalAlignment VerticalAlignment { get; private set; } =
         verticalAlignment ?? VerticalAlignment.Stretch;
-    
+
     // 背景
     public IBrush? Background { get; private set; } = background;
 
@@ -127,30 +127,20 @@ public class HGridProp : IEnumerable<KeyValuePair<GridPosition, IElement>>
     public readonly Accessor<IReadOnlyList<HgLen>>? ColumnDefinitions;
 
     // 布局属性
-    public readonly Accessor<HGridStyle>? Style;
+    public readonly Accessor<FullStyle>? Style;
 
     public HGridProp(
         Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
         Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
-        Accessor<string>? strStyle = null,
-        Accessor<HGridStyle>? style = null
+        Accessor<string>? strStyle = null
     )
     {
         RowDefinitions = rowDefinitions;
         ColumnDefinitions = columnDefinitions;
-        // 自动合并规则：strStyle → style 覆盖
-        if (style != null && strStyle != null)
+
+        if (strStyle != null)
         {
-            Style = new Computed<HGridStyle>(() =>
-                HGridStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
-        }
-        else if (strStyle != null)
-        {
-            Style = HGridStyle.Parse(strStyle);
-        }
-        else
-        {
-            Style = style;
+            Style = StyleParser.ParseFull(strStyle);
         }
     }
 
@@ -179,8 +169,13 @@ public static partial class BaseComponent
     public static IElement HGrid(HGridProp prop)
     {
         var uiScope = new UiScope();
-        
+
         var grid = new Grid();
+
+        var border = new Border
+        {
+            Child = grid
+        };
 
         // 应用响应式属性
         uiScope.CreateEffect(() =>
@@ -200,12 +195,14 @@ public static partial class BaseComponent
             }
         });
 
-        uiScope.CreateEffect(epochScope =>
+        if (prop.Style != null)
         {
-            if (prop.Style == null) return;
-            var style = epochScope.Track(prop.Style);
-            ApplyGridStyle(style);
-        });
+            uiScope.CreateEffect(scope =>
+            {
+                var style = scope.Track(prop.Style);
+                ApplyStyle(style.Normal);
+            });
+        }
 
         // 添加子元素并应用附加属性
         foreach (var (position, childElement) in prop)
@@ -218,28 +215,31 @@ public static partial class BaseComponent
             grid.Children.Add(child);
         }
 
-        return new Element(uiScope, grid);
+        return new Element(uiScope, border);
 
-        void ApplyGridStyle(HGridStyle style)
+        void ApplyStyle(StyleSet style)
         {
-            grid.Margin = style.Margin;
-            if (style.ZIndex is not null) grid.ZIndex = style.ZIndex.Value;
+            StyleUtil.ApplyStyle(style, grid, border);
+            if (style.Width is not null)
+                grid.Width = style.Width.Value;
 
-            if (style.Width is not null) grid.Width = style.Width.Value;
-            if (style.Height is not null) grid.Height = style.Height.Value;
-            if (style.MinWidth is not null) grid.MinWidth = style.MinWidth.Value;
-            if (style.MaxWidth is not null) grid.MaxWidth = style.MaxWidth.Value;
-            if (style.MinHeight is not null) grid.MinHeight = style.MinHeight.Value;
-            if (style.MaxHeight is not null) grid.MaxHeight = style.MaxHeight.Value;
+            if (style.Height is not null)
+                grid.Height = style.Height.Value;
 
-            grid.ColumnSpacing = style.ColumnSpacing;
-            grid.RowSpacing = style.RowSpacing;
+            if (style.MinWidth is not null)
+                grid.MinWidth = style.MinWidth.Value;
 
-            grid.HorizontalAlignment = style.HorizontalAlignment;
-            grid.VerticalAlignment = style.VerticalAlignment;
+            if (style.MaxWidth is not null)
+                grid.MaxWidth = style.MaxWidth.Value;
 
-            if (style.Background is not null)
-                grid.Background = style.Background;
+            if (style.MinHeight is not null)
+                grid.MinHeight = style.MinHeight.Value;
+
+            if (style.MaxHeight is not null)
+                grid.MaxHeight = style.MaxHeight.Value;
+            
+            if (style.ColumnSpacing is not null) grid.ColumnSpacing = style.ColumnSpacing.Value;
+            if (style.RowSpacing is not null) grid.RowSpacing = style.RowSpacing.Value;
         }
     }
 }

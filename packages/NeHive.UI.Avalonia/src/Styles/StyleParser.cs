@@ -129,6 +129,7 @@ public static class StyleParser
         ["rounded"] = (_, set) => set.CornerRadius = new CornerRadius(4),
         ["rounded-"] = ApplyCornerRadius,
         ["rounded-sm"] = (_, set) => set.CornerRadius = new CornerRadius(2),
+        ["rounded-md"] = (_, set) => set.CornerRadius = new CornerRadius(4),
         ["rounded-lg"] = (_, set) => set.CornerRadius = new CornerRadius(8),
         ["rounded-xl"] = (_, set) => set.CornerRadius = new CornerRadius(12),
         ["rounded-2xl"] = (_, set) => set.CornerRadius = new CornerRadius(16),
@@ -322,7 +323,8 @@ public static class StyleParser
         return new Computed<FullStyle>(() =>
         {
             var str = text.RxValue;
-            fullStyle.Normal = new StyleSet();
+            // fullStyle.Normal = new StyleSet();
+            fullStyle.Normal = StyleUtil.FromDefault();
             fullStyle.Variants = [];
             ParseFullStyle(str, ref fullStyle);
 
@@ -634,7 +636,6 @@ public static class StyleParser
         if (widthStr.Length != 1) return;
         var val = TryParseValue(widthStr[0]);
         if (val is null) return;
-        val *= UnitScale;
         set.BorderThickness = new Thickness(val.Value);
     }
 
@@ -687,8 +688,6 @@ public static class StyleParser
         if (v.Length != 1) return;
         var val = TryParseValue(v[0]);
         if (val is null) return;
-        val *= UnitScale;
-        set.FontSize = val.Value;
         set.CornerRadius = new CornerRadius(val.Value);
     }
 

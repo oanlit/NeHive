@@ -1,7 +1,4 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Platform;
-using Avalonia.Animation;
 using Avalonia.Media;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
@@ -47,7 +44,7 @@ public static partial class BaseComponent
         // 绑定 Data
         uiScope.CreateEffect(() =>
         {
-            var svg = LoadSvgString(uri.RxValue);
+            var svg = SvgUtil.LoadSvgString(uri.RxValue);
             var data = SvgUtil.ParseGeometry(svg);
             image.Data = data;
         });
@@ -69,7 +66,7 @@ public static partial class BaseComponent
                 state.BaseStyle = styleValue.Normal;
                 state.Variants = styleValue.Variants;
                 ApplyStyle(styleValue.Normal);
-                state.CurrentStyle = StyleSet.Copy(state.BaseStyle);
+                state.CurrentStyle = StyleUtil.Copy(state.BaseStyle);
             });
         }
 
@@ -114,17 +111,5 @@ public static partial class BaseComponent
                 image.StrokeThickness = weight;
             }
         }
-    }
-
-    static string LoadSvgString(string uri)
-    {
-        if (!uri.StartsWith("~/") && !uri.StartsWith("avares://")) return File.ReadAllText(uri);
-
-        if (uri.StartsWith("~/"))
-            uri = $"{NeHiveContext.ProjBaseUri}{uri[2..]}";
-
-        var stream = AssetLoader.Open(new Uri(uri));
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
     }
 }

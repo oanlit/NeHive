@@ -1,6 +1,7 @@
 using System.Collections;
 using Avalonia.Controls;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -33,21 +34,20 @@ public class HMenuItemProp(
 /// <summary>
 /// 菜单栏配置
 /// </summary>
-public class HMenuProp(
-    Accessor<string>? strStyle = null,
-    Accessor<HPanelStyle>? style = null
-) : IEnumerable<HMenuItemProp>
+public class HMenuProp : IEnumerable<HMenuItemProp>
 {
     private readonly List<HMenuItemProp> _items = [];
 
-    public readonly Accessor<HPanelStyle>? ComputedStyle = (style, strStyle) switch
+    public readonly Accessor<FullStyle>? Style;
+
+    public HMenuProp(
+        Accessor<string>? strStyle = null)
     {
-        (not null, not null) =>
-            new Computed<HPanelStyle>(() => HPanelStyle.Parse(strStyle).RxValue.Merge(style.RxValue)),
-        (not null, _) => style,
-        (_, not null) => HPanelStyle.Parse(strStyle),
-        _ => null
-    };
+        if (strStyle != null)
+        {
+            Style = StyleParser.ParseFull(strStyle);
+        }
+    }
 
     public void Add(HMenuItemProp item) => _items.Add(item);
     public IEnumerator<HMenuItemProp> GetEnumerator() => _items.GetEnumerator();
@@ -56,21 +56,22 @@ public class HMenuProp(
 
 public static partial class BaseComponent
 {
-    private static readonly Component<HMenuProp> CompMenu = new((prop, uiScope) =>
+    public static IElement<Menu> HMenu(HMenuProp prop)
     {
         var menu = new Menu();
+        var uiScope = new UiScope();
+        var border = new Border
+        {
+            Child = menu
+        };
 
         // 应用样式
-        if (prop.ComputedStyle != null)
+        if (prop.Style is not null)
         {
             uiScope.CreateEffect(scope =>
             {
-                var style = scope.Track(prop.ComputedStyle);
-                menu.Margin = style.Margin;
-                menu.HorizontalAlignment = style.HorizontalAlignment;
-                menu.VerticalAlignment = style.VerticalAlignment;
-                menu.Background = style.Background;
-                // 可扩展 Spacing 等
+                var style = scope.Track(prop.Style);
+                StyleUtil.ApplyStyle(style.Normal, menu, border);
             });
         }
 
@@ -80,11 +81,7 @@ public static partial class BaseComponent
             var mi = new MenuItem();
             uiScope.CreateEffect(() => mi.Header = itemProp.Header.RxValue);
             uiScope.CreateEffect(() => mi.IsEnabled = itemProp.IsEnabled.RxValue);
-            // if (itemProp.Command != null)
-            // {
-            //     mi.Command = itemProp.Command;
-            //     mi.CommandParameter = itemProp.CommandParameter;
-            // }
+
             if (itemProp.OnClick is not null)
             {
                 mi.Click += (_, _) => itemProp.OnClick();
@@ -104,11 +101,6 @@ public static partial class BaseComponent
             menu.Items.Add(BuildMenuItem(itemProp));
         }
 
-        return new Element(uiScope, menu);
-    });
-
-    /// <summary>
-    /// 创建菜单栏
-    /// </summary>
-    public static IElement HMenu(HMenuProp prop) => CompMenu.Create(prop);
+        return new Element<Menu>(uiScope, border, menu);
+    }
 }

@@ -1,5 +1,5 @@
 using Avalonia;
-
+using Avalonia.Platform;
 using Avalonia.Media;
 
 using System.Xml.Linq;
@@ -9,6 +9,18 @@ namespace NeHive.UI.Avalonia.Utils;
 
 public static class SvgUtil
 {
+    public static string LoadSvgString(string uri)
+    {
+        if (!uri.StartsWith("~/") && !uri.StartsWith("avares://")) return File.ReadAllText(uri);
+
+        if (uri.StartsWith("~/"))
+            uri = $"{NeHiveContext.ProjBaseUri}{uri[2..]}";
+
+        var stream = AssetLoader.Open(new Uri(uri));
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+    
     public static Geometry? ParseGeometry(string svg)
     {
         var doc = XElement.Parse(svg);

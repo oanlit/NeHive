@@ -1,35 +1,40 @@
 using System.Collections;
 using Avalonia.Controls;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HRadioButtonProp(
-    Accessor<bool?>? isChecked = null,
-    MutSignal<bool?>? bindIsChecked = null,
-    Accessor<string>? groupName = null,
-    Accessor<bool>? isEnabled = null,
-    Accessor<string>? strStyle = null,
-    Accessor<HPanelStyle>? style = null,
-    Action<bool?>? onClick = null
-) : IEnumerable<IElement>
+public class HRadioButtonProp : IEnumerable<IElement>
 {
     private readonly List<IElement> _children = [];
 
-    public readonly Accessor<HPanelStyle>? ComputedStyle = (style, strStyle) switch
-    {
-        (not null, not null) => new Computed<HPanelStyle>(() =>
-            HPanelStyle.Parse(strStyle).RxValue.Merge(style.RxValue)),
-        (not null, _) => style,
-        (_, not null) => HPanelStyle.Parse(strStyle),
-        _ => null
-    };
+    public readonly Accessor<FullStyle>? Style;
 
-    public readonly MutSignal<bool?>? BindIsChecked = bindIsChecked;
-    public readonly Accessor<bool?>? IsChecked = isChecked;
-    public readonly Accessor<string>? GroupName = groupName;
-    public readonly Accessor<bool>? IsEnabled = isEnabled;
-    public readonly Action<bool?>? OnClick = onClick;
+    public readonly MutSignal<bool?>? BindIsChecked;
+    public readonly Accessor<bool?>? IsChecked;
+    public readonly Accessor<string>? GroupName;
+    public readonly Accessor<bool>? IsEnabled;
+    public readonly Action<bool?>? OnClick;
+
+    public HRadioButtonProp(
+        Accessor<bool?>? isChecked = null,
+        MutSignal<bool?>? bindIsChecked = null,
+        Accessor<string>? groupName = null,
+        Accessor<bool>? isEnabled = null,
+        Accessor<string>? strStyle = null,
+        Action<bool?>? onClick = null)
+    {
+        BindIsChecked = bindIsChecked;
+        IsChecked = isChecked;
+        GroupName = groupName;
+        IsEnabled = isEnabled;
+        OnClick = onClick;
+        if (strStyle != null)
+        {
+            Style = StyleParser.ParseFull(strStyle);
+        }
+    }
 
     public void Add(IElement element) => _children.Add(element);
     public IEnumerator<IElement> GetEnumerator() => _children.GetEnumerator();
@@ -42,13 +47,17 @@ public static partial class BaseComponent
     {
         var uiScope = new UiScope();
         var radio = new RadioButton();
+        var border = new Border
+        {
+            Child = radio
+        };
 
-        if (prop.ComputedStyle != null)
+        if (prop.Style != null)
         {
             uiScope.CreateEffect(scope =>
             {
-                var style = scope.Track(prop.ComputedStyle);
-                ApplyPanelStyle(radio, style);
+                var style = scope.Track(prop.Style);
+                StyleUtil.ApplyStyle(style.Normal, radio, border);
             });
         }
 
@@ -80,14 +89,6 @@ public static partial class BaseComponent
         if (firstChild != null)
             radio.Content = firstChild.Content;
 
-        return new Element<RadioButton>(uiScope, radio, radio);
-
-        void ApplyPanelStyle(Control control, HPanelStyle style)
-        {
-            control.Margin = style.Margin;
-            control.HorizontalAlignment = style.HorizontalAlignment;
-            control.VerticalAlignment = style.VerticalAlignment;
-            // control.Background = style.Background;
-        }
+        return new Element<RadioButton>(uiScope, border, radio);
     }
 }

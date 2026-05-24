@@ -111,53 +111,33 @@ public class HScrollStyle(
     }
 }
 
-/// <summary>
-/// ScrollViewer 配置属性（内容通过初始化器传入）
-/// </summary>
 public class HScrollProp : ISingleChildrenProp
 {
     private readonly List<IElement> _children = [];
 
-    // 滚动行为参数（与 Element 无关）
     public readonly Accessor<ScrollBarVisibility> HorizontalScrollBarVisibility;
     public readonly Accessor<ScrollBarVisibility> VerticalScrollBarVisibility;
     // public readonly Accessor<bool>? AllowInertia;
 
-    // 样式（外观）—— 直接使用 StyleSet，通过 strStyle 或单独样式对象传入
-    public readonly Accessor<HScrollStyle>? Style;
+    public readonly Accessor<FullStyle>? Style;
 
     /// <param name="horizontalScrollBarVisibility">水平滚动条可见策略</param>
     /// <param name="verticalScrollBarVisibility">垂直滚动条可见策略</param>
     /// <param name="strStyle">字符串样式，如 "m-2 p-2 bg-lightgray rounded-lg"</param>
-    /// <param name="style">强类型样式对象（StyleSet）</param>
     public HScrollProp(
         Accessor<ScrollBarVisibility>? horizontalScrollBarVisibility = null,
         Accessor<ScrollBarVisibility>? verticalScrollBarVisibility = null,
         // Accessor<bool>? allowInertia = null, // 是否允许惯性滚动（触摸屏）
-        Accessor<string>? strStyle = null,
-        Accessor<HScrollStyle>? style = null)
+        Accessor<string>? strStyle = null)
     {
         HorizontalScrollBarVisibility = horizontalScrollBarVisibility ?? ScrollBarVisibility.Auto;
         VerticalScrollBarVisibility = verticalScrollBarVisibility ?? ScrollBarVisibility.Auto;
         // AllowInertia = allowInertia;
 
         // 样式合并规则：strStyle -> style
-        if (style != null && strStyle != null)
+        if (strStyle != null)
         {
-            Style = new Computed<HScrollStyle>(() =>
-            {
-                var parsed = HScrollStyle.Parse(strStyle.RxValue);
-                return parsed.RxValue.Merge(style.RxValue);
-            });
-        }
-
-        else if (strStyle != null)
-        {
-            Style = HScrollStyle.Parse(strStyle.RxValue);
-        }
-        else
-        {
-            Style = style;
+            Style = StyleParser.ParseFull(strStyle);
         }
     }
 
@@ -189,16 +169,21 @@ public static partial class BaseComponent
     {
         var uiScope = new UiScope();
         var scroll = new ScrollViewer();
-
-        // 设置唯一的内容
         var stack = new StackPanel();
 
-        uiScope.CreateEffect(scope =>
+        var border = new Border
         {
-            if (prop.Style == null) return;
-            var style = scope.Track(prop.Style);
-            ApplyStyle(style);
-        });
+            Child = scroll
+        };
+
+        if (prop.Style is not null)
+        {
+            uiScope.CreateEffect(scope =>
+            {
+                var style = scope.Track(prop.Style);
+                ApplyStyle(style.Normal);
+            });
+        }
 
         foreach (var child in prop)
             stack.Children.Add(child.Content);
@@ -211,82 +196,45 @@ public static partial class BaseComponent
 
         expose = new HScrollExpose(scroll);
 
-        return new Element<StackPanel>(uiScope, scroll, stack);
+        return new Element<StackPanel>(uiScope, border, stack);
 
-        void ApplyStyle(HScrollStyle style)
+        void ApplyStyle(StyleSet style)
         {
-            scroll.Margin = style.Margin;
-            stack.Margin = style.Padding;
+            StyleUtil.ApplyStyle(style, stack, border);
 
-            if (style.Width.HasValue)
+            if (style.Padding is not null)
             {
-                scroll.Width = style.Width.Value;
-                // stack.Width = style.Width.RxValue;
+                border.Padding = new Thickness(0);
+                stack.Margin = style.Padding.Value;
             }
 
-            if (style.Height.HasValue)
+            var orientation = style.Orientation ?? Orientation.Vertical;
+            stack.Orientation = orientation;
+
+            switch (orientation)
             {
-                scroll.Height = style.Height.Value;
-                // stack.Height = style.Height.Value;
+                case Orientation.Horizontal:
+                    if (style.ColumnSpacing is not null) stack.Spacing = style.ColumnSpacing.Value;
+                    scroll.HorizontalScrollBarVisibility =
+                        prop.HorizontalScrollBarVisibility.Value;
+                    scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                    break;
+
+                case Orientation.Vertical:
+                    if (style.RowSpacing is not null) stack.Spacing = style.RowSpacing.Value;
+                    scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                    scroll.VerticalScrollBarVisibility =
+                        prop.VerticalScrollBarVisibility.Value;
+                    break;
             }
 
-            if (style.MinWidth.HasValue)
-            {
-                scroll.MinWidth = style.MinWidth.Value;
-                // stack.MinWidth = style.MinWidth.Value;
-            }
-
-            if (style.MaxWidth.HasValue)
-            {
-                scroll.MaxWidth = style.MaxWidth.Value;
-                // stack.MaxWidth = style.MaxWidth.Value;
-            }
-
-            if (style.MinHeight.HasValue)
-            {
-                scroll.MinHeight = style.MinHeight.Value;
-                // stack.MinHeight = style.MinHeight.Value;
-            }
-
-            if (style.MaxHeight.HasValue)
-            {
-                scroll.MaxHeight = style.MaxHeight.Value;
-                // stack.MaxHeight = style.MaxHeight.Value;
-            }
+            var overflowHandle = style.OverflowHandle;
+            if (overflowHandle is  null) return;
             
-            // if (style.Spacing is not null)
-            // {
-            //     scroll.MaxHeight = style.MaxHeight.Value;
-            //     // stack.MaxHeight = style.MaxHeight.Value;
-            // }
-            
-            stack.Spacing = style.Spacing;
-
-            var ori = style.Orientation;
-            if (ori == Orientation.Horizontal)
-            {
-                scroll.HorizontalScrollBarVisibility =
-                    prop.HorizontalScrollBarVisibility.Value;
-                scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-            }
-            else // Vertical
-            {
-                scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-                scroll.VerticalScrollBarVisibility =
-                    prop.VerticalScrollBarVisibility.Value;
-            }
-
-            scroll.Background = style.Background;
-            scroll.BorderBrush = style.BorderBrush;
-            scroll.BorderThickness = style.BorderThickness;
-            if (style.CornerRadius.HasValue)
-                scroll.CornerRadius = style.CornerRadius.Value;
-
-            if (style.Opacity.HasValue)
-                scroll.Opacity = style.Opacity.Value;
-            if (style.IsVisible.HasValue)
-                scroll.IsVisible = style.IsVisible.Value;
-            // Cursor 和 Effect 按需添加
+            if (overflowHandle is OverflowHandle.Visible)
+                stack.ClipToBounds = false;
+            else if (overflowHandle is OverflowHandle.Hidden)
+                stack.ClipToBounds = true;
         }
     }
 

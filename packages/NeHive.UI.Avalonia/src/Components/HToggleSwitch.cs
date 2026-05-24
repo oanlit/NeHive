@@ -1,33 +1,38 @@
 using System.Collections;
 using Avalonia.Controls;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HToggleSwitchProp(
-    Accessor<bool?>? isChecked = null,
-    MutSignal<bool?>? bindIsChecked = null,
-    Accessor<bool>? isEnabled = null,
-    Accessor<string>? strStyle = null,
-    Accessor<HPanelStyle>? style = null,
-    Action<bool?>? onCheckedChanged = null
-) : IEnumerable<IElement>
+public class HToggleSwitchProp : IEnumerable<IElement>
 {
     private readonly List<IElement> _children = [];
 
-    public readonly Accessor<HPanelStyle>? ComputedStyle = (style, strStyle) switch
-    {
-        (not null, not null) => new Computed<HPanelStyle>(() =>
-            HPanelStyle.Parse(strStyle).RxValue.Merge(style.RxValue)),
-        (not null, _) => style,
-        (_, not null) => HPanelStyle.Parse(strStyle),
-        _ => null
-    };
+    public readonly Accessor<FullStyle>? Style;
 
-    public readonly MutSignal<bool?>? BindIsChecked = bindIsChecked;
-    public readonly Accessor<bool?>? IsChecked = isChecked;
-    public readonly Accessor<bool>? IsEnabled = isEnabled;
-    public readonly Action<bool?>? OnCheckedChanged = onCheckedChanged;
+    public readonly MutSignal<bool?>? BindIsChecked;
+    public readonly Accessor<bool?>? IsChecked;
+    public readonly Accessor<bool>? IsEnabled;
+    public readonly Action<bool?>? OnCheckedChanged;
+
+    public HToggleSwitchProp(
+        Accessor<bool?>? isChecked = null,
+        MutSignal<bool?>? bindIsChecked = null,
+        Accessor<bool>? isEnabled = null,
+        Accessor<string>? strStyle = null,
+        Action<bool?>? onCheckedChanged = null
+    )
+    {
+        BindIsChecked = bindIsChecked;
+        IsChecked = isChecked;
+        IsEnabled = isEnabled;
+        OnCheckedChanged = onCheckedChanged;
+        if (strStyle != null)
+        {
+            Style = StyleParser.ParseFull(strStyle);
+        }
+    }
 
     // 添加子内容（显示在开关旁边的标签或控件）
     public void Add(IElement element) => _children.Add(element);
@@ -37,21 +42,22 @@ public class HToggleSwitchProp(
 
 public static partial class BaseComponent
 {
-    /// <summary>
-    /// 创建 ToggleSwitch 组件
-    /// </summary>
     public static IElement<ToggleSwitch> HToggleSwitch(HToggleSwitchProp prop)
     {
         var uiScope = new UiScope();
         var toggle = new ToggleSwitch();
+        var border = new Border
+        {
+            Child = toggle
+        };
 
         // 应用样式
-        if (prop.ComputedStyle != null)
+        if (prop.Style != null)
         {
             uiScope.CreateEffect(scope =>
             {
-                var style = scope.Track(prop.ComputedStyle);
-                ApplyPanelStyle(style);
+                var style = scope.Track(prop.Style);
+                StyleUtil.ApplyStyle(style.Normal, toggle, border);
             });
         }
 
@@ -86,24 +92,6 @@ public static partial class BaseComponent
         if (firstChild != null)
             toggle.Content = firstChild.Content;
 
-        return new Element<ToggleSwitch>(uiScope, toggle, toggle);
-
-        void ApplyPanelStyle(HPanelStyle style)
-        {
-            toggle.Margin = style.Margin;
-            if (style.ZIndex is not null) toggle.ZIndex = style.ZIndex.Value;
-            
-            if (style.Width is not null) toggle.Width = style.Width.Value;
-            if (style.Height is not null) toggle.Height = style.Height.Value;
-            if (style.MinWidth is not null) toggle.MinWidth = style.MinWidth.Value;
-            if (style.MaxWidth is not null) toggle.MaxWidth = style.MaxWidth.Value;
-            if (style.MinHeight is not null) toggle.MinHeight = style.MinHeight.Value;
-            if (style.MaxHeight is not null) toggle.MaxHeight = style.MaxHeight.Value;
-            
-            toggle.HorizontalAlignment = style.HorizontalAlignment;
-            toggle.VerticalAlignment = style.VerticalAlignment;
-            
-            toggle.Background = style.Background;
-        }
+        return new Element<ToggleSwitch>(uiScope, border, toggle);
     }
 }

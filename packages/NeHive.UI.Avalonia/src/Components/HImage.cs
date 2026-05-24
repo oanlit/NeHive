@@ -171,7 +171,7 @@ public static partial class BaseComponent
         public HImageState(StyleSet baseStyle)
         {
             BaseStyle = baseStyle;
-            CurrentStyle = StyleSet.Copy(BaseStyle);
+            CurrentStyle = StyleUtil.Copy(BaseStyle);
         }
 
         public void ResetSetStyle()
@@ -206,17 +206,6 @@ public static partial class BaseComponent
         Accessor<FullStyle>? style = null
     )
     {
-        // 样式优先级：如果同时提供了 strStyle 和 style，则合并
-        // if (style is not null && strStyle is not null)
-        // {
-        //     style = new Computed<HImageStyle>(() =>
-        //         HImageStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
-        // }
-        // else if (strStyle is not null)
-        // {
-        //     style = HImageStyle.Parse(strStyle);
-        // }
-
         if (strStyle != null)
         {
             style = StyleParser.ParseFull(strStyle);
@@ -252,7 +241,7 @@ public static partial class BaseComponent
                 state.BaseStyle = styleValue.Normal;
                 state.Variants = styleValue.Variants;
                 ApplyStyle(styleValue.Normal);
-                state.CurrentStyle = StyleSet.Copy(state.BaseStyle);
+                state.CurrentStyle = StyleUtil.Copy(state.BaseStyle);
             });
         }
 

@@ -1,6 +1,7 @@
 using System.Collections;
 using Avalonia.Controls;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -20,33 +21,19 @@ public class HTreeViewItemProp(
     public void Add(HTreeViewItemProp child) => Children.Add(child);
 }
 
-/// <summary>
-/// TreeView 配置
-/// </summary>
 public class HTreeViewProp : IEnumerable<HTreeViewItemProp>
 {
     private readonly List<HTreeViewItemProp> _roots = new();
 
-    public readonly Accessor<HPanelStyle>? Style;
+    public readonly Accessor<FullStyle>? Style;
 
     public HTreeViewProp(
-        Accessor<string>? strStyle = null,
-        Accessor<HPanelStyle>? style = null
+        Accessor<string>? strStyle = null
     )
     {
-        // 自动合并规则：strStyle → style 覆盖
-        if (style != null && strStyle != null)
+        if (strStyle != null)
         {
-            Style = new Computed<HPanelStyle>(() =>
-                HPanelStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
-        }
-        else if (strStyle != null)
-        {
-            Style = HPanelStyle.Parse(strStyle);
-        }
-        else
-        {
-            Style = style;
+            Style = StyleParser.ParseFull(strStyle);
         }
     }
 
@@ -59,26 +46,21 @@ public class HTreeViewProp : IEnumerable<HTreeViewItemProp>
 
 public static partial class BaseComponent
 {
-    private static readonly Component<HTreeViewProp> CompTreeView = new((prop, uiScope) =>
+    public static IElement<TreeView> HTreeView(HTreeViewProp prop)
     {
+        var uiScope = new UiScope();
         var treeView = new TreeView();
-
-        // 应用样式
-        // uiScope.CreateEffect(() =>
-        // {
-        //     if (prop.Width is not null) treeView.Width = prop.Width.RxValue;
-        //     if (prop.Height is not null) treeView.Height = prop.Height.RxValue;
-        //     if (prop.Margin is not null) treeView.Margin = prop.Margin.RxValue;
-        //     treeView.HorizontalAlignment = prop.HorizontalAlignment.RxValue;
-        //     treeView.VerticalAlignment = prop.VerticalAlignment.RxValue;
-        // });
+        var border = new Border
+        {
+            Child = treeView
+        };
 
         if (prop.Style is not null)
         {
             uiScope.CreateEffect(epochScope =>
             {
                 var style = epochScope.Track(prop.Style);
-                ApplyStyle(style);
+                StyleUtil.ApplyStyle(style.Normal, treeView, border);
             });
         }
 
@@ -101,26 +83,6 @@ public static partial class BaseComponent
             treeView.Items.Add(BuildItem(item));
         }
 
-        return new Element(uiScope, treeView);
-
-        void ApplyStyle(HPanelStyle style)
-        {
-            treeView.Margin = style.Margin;
-            if (style.ZIndex is not null) treeView.ZIndex = style.ZIndex.Value;
-
-            if (style.Width is not null) treeView.Width = style.Width.Value;
-            if (style.Height is not null) treeView.Height = style.Height.Value;
-            if (style.MinWidth is not null) treeView.MinWidth = style.MinWidth.Value;
-            if (style.MaxWidth is not null) treeView.MaxWidth = style.MaxWidth.Value;
-            if (style.MinHeight is not null) treeView.MinHeight = style.MinHeight.Value;
-            if (style.MaxHeight is not null) treeView.MaxHeight = style.MaxHeight.Value;
-
-            treeView.HorizontalAlignment = style.HorizontalAlignment;
-            treeView.VerticalAlignment = style.VerticalAlignment;
-
-            treeView.Background = style.Background;
-        }
-    });
-
-    public static IElement HTreeView(HTreeViewProp prop) => CompTreeView.Create(prop);
+        return new Element<TreeView>(uiScope, border, treeView);
+    }
 }

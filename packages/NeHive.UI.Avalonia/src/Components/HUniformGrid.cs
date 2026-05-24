@@ -1,6 +1,8 @@
 using System.Collections;
+using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -10,7 +12,7 @@ public class HUniformGridProp : IEnumerable<IElement>
 
     public readonly Accessor<int>? Rows;
     public readonly Accessor<int>? Columns;
-    public readonly Accessor<HGridStyle>? Style;
+    public readonly Accessor<FullStyle>? Style;
 
     public HUniformGridProp(
         Accessor<int>? rows = null,
@@ -22,19 +24,9 @@ public class HUniformGridProp : IEnumerable<IElement>
         Rows = rows;
         Columns = columns;
 
-        if (style != null && strStyle != null)
+        if (strStyle != null)
         {
-            Style = new Computed<HGridStyle>(() =>
-                HGridStyle.Parse(strStyle).RxValue.Merge(style.RxValue));
-        }
-
-        else if (strStyle != null)
-        {
-            Style = HGridStyle.Parse(strStyle);
-        }
-        else
-        {
-            Style = style;
+            Style = StyleParser.ParseFull(strStyle);
         }
     }
 
@@ -65,6 +57,10 @@ public static partial class BaseComponent
     {
         var uiScope = new UiScope();
         var grid = new UniformGrid();
+        var border = new Border
+        {
+            Child = grid
+        };
 
         // 应用样式（直接复用 HGrid 的样式应用逻辑）
         if (prop.Style != null)
@@ -72,7 +68,7 @@ public static partial class BaseComponent
             uiScope.CreateEffect(scope =>
             {
                 var style = scope.Track(prop.Style);
-                ApplyGridStyleToControl(style);
+                ApplyStyle(style.Normal);
             });
         }
 
@@ -88,28 +84,14 @@ public static partial class BaseComponent
             grid.Children.Add(childElement.Content);
         }
 
-        return new Element<UniformGrid>(uiScope, grid, grid);
+        return new Element<UniformGrid>(uiScope, border, grid);
 
-        void ApplyGridStyleToControl(HGridStyle style)
+        void ApplyStyle(StyleSet style)
         {
-            grid.Margin = style.Margin;
-            if (style.ZIndex.HasValue) grid.ZIndex = style.ZIndex.Value;
+            StyleUtil.ApplyStyle(style, grid, border);
 
-            if (style.Width.HasValue) grid.Width = style.Width.Value;
-            if (style.Height.HasValue) grid.Height = style.Height.Value;
-            if (style.MinWidth.HasValue) grid.MinWidth = style.MinWidth.Value;
-            if (style.MaxWidth.HasValue) grid.MaxWidth = style.MaxWidth.Value;
-            if (style.MinHeight.HasValue) grid.MinHeight = style.MinHeight.Value;
-            if (style.MaxHeight.HasValue) grid.MaxHeight = style.MaxHeight.Value;
-
-            grid.ColumnSpacing = style.ColumnSpacing;
-            grid.RowSpacing = style.RowSpacing;
-
-            grid.HorizontalAlignment = style.HorizontalAlignment;
-            grid.VerticalAlignment = style.VerticalAlignment;
-
-            if (style.Background != null)
-                grid.Background = style.Background;
+            if (style.ColumnSpacing is not null) grid.ColumnSpacing = style.ColumnSpacing.Value;
+            if (style.RowSpacing is not null) grid.RowSpacing = style.RowSpacing.Value;
         }
     }
 }

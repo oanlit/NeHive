@@ -14,50 +14,33 @@ public static partial class BaseComponent
         Accessor<int>? maxLength = null,
         Accessor<bool>? acceptsReturn = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Action<string>? textChanged = null,
-        Action? lostFocus = null,
-        Action? gotFocus = null,
+        Accessor<FullStyle>? style = null,
+        Action<string>? onTextChanged = null,
+        Action? onLostFocus = null,
+        Action? onGotFocus = null,
         Action<KeyEventArgs>? keyDown = null)
     {
         var uiScope = new UiScope();
         var textBox = new TextBox();
-
-        // 样式合并
-        Accessor<StyleSet>? finalStyle = null;
-        if (strStyle != null || style != null)
+        var border = new Border
         {
-            if (style != null && strStyle != null)
-            {
-                finalStyle = new Computed<StyleSet>(() =>
-                {
-                    var ss = StyleParser.Parse(strStyle.RxValue);
-                    ss.Merge(style.RxValue);
-                    return ss;
-                });
-            }
-            else if (strStyle != null)
-            {
-                var result = new StyleSet();
-                finalStyle = new Computed<StyleSet>(() =>
-                {
-                    StyleParser.Parse(strStyle.RxValue, ref result);
-                    return result;
-                });
-            }
-            else
-            {
-                finalStyle = style;
-            }
+            Child = textBox
+        };
+
+        if (strStyle != null)
+        {
+            style = StyleParser.ParseFull(strStyle);
         }
 
         // 应用样式
-        uiScope.CreateEffect(scope =>
+        if (style is not null)
         {
-            if (finalStyle == null) return;
-            var styleValue = scope.Track(finalStyle);
-            ApplyStyle(styleValue);
-        });
+            uiScope.CreateEffect(epochScope =>
+            {
+                var styleValue = epochScope.Track(style);
+                ApplyStyle(styleValue.Normal);
+            });
+        }
 
         // 处理 Watermark (Avalonia TextBox 有 Watermark 属性)
         uiScope.CreateEffect(scope =>
@@ -107,7 +90,7 @@ public static partial class BaseComponent
                     if (updatingFromSignal) return;
                     var newText = textBox.Text ?? string.Empty;
                     signal.RxValue = newText;
-                    textChanged?.Invoke(newText);
+                    onTextChanged?.Invoke(newText);
                 };
             };
 
@@ -130,42 +113,27 @@ public static partial class BaseComponent
                 var val = scope.Track(text);
                 if (textBox.Text != val)
                     textBox.Text = val;
-                textChanged?.Invoke(val);
+                onTextChanged?.Invoke(val);
             });
         }
 
         // 注册事件
-        uiScope.OnMount+=() =>
+        uiScope.OnMount += () =>
         {
-            if (lostFocus != null)
-                textBox.LostFocus += (_, _) => lostFocus();
-            if (gotFocus != null)
-                textBox.GotFocus += (_, _) => gotFocus();
+            if (onLostFocus != null)
+                textBox.LostFocus += (_, _) => onLostFocus();
+            if (onGotFocus != null)
+                textBox.GotFocus += (_, _) => onGotFocus();
             if (keyDown != null)
                 textBox.KeyDown += (_, e) => keyDown(e);
         };
 
-        // 这里没有子元素，所以不需要 ISingleChildrenProp 或集合初始化器
-        return new Element(uiScope, textBox);
+        return new Element(uiScope, border);
 
         void ApplyStyle(StyleSet styleValue)
         {
-            if (styleValue.Margin.HasValue) textBox.Margin = styleValue.Margin.Value;
-
-            if (styleValue.Width.HasValue) textBox.Width = styleValue.Width.Value;
-            if (styleValue.Height.HasValue) textBox.Height = styleValue.Height.Value;
-            if (styleValue.MinWidth.HasValue) textBox.MinWidth = styleValue.MinWidth.Value;
-            if (styleValue.MaxWidth.HasValue) textBox.MaxWidth = styleValue.MaxWidth.Value;
-            if (styleValue.MinHeight.HasValue) textBox.MinHeight = styleValue.MinHeight.Value;
-            if (styleValue.MaxHeight.HasValue) textBox.MaxHeight = styleValue.MaxHeight.Value;
-
-            if (styleValue.Padding.HasValue) textBox.Padding = styleValue.Padding.Value;
-
-            if (styleValue.HorizontalAlignment.HasValue)
-                textBox.HorizontalAlignment = styleValue.HorizontalAlignment.Value;
-            if (styleValue.VerticalAlignment.HasValue)
-                textBox.VerticalAlignment = styleValue.VerticalAlignment.Value;
-
+            StyleUtil.ApplyStyle(styleValue, textBox, border);
+            
             if (styleValue.TextAlignment.HasValue)
                 textBox.TextAlignment = styleValue.TextAlignment.Value;
             if (styleValue.VerticalTextAlignment.HasValue)
@@ -177,14 +145,6 @@ public static partial class BaseComponent
             if (styleValue.FontWeight.HasValue) textBox.FontWeight = styleValue.FontWeight.Value;
             if (styleValue.FontStyle.HasValue) textBox.FontStyle = styleValue.FontStyle.Value;
             if (styleValue.Foreground is not null) textBox.Foreground = styleValue.Foreground;
-
-            if (styleValue.Background is not null) textBox.Background = styleValue.Background;
-            if (styleValue.BorderBrush is not null) textBox.BorderBrush = styleValue.BorderBrush;
-            if (styleValue.BorderThickness.HasValue) textBox.BorderThickness = styleValue.BorderThickness.Value;
-            if (styleValue.CornerRadius.HasValue) textBox.CornerRadius = styleValue.CornerRadius.Value;
-
-            if (styleValue.Opacity.HasValue) textBox.Opacity = styleValue.Opacity.Value;
-            if (styleValue.IsVisible.HasValue) textBox.IsVisible = styleValue.IsVisible.Value;
         }
     }
 }

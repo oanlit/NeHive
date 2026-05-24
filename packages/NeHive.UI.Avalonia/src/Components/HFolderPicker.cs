@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -17,8 +18,28 @@ public static partial class BaseComponent
         
         var uiScope = new UiScope();
         var button = new Button();
+        var border = new Border
+        {
+            Child = button
+        };
         
         uiScope.CreateEffect(() => button.Content = buttonText?.RxValue ?? "Select File");
+        
+        Accessor<FullStyle>? style = null;
+        if (strStyle != null)
+        {
+            style = StyleParser.ParseFull(strStyle);
+        }
+        
+        if (style != null)
+        {
+            uiScope.CreateEffect(scope =>
+            {
+                var styleValue = scope.Track(style);
+                StyleUtil.ApplyStyle(styleValue.Normal, button, border);
+            });
+        }
+        
         button.Click += async (_, _) =>
         {
             var topLevel = TopLevel.GetTopLevel(button);
@@ -40,6 +61,6 @@ public static partial class BaseComponent
             }
         };
 
-        return new Element(uiScope, button);
+        return new Element(uiScope, border);
     }
 }

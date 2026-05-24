@@ -92,7 +92,7 @@ public static class MusicPlayerDemo
         });
 
         // ---------- UI ----------
-        var rootElement = uiScope.RootElement(new(strStyle: "m-6 gap-5 flex-col bg-gray-50 rounded-2xl p-6")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-6 w-full gap-5 flex-col bg-gray-50 rounded-2xl p-6")
         {
             HTextBlock("🎵 NeHive Music Player", strStyle: "text-xl font-bold fg-sky-800 mb-2"),
 
@@ -102,13 +102,13 @@ public static class MusicPlayerDemo
                 Loading<SongInfo?>(new(songInfo)
                 {
                     Success = Audio,
-                    Loading = () => Audio(null),
+                    Loading = Audio,
                     Error = _ => Audio(null),
                 }) // Loading<SongInfo?>
             }), // HStackPanel
 
             // 播放列表操作
-            HStackPanel(new(strStyle: "gap-3 flex-col")
+            HStackPanel(new(strStyle: "w-full gap-3 flex-col")
             {
                 HStackPanel(new(strStyle: "gap-3 flex-row")
                 {
@@ -133,7 +133,7 @@ public static class MusicPlayerDemo
                 }), // HStackPanel
 
                 // 列表
-                HScrollViewer(new(strStyle: "h-48 bg-white rounded-lg border border-gray-200 p-2")
+                HScrollViewer(new(strStyle: "w-full h-48 bg-white rounded-lg border border-gray-200 p-2")
                 {
                     ForEach<TrackInfo>(new(playlist)
                     {
@@ -309,11 +309,17 @@ public static class MusicPlayerDemo
             await Task.Delay(1);
             return true;
         });
+        
         return Show(new(new(() => LibVlcPath.RxValue is not null))
         {
             IfTrue = () => Loading<bool>(new(asyncMemo)
             {
-                Success = _ => CorePlayer()
+                Success = _ => CorePlayer(),
+                Error = ex =>
+                {
+                    Console.WriteLine(ex.StackTrace);
+                    return HTextBlock(new($"RxError: {ex.Message}"));
+                }
             }),
             IfFalse = () => HStackPanel(new()
             {

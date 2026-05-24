@@ -3,7 +3,6 @@ using NeHive.Reactive;
 using NeHive.UI.Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Layout;
 using Avalonia.Controls.Primitives;
 using NeHive.UI.Avalonia.Components;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
@@ -33,9 +32,9 @@ public static class DemoComponent
 
             HButton("Add",
                 strStyle: """
-                          mt-1 ml-2 px-2 py-1 fg-white 
+                          mt-1 ml-2 px-2 py-1 fg-white
                           bg-green-300 hover:bg-green-400 click:bg-green-500
-                          border-green-400 rounded-lg
+                          border-w-1 border-green-400 rounded-lg
                           """,
                 onClick: _ => count.RxValue++
             ), // HButton
@@ -44,7 +43,7 @@ public static class DemoComponent
                 strStyle: """
                           mt-1 ml-2 px-2 py-1 fg-white 
                           bg-pink-300 hover:bg-pink-400 click:bg-pink-500
-                          border-pink-400 rounded-lg
+                          border-w-1 border-pink-400 rounded-lg
                           """,
                 onClick: _ => count.RxValue--
             ) // HButton
@@ -67,7 +66,7 @@ public static class DemoComponent
 
         var rootElement = RootElement(new()
         {
-            HStackPanel(new(strStyle: "mb-4 gap-3 flex-row")
+            HStackPanel(new(strStyle: "mb-4 gap-3 horizontal")
             {
                 HButton(out var addBtn, text: "Add Item", strStyle: "px-3 py-1 bg-blue-400 fg-white rounded-lg"),
                 HButton(out var removeBtn, text: "Remove Last", strStyle: "px-3 py-1 bg-rose-400 fg-white rounded-lg"),
@@ -77,11 +76,10 @@ public static class DemoComponent
             }), // HStackPanel
             ForEach<int>(new(items)
             {
-                // Container = HStackPanel(new(strStyle: "gap-8 flex-row")),
                 Container = HScrollViewer(new(
                     horizontalScrollBarVisibility: ScrollBarVisibility.Hidden,
                     verticalScrollBarVisibility: ScrollBarVisibility.Visible,
-                    strStyle: "m-2 min-h-60 max-h-80 gap-8 p-3 vertical bg-gray-100 rounded-xl border border-gray-300"
+                    strStyle: "m-2 min-h-60 max-h-80 w-100 gap-8 p-3 vertical bg-gray-100 rounded-xl border border-gray-300"
                 )), // ForEach<int>.Container
                 ItemTemplate = (id, index) =>
                 {
@@ -140,7 +138,7 @@ public static class DemoComponent
 
         var rootElement = uiScope.RootElement(new()
         {
-            HStackPanel(new(strStyle: "mb-4 flex-row gap-3")
+            HStackPanel(new(strStyle: "mb-4 horizontal gap-3")
             {
                 HButton("Increase User Id",
                     strStyle: "px-3 py-1 bg-blue-400 fg-white rounded-lg",
@@ -158,7 +156,7 @@ public static class DemoComponent
                     HTextBlock($"User Id: {user.Id}", strStyle: "mt-1.5 text-lg"),
                     HTextBlock($"Hello, {user.Name}", strStyle: "mt-1.5 fg-sky-600")
                 ), // Loading<User>.Success
-                Loading = () => HTextBlock("Fetching user data...", strStyle: "fg-gray-500"),
+                Loading = _ => HTextBlock("Fetching user data...", strStyle: "fg-gray-500"),
                 Error = ex =>
                     HButton($"Retry: {ex.Message}",
                         strStyle: "mt-2 px-3 py-1 bg-rose-400 fg-white rounded-lg",
@@ -210,7 +208,7 @@ public static class DemoComponent
     private static IElement AbsoluteDemoComp(UiScope uiScope)
     {
         var rootElement = uiScope.RootElement(new(
-            strStyle: "m-5 gap-4 flex-col bg-gray-50 rounded-xl p-4")
+            strStyle: "m-5 gap-4 vertical bg-gray-50 rounded-xl p-4")
         {
             HTextBlock("Absolute Layout Demo",
                 strStyle: "text-lg font-bold fg-slate-800"
@@ -228,7 +226,7 @@ public static class DemoComponent
                     ), // HButton
 
                 [new(left: 150, top: 150)] =
-                    HStackPanel(new(strStyle: "gap-2 flex-col bg-white p-3 rounded-lg shadow")
+                    HStackPanel(new(strStyle: "gap-2 vertical bg-white p-3 rounded-lg shadow")
                     {
                         HTextBlock("Center Area", strStyle: "text-base font-bold"),
                         HTextBlock("Position (150,150)", strStyle: "text-xs fg-gray-500")
@@ -241,7 +239,7 @@ public static class DemoComponent
                     ), // HButton
 
                 [new(left: 20, top: 300)] =
-                    HStackPanel(new(strStyle: "gap-2 flex-row bg-slate-800/70 p-2 rounded-lg")
+                    HStackPanel(new(strStyle: "gap-2 horizontal bg-slate-800/70 p-2 rounded-lg")
                     {
                         HTextBlock("Floating Panel", strStyle: "fg-white"),
                         HTextBlock("(20,300)", strStyle: "fg-yellow-200")
@@ -272,19 +270,19 @@ public static class DemoComponent
 
         var longText = sb.ToString();
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "w-full m-4 vertical items-center")
         {
             HTextBlock("Scroll Viewer Demo", strStyle: "text-lg font-bold"),
 
             HScrollViewer(out var scroll, new(
                 horizontalScrollBarVisibility: ScrollBarVisibility.Hidden,
                 verticalScrollBarVisibility: ScrollBarVisibility.Auto,
-                strStyle: "m-2 h-60 p-3 vertical bg-gray-100 rounded-xl border border-gray-300")
+                strStyle: "m-2 w-full h-60 p-3 vertical bg-gray-100 rounded-xl border border-gray-300")
             {
                 HTextBlock(longText, strStyle: "text-base")
             }), // HScrollViewer
 
-            HStackPanel(new(strStyle: "my-4 gap-x-16 flex-row justify-center")
+            HStackPanel(new(strStyle: "my-4 gap-x-16 horizontal justify-center")
             {
                 HButton("⬆️ Top",
                     strStyle: "px-3 py-1 font-bold fg-sky-600 bg-sky-200 border-sky-400 rounded",
@@ -321,13 +319,13 @@ public static class DemoComponent
         var textSignal = new MutSignal<string>("Initial text");
         var log = new MutSignal<string>("");
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
             HTextBox(
                 bindText: textSignal,
                 watermark: "Type something...",
                 strStyle: "w-100 p-3 font-bold border border-blue-400 rounded-lg",
-                textChanged: newText => log.RxValue = $"Input changed: {newText}"
+                onTextChanged: newText => log.RxValue = $"Input changed: {newText}"
             ), // HTextBox
             HTextBlock(new(() => $"Realtime Content: {textSignal.RxValue}"), strStyle: "mt-2 text-base"),
             HTextBlock(new(() => log.RxValue), strStyle: "text-sm fg-gray-500")
@@ -345,7 +343,7 @@ public static class DemoComponent
     {
         var threeState = new MutSignal<bool?>(null);
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
             HCheckBox(new(
                 bindIsChecked: threeState,
@@ -368,7 +366,7 @@ public static class DemoComponent
     {
         var threeState = new MutSignal<bool?>(null);
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
             HRadioButton(new(
                 bindIsChecked: threeState,
@@ -391,7 +389,7 @@ public static class DemoComponent
     {
         var wifiEnabled = new MutSignal<bool?>(null);
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
             HToggleSwitch(new(
                 bindIsChecked: wifiEnabled,
@@ -421,7 +419,7 @@ public static class DemoComponent
 
         var selectedFile = new MutSignal<string?>(null);
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
             HFilePicker(
                 bindSelectedPath: selectedFile,
@@ -450,7 +448,7 @@ public static class DemoComponent
     {
         var progress = new MutSignal<double>(0);
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
             HProgressBar(value: progress, strStyle: "w-full h-4"),
             HButton("Increase", onClick: _ => progress.RxValue = Math.Min(100, progress.RxValue + 10))
@@ -468,7 +466,7 @@ public static class DemoComponent
     {
         var isPaneOpen = new MutSignal<bool>(true);
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
             HSplitView(new(
                 isPaneOpen: isPaneOpen,
@@ -498,25 +496,23 @@ public static class DemoComponent
     private static IElement SplitPanelComp(UiScope uiScope)
     {
         var splitPos = new MutSignal<double>(200);
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
-            HSplitPanel(new(strStyle: "h-400")
+            HSplitPanel(new(strStyle: "h-40 w-100")
             {
-                HTextBlock("Left Panel", strStyle: "bg-blue-200 p-4"),
-                HTextBlock("Right Panel", strStyle: "bg-green-200 p-4")
+                HTextBlock("Left Panel", strStyle: "bg-blue-200 mr-4"),
+                HTextBlock("Right Panel", strStyle: "bg-green-200 ml-4")
             }), // HSplitPanel
-            HStackPanel(new(strStyle: "h-800 gap-x-8 flex-row")
+            HStackPanel(new(strStyle: "h-60 gap-x-8 horizontal")
             {
                 HSplitPanel(new(
-                    orientation: Orientation.Vertical,
                     splitFraction: 0.3,
-                    strStyle: "w-400 h-500")
+                    strStyle: "w-50 h-50 vertical")
                 {
                     HTextBlock("Top Panel"),
                     HTextBlock("Bottom Panel")
                 }), // HSplitPanel
-                HSplitPanel(new(strStyle: "w-600 h-400",
-                    orientation: Orientation.Horizontal,
+                HSplitPanel(new(strStyle: "w-100 h-50 horizontal",
                     splitPosition: splitPos)
                 {
                     HTextBlock("Left"),
@@ -537,7 +533,7 @@ public static class DemoComponent
     {
         var currentTab = new MutSignal<int>(0);
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
             HTabControl(new(bindSelectedIndex: currentTab)
             {
@@ -562,7 +558,7 @@ public static class DemoComponent
         // 响应式双向绑定
         var volume = new MutSignal<double>(50);
 
-        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 flex-col")
+        var rootElement = uiScope.RootElement(new(strStyle: "m-5 gap-4 vertical")
         {
             HSlider(
                 bindValue: volume,
@@ -570,7 +566,8 @@ public static class DemoComponent
                 maximum: 100,
                 isSnapToTickEnabled: true,
                 tickFrequency: 10,
-                tickPlacement: TickPlacement.Outside
+                tickPlacement: TickPlacement.Outside,
+                strStyle:"w-32"
             ), // HSlider
             HTextBlock(new(() => $"音量: {volume.RxValue:F0}"))
         }); // rootElement
@@ -711,13 +708,13 @@ public static class DemoComponent
         return HGrid(new(
             rowDefinitions: new([HgLen.Auto]),
             columnDefinitions: new([100, HgLen.Auto, HgLen.Star()]),
-            strStyle: "m-2 gap-3 bg-gray-100 rounded-xl p-4")
+            strStyle: "m-2 p-4 bg-gray-100 rounded-xl")
         {
-            [(0, 0)] = HTextBlock("Left"),
+            [(0, 0)] = HTextBlock("Left", strStyle: "mr-2 text-xl"),
             [(0, 1)] = HGridSplitter(
-                strStyle: "w-1 flex-row bg-gray-500"
+                strStyle: "w-1 horizontal bg-gray-500"
             ),
-            [(0, 2)] = HTextBlock("Right")
+            [(0, 2)] = HTextBlock("Right", strStyle: "ml-2 text-xl")
         }); // HGrid
     }
 
@@ -732,7 +729,7 @@ public static class DemoComponent
         {
             HUniformGrid(new(
                 rows: 2, columns: columnsSig,
-                strStyle: "m-2 gap-3 bg-gray-100 rounded-xl p-4")
+                strStyle: "m-2 w-full p-2 gap-3 bg-gray-100 rounded-lg")
             {
                 HTextBlock("1"),
                 HTextBlock("2"),
@@ -741,7 +738,7 @@ public static class DemoComponent
                 HTextBlock("5"),
                 HTextBlock("6")
             }), // HUniformGrid
-            HStackPanel(new(strStyle: "flex-row")
+            HStackPanel(new(strStyle: "horizontal")
             {
                 HButton("add columns", onClick: _ => columnsSig.RxValue++),
                 HButton("sub columns", onClick: _ => columnsSig.RxValue--)
@@ -755,7 +752,7 @@ public static class DemoComponent
 
     public static IElement DockPanelDemo()
     {
-        return HDockPanel(new(strStyle: "w-170 h-100 bg-gray-100")
+        return HDockPanel(new(strStyle: "w-170 h-100 bg-gray-200")
         {
             [Dock.Top] = HTextBlock("Top"),
             [Dock.Bottom] = HTextBlock("Bottom"),
@@ -781,27 +778,27 @@ public static class DemoComponent
             HButton("4")
         }); // HWrapPanel
     }
-    
+
     public static IElement SvgDemo()
     {
         return HStackPanel(new(
-            strStyle: "w-60 gap-2 flex-row")
+            strStyle: "w-60 h-full gap-8 horizontal justify-center items-center")
         {
-            HSvgImage("~/Assets/play.svg", 
-                strStyle:"""
-                         w-16 h-16 p-2.5 pl-3.5 
-                         font-normal
-                         fg-gradient-r fg-from-blue-400 fg-to-red-800
-                         bg-gradient-br bg-from-blue-200 bg-to-violet-800
-                         border-sky-100 
-                         border-w-0.75 rounded-full
-                         """),
-            HSvgImage("~/Assets/skip-back.svg", 
-                strStyle:"w-16 h-16 fg-orange-200 hover:fg-orange-300"),
-            HSvgImage("~/Assets/skip-forward.svg", 
-                strStyle:"w-16 h-16 fg-yellow-200 hover:fg-yellow-300"),
-            HSvgImage("~/Assets/stretch-vertical.svg", 
-                strStyle:"w-16 h-16 fg-red-200 hover:fg-red-300"),
+            HSvgImage("~/Assets/play.svg",
+                strStyle: """
+                          w-16 h-16 p-2.5 pl-3.5 
+                          font-normal
+                          fg-gradient-r fg-from-blue-400 fg-to-red-800
+                          bg-gradient-br bg-from-blue-200 bg-to-violet-800
+                          border-sky-100 
+                          border-w-0.75 rounded-full
+                          """),
+            HSvgImage("~/Assets/skip-back.svg",
+                strStyle: "w-16 h-16 fg-orange-200 hover:fg-orange-300"),
+            HSvgImage("~/Assets/skip-forward.svg",
+                strStyle: "w-16 h-16 fg-yellow-200 hover:fg-yellow-300"),
+            HSvgImage("~/Assets/stretch-vertical.svg",
+                strStyle: "w-16 h-16 fg-red-200 hover:fg-red-300"),
         }); // HWrapPanel
     }
 
@@ -814,13 +811,13 @@ public static class DemoComponent
         var currentView = new MutSignal<DemoView>(DemoView.SimpleCounter);
 
         var rootElement = uiScope.RootElement(new(
-            strStyle: "m-5 flex-col rounded-xl p-5")
+            strStyle: "m-5 w-full vertical rounded-xl p-5")
         {
             // Top global navigation bar
             HScrollViewer(new(
                 verticalScrollBarVisibility: ScrollBarVisibility.Auto,
                 horizontalScrollBarVisibility: ScrollBarVisibility.Disabled,
-                strStyle: "max-h-70 bg-gray-100")
+                strStyle: "w-full max-h-150 bg-gray-100")
             {
                 HUniformGrid(new(
                     columns: 4,
@@ -847,7 +844,7 @@ public static class DemoComponent
                     NavButton("Slider", DemoView.SliderDemo, "bg-yellow-300 border-yellow-400"),
 
                     NavButton("TreeView", DemoView.TreeViewDemo, "bg-red-300 border-red-400"),
-                    NavButton("ListBox", DemoView.ListBoxDemo, "bg-blue-400 border-blue-400"),
+                    NavButton("ListBox", DemoView.ListBoxDemo, "bg-blue-400 border-blue-500"),
                     NavButton("ComboBox", DemoView.ComboBoxDemo, "bg-green-400 border-green-500"),
                     NavButton("Menu", DemoView.MenuDemo, "bg-purple-400 border-purple-500"),
 
@@ -855,46 +852,45 @@ public static class DemoComponent
                     NavButton("UniformGrid", DemoView.UniformGridDemo, "bg-orange-400 border-orange-500"),
                     NavButton("DockPanel", DemoView.DockPanelDemo, "bg-cyan-400 border-cyan-500"),
                     NavButton("WrapPanel", DemoView.WrapPanelDemo, "bg-pink-400 border-pink-500")
-                }) // HUniformGrid
-            }), // HScrollViewer
-
-            // Page content container
-            HStackPanel(new(strStyle: " mt-8 min-h-120 gap-3 bg-white rounded-xl p-4 shadow-sm")
-            {
-                Switch<DemoView>(new(currentView)
+                }), // HUniformGrid
+                // Page content container
+                HStackPanel(new(strStyle: "mt-4 w-full gap-3 bg-white rounded-xl p-4 shadow-sm")
                 {
-                    Cases = new()
+                    Switch<DemoView>(new(currentView)
                     {
-                        [DemoView.SimpleCounter] = () => Counter(999),
-                        [DemoView.ForEachDemo] = ForEachDemo,
-                        [DemoView.LoadingDemo] = LoadingDemo,
-                        [DemoView.GridDemo] = GridDemo,
-                        [DemoView.AbsoluteDemo] = AbsoluteDemo,
-                        [DemoView.ScrollDemo] = ScrollDemo,
-                        [DemoView.TextBoxDemo] = TextBoxDemo,
-                        [DemoView.CheckBoxDemo] = CheckBoxDemo,
-                        [DemoView.RadioButtonDemo] = RadioButtonDemo,
-                        [DemoView.ToggleSwitchDemo] = ToggleSwitchDemo,
-                        [DemoView.FilePickerDemo] = FilePickerDemo,
-                        [DemoView.ProgressBarDemo] = ProgressBarDemo,
-                        [DemoView.SplitViewDemo] = SplitViewDemo,
-                        [DemoView.SplitPanelDemo] = SplitPanelDemo,
-                        [DemoView.TabViewDemo] = TabViewDemo,
-                        [DemoView.SliderDemo] = SliderDemo,
-                        [DemoView.TreeViewDemo] = TreeViewDemo,
-                        [DemoView.ListBoxDemo] = ListBoxDemo,
-                        [DemoView.ComboBoxDemo] = ComboBoxDemo,
-                        [DemoView.MenuDemo] = MenuDemo,
-                        [DemoView.GridSplitterDemo] = GridSplitterDemo,
-                        [DemoView.UniformGridDemo] = UniformGridDemo,
-                        [DemoView.DockPanelDemo] = DockPanelDemo,
-                        [DemoView.WrapPanelDemo] = WrapPanelDemo
-                    }, // Switch<DemoView>.Cases
-                    Default = () => HTextBlock("Select a component demo",
-                        strStyle: "text-base fg-gray-500"
-                    ) // Switch<DemoView>.Default
-                }) // Switch<DemoView>
-            }) // HStackPanel
+                        Cases = new()
+                        {
+                            [DemoView.SimpleCounter] = () => Counter(999),
+                            [DemoView.ForEachDemo] = ForEachDemo,
+                            [DemoView.LoadingDemo] = LoadingDemo,
+                            [DemoView.GridDemo] = GridDemo,
+                            [DemoView.AbsoluteDemo] = AbsoluteDemo,
+                            [DemoView.ScrollDemo] = ScrollDemo,
+                            [DemoView.TextBoxDemo] = TextBoxDemo,
+                            [DemoView.CheckBoxDemo] = CheckBoxDemo,
+                            [DemoView.RadioButtonDemo] = RadioButtonDemo,
+                            [DemoView.ToggleSwitchDemo] = ToggleSwitchDemo,
+                            [DemoView.FilePickerDemo] = FilePickerDemo,
+                            [DemoView.ProgressBarDemo] = ProgressBarDemo,
+                            [DemoView.SplitViewDemo] = SplitViewDemo,
+                            [DemoView.SplitPanelDemo] = SplitPanelDemo,
+                            [DemoView.TabViewDemo] = TabViewDemo,
+                            [DemoView.SliderDemo] = SliderDemo,
+                            [DemoView.TreeViewDemo] = TreeViewDemo,
+                            [DemoView.ListBoxDemo] = ListBoxDemo,
+                            [DemoView.ComboBoxDemo] = ComboBoxDemo,
+                            [DemoView.MenuDemo] = MenuDemo,
+                            [DemoView.GridSplitterDemo] = GridSplitterDemo,
+                            [DemoView.UniformGridDemo] = UniformGridDemo,
+                            [DemoView.DockPanelDemo] = DockPanelDemo,
+                            [DemoView.WrapPanelDemo] = WrapPanelDemo
+                        }, // Switch<DemoView>.Cases
+                        Default = () => HTextBlock("Select a component demo",
+                            strStyle: "text-base fg-gray-500"
+                        ) // Switch<DemoView>.Default
+                    }) // Switch<DemoView>
+                }) // HStackPanel
+            }) // HScrollViewer
         }); // rootElement
 
         return rootElement;
@@ -909,7 +905,7 @@ public static class DemoComponent
                             px-3 py-2 text-sm font-bold fg-white
                             {{colorClass}}
                             hover:opacity-80
-                            rounded-xl
+                            border-w-1 rounded-6
                             """,
                 onClick: _ => currentView.RxValue = view
             );
