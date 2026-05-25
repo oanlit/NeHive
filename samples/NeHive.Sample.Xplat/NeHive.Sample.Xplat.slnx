@@ -1,0 +1,11 @@
+﻿<Solution>
+  <Project Path="NeHive.Sample.Xplat.Android/NeHive.Sample.Xplat.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="NeHive.Sample.Xplat.Browser/NeHive.Sample.Xplat.Browser.csproj" />
+  <Project Path="NeHive.Sample.Xplat.Desktop/NeHive.Sample.Xplat.Desktop.csproj" />
+  <Project Path="NeHive.Sample.Xplat.iOS/NeHive.Sample.Xplat.iOS.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="NeHive.Sample.Xplat/NeHive.Sample.Xplat.csproj" />
+</Solution>

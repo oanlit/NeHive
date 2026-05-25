@@ -1,3 +1,4 @@
+#if DESKTOP
 using LibVLCSharp.Shared;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia;
@@ -358,3 +359,4 @@ public static class MusicPlayerDemo
 
     private record SongInfo(string Title, string Artist, string Album, string? CoverPath);
 }
+#endif

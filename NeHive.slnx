@@ -3,6 +3,17 @@
         <Project Path="samples/NeHive.Sample.Console/NeHive.Sample.Console.csproj" />
         <Project Path="samples/NeHive.Sample.Avalonia/NeHive.Sample.Avalonia.csproj" />
     </Folder>
+    <Folder Name="/samples/NeHive.Sample.Xplat/">
+        <Project Path="samples/NeHive.Sample.Xplat/NeHive.Sample.Xplat/NeHive.Sample.Xplat.csproj" />
+        <Project Path="samples/NeHive.Sample.Xplat/NeHive.Sample.Xplat.Android/NeHive.Sample.Xplat.Android.csproj">
+            <Deploy />
+        </Project>
+        <Project Path="samples/NeHive.Sample.Xplat/NeHive.Sample.Xplat.Browser/NeHive.Sample.Xplat.Browser.csproj" />
+        <Project Path="samples/NeHive.Sample.Xplat/NeHive.Sample.Xplat.Desktop/NeHive.Sample.Xplat.Desktop.csproj" />
+        <Project Path="samples/NeHive.Sample.Xplat/NeHive.Sample.Xplat.iOS/NeHive.Sample.Xplat.iOS.csproj">
+            <Deploy />
+        </Project>
+    </Folder>
     <Folder Name="/packages/" />
     <Folder Name="/packages/NeHive.Reactive/" />
     <Folder Name="/packages/NeHive.Reactive/src/">

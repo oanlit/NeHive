@@ -1,4 +1,13 @@
 <Solution>
   <Project Path="NeHive.Sample.Console/NeHive.Sample.Console.csproj" />
   <Project Path="NeHive.Sample.Avalonia/NeHive.Sample.Avalonia.csproj" />
+  <Project Path="NeHive.Sample.Xplat.Android/NeHive.Sample.Xplat.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="NeHive.Sample.Xplat/NeHive.Sample.Xplat.Browser/NeHive.Sample.Xplat.Browser.csproj" />
+  <Project Path="NeHive.Sample.Xplat/NeHive.Sample.Xplat.Desktop/NeHive.Sample.Xplat.Desktop.csproj" />
+  <Project Path="NeHive.Sample.Xplat/NeHive.Sample.Xplat.iOS/NeHive.Sample.Xplat.iOS.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="NeHive.Sample.Xplat/NeHive.Sample.Xplat/NeHive.Sample.Xplat.csproj" />
 </Solution>
