@@ -79,7 +79,8 @@ public static class DemoComponent
                 Container = HScrollViewer(new(
                     horizontalScrollBarVisibility: ScrollBarVisibility.Hidden,
                     verticalScrollBarVisibility: ScrollBarVisibility.Visible,
-                    strStyle: "m-2 min-h-60 max-h-80 w-100 gap-8 p-3 vertical bg-gray-100 rounded-xl border border-gray-300"
+                    strStyle:
+                    "m-2 min-h-60 max-h-80 w-100 gap-8 p-3 vertical bg-gray-100 rounded-xl border border-gray-300"
                 )), // ForEach<int>.Container
                 ItemTemplate = (id, index) =>
                 {
@@ -284,14 +285,21 @@ public static class DemoComponent
 
             HStackPanel(new(strStyle: "my-4 gap-x-16 horizontal justify-center")
             {
-                HButton("⬆️ Top",
-                    strStyle: "px-3 py-1 font-bold fg-sky-600 bg-sky-200 border-sky-400 rounded",
-                    onClick: _ => ScrollToHome()
-                ), // HButton
-                HButton("⬇️ Bottom",
-                    strStyle: "px-3 py-1 font-bold fg-green-600 bg-green-200 border-green-400 rounded",
-                    onClick: _ => ScrollToEnd()
-                ) // HButton
+                HContentButton(new(
+                    strStyle: "w-24 h-10 gap-4 px-3 py-1 horizontal justify-center items-center bg-sky-200 border-sky-400 rounded",
+                    onClick: _ => ScrollToHome())
+                {
+                    HSvgImage("~/Assets/arrow-big-up-dash.svg", strStyle: "w-4 h-4 font-extralight fg-sky-600"),
+                    HTextBlock("Top", strStyle: "font-bold fg-sky-600 ")
+                }), // HContentButton
+
+                HContentButton(new(
+                    strStyle: "w-24 h-10 gap-2 px-3 py-1 horizontal justify-center items-center bg-green-200 border-green-400 rounded",
+                    onClick: _ => ScrollToEnd())
+                {
+                    HSvgImage("~/Assets/arrow-big-down-dash.svg", strStyle: "w-4 h-4 font-extralight fg-green-600"),
+                    HTextBlock("Bottom", strStyle: "font-bold fg-green-600 ")
+                }) // HContentButton
             }) // HStackPanel
         }); // rootElement
         return rootElement;
@@ -567,7 +575,7 @@ public static class DemoComponent
                 isSnapToTickEnabled: true,
                 tickFrequency: 10,
                 tickPlacement: TickPlacement.Outside,
-                strStyle:"w-32"
+                strStyle: "w-32"
             ), // HSlider
             HTextBlock(new(() => $"音量: {volume.RxValue:F0}"))
         }); // rootElement
@@ -626,7 +634,7 @@ public static class DemoComponent
                 users,
                 bindBindSelectedItem: selectedUser,
                 selectionMode: SelectionMode.Single,
-                strStyle: "w-200 h-300 bg-gray-100"
+                strStyle: "w-full h-60 bg-gray-100"
             )
             {
                 ItemTemplate = user => HTextBlock($"User ID: {user.Id} User Name: {user.Name}", strStyle: "p-2")

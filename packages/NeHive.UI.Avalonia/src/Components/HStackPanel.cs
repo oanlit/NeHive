@@ -162,22 +162,45 @@ public static partial class BaseComponent
         {
             Child = stack
         };
-
-        uiScope.CreateEffect(epochScope =>
-        {
-            if (prop.Style == null) return;
-            var style = epochScope.Track(prop.Style);
-            ApplyStyle(style.Normal);
-        });
-
+        
         foreach (var child in prop)
             stack.Children.Add(child.Content);
+        
+        if (prop.Style is not null)
+        {
+            uiScope.CreateEffect(epochScope =>
+            {
+                var style = epochScope.Track(prop.Style);
+                ApplyStyle(style.Normal);
+            });
+        }
 
         return new Element<StackPanel>(uiScope, border, stack);
 
         void ApplyStyle(StyleSet style)
         {
             StyleUtil.ApplyStyle(style, stack, border);
+            
+            // if (style.Margin is not null) stack.Margin = style.Margin.Value;
+            // if (style.ZIndex is not null) stack.ZIndex = style.ZIndex.Value;
+            //
+            // if (style.Width is not null)
+            //     stack.Width = style.Width.Value;
+            //
+            // if (style.Height is not null)
+            //     stack.Height = style.Height.Value;
+            //
+            // if (style.MinWidth is not null)
+            //     stack.MinWidth = style.MinWidth.Value;
+            //
+            // if (style.MaxWidth is not null)
+            //     stack.MaxWidth = style.MaxWidth.Value;
+            //
+            // if (style.MinHeight is not null)
+            //     stack.MinHeight = style.MinHeight.Value;
+            //
+            // if (style.MaxHeight is not null)
+            //     stack.MaxHeight = style.MaxHeight.Value;
 
             var orientation = style.Orientation ?? Orientation.Vertical;
             stack.Orientation = orientation;
@@ -200,8 +223,6 @@ public static partial class BaseComponent
                 else if (overflowHandle is OverflowHandle.Hidden)
                     stack.ClipToBounds = true;
             }
-
-            if (style.Orientation is not null) stack.Orientation = style.Orientation.Value;
         }
 
         // void ApplyStyle(HPanelStyle style)

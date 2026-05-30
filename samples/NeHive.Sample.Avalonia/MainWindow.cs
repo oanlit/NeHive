@@ -12,8 +12,8 @@ public class MainWindow : Window
         Width = 1000;
         Height = 700;
         Title = "NeHive UI Avalonia Demo";
-        _mainNavDemo = DemoComponent.MainNavDemo();
-        // _mainNavDemo = MusicPlayerDemo.CorePlayer();
+        // _mainNavDemo = DemoComponent.MainNavDemo();
+        _mainNavDemo = MusicPlayerDemo.CorePlayer();
         // _mainNavDemo = DemoComponent.SvgDemo();
         Content = _mainNavDemo.Content;
     }
