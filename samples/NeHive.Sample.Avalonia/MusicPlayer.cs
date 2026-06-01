@@ -234,16 +234,16 @@ public static class MusicPlayerDemo
                 {
                     Cases = new()
                     {
-                        [v => v == 0] = () => HSvgImage("~/Assets/volume.svg", strStyle: "w-4 h-4 font-extralight"),
-                        [v => v < 75] = () => HSvgImage("~/Assets/volume-1.svg", strStyle: "w-4 h-4 font-extralight")
+                        [v => v == 0] = () => HSvgImage("~/Assets/volume.svg", strStyle: "my-auto w-4 h-4 font-extralight"),
+                        [v => v < 75] = () => HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 font-extralight")
                     },
-                    Default = () => HSvgImage("~/Assets/volume-2.svg", strStyle: "w-4 h-4 font-extralight")
+                    Default = () => HSvgImage("~/Assets/volume-2.svg", strStyle: "my-auto w-4 h-4 font-extralight")
                 }),
-                HSlider(
+                HCustomSlider(
                     value: new(() => volume.RxValue),
                     minimum: 0,
                     maximum: 100,
-                    strStyle: "w-24 bg-yellow-200",
+                    strStyle: "my-auto w-24 h-0.5",
                     onValueChanged: val =>
                     {
                         var v = (int)val;

@@ -286,7 +286,8 @@ public static class DemoComponent
             HStackPanel(new(strStyle: "my-4 gap-x-16 horizontal justify-center")
             {
                 HContentButton(new(
-                    strStyle: "w-24 h-10 gap-4 px-3 py-1 horizontal justify-center items-center bg-sky-200 border-sky-400 rounded",
+                    strStyle:
+                    "w-24 h-10 gap-4 px-3 py-1 horizontal justify-center items-center bg-sky-200 border-sky-400 rounded",
                     onClick: _ => ScrollToHome())
                 {
                     HSvgImage("~/Assets/arrow-big-up-dash.svg", strStyle: "w-4 h-4 font-extralight fg-sky-600"),
@@ -294,7 +295,8 @@ public static class DemoComponent
                 }), // HContentButton
 
                 HContentButton(new(
-                    strStyle: "w-24 h-10 gap-2 px-3 py-1 horizontal justify-center items-center bg-green-200 border-green-400 rounded",
+                    strStyle:
+                    "w-24 h-10 gap-2 px-3 py-1 horizontal justify-center items-center bg-green-200 border-green-400 rounded",
                     onClick: _ => ScrollToEnd())
                 {
                     HSvgImage("~/Assets/arrow-big-down-dash.svg", strStyle: "w-4 h-4 font-extralight fg-green-600"),
@@ -808,6 +810,28 @@ public static class DemoComponent
             HSvgImage("~/Assets/stretch-vertical.svg",
                 strStyle: "w-16 h-16 fg-red-200 hover:fg-red-300"),
         }); // HWrapPanel
+    }
+
+    public static IElement GroupDemo()
+    {
+        return HGroup(new(strStyle: "mx-auto my-auto")
+        {
+            Child = state => HStackPanel(new(
+                strStyle: "gap-8 horizontal justify-center items-center")
+            {
+                HSvgImage("~/Assets/play.svg",
+                    strStyle: new(() => $"w-16 h-16 fg-blue-{ToValue(state.IsHover.RxValue)}")),
+                HSvgImage("~/Assets/skip-back.svg",
+                    strStyle: new(() => $"w-16 h-16 fg-orange-{ToValue(state.IsHover.RxValue)}")),
+                HSvgImage("~/Assets/skip-forward.svg",
+                    strStyle: new(() => $"w-16 h-16 fg-yellow-{ToValue(state.IsHover.RxValue)}")),
+                HSvgImage("~/Assets/stretch-vertical.svg",
+                    strStyle: new(() => $"w-16 h-16 fg-red-{ToValue(state.IsHover.RxValue)}")),
+            }) // HWrapPanel
+        });
+
+        string ToValue(bool isHover)
+            => isHover ? "300" : "200";
     }
 
     #endregion

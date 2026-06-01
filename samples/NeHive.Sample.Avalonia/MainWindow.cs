@@ -15,6 +15,7 @@ public class MainWindow : Window
         // _mainNavDemo = DemoComponent.MainNavDemo();
         _mainNavDemo = MusicPlayerDemo.CorePlayer();
         // _mainNavDemo = DemoComponent.SvgDemo();
+        // _mainNavDemo = DemoComponent.GroupDemo();
         Content = _mainNavDemo.Content;
     }
 
