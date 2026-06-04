@@ -57,7 +57,7 @@ public static class StyleParser
         ["flex-col"] = (_, _, set) => set.Orientation = Orientation.Vertical,
         ["horizontal"] = (_, _, set) => set.Orientation = Orientation.Horizontal,
         ["vertical"] = (_, _, set) => set.Orientation = Orientation.Vertical,
-        
+
         ["start"] = (_, _, set) =>
         {
             set.HorizontalAlignment = HorizontalAlignment.Left;
@@ -341,15 +341,14 @@ public static class StyleParser
     }
 
 
-    public static Accessor<FullStyle> ParseFull(Accessor<string> text)
+    public static Accessor<FullStyle> ParseFull(Accessor<string> text, StyleSet? defaultStyle = null)
     {
         var fullStyle = new FullStyle();
 
         return new Computed<FullStyle>(() =>
         {
             var str = text.RxValue;
-            // fullStyle.Normal = new StyleSet();
-            fullStyle.Normal = StyleUtil.FromDefault();
+            fullStyle.Normal = defaultStyle ?? StyleUtil.FromDefault();
             fullStyle.Variants = [];
             ParseFullStyle(str, ref fullStyle);
 
@@ -885,7 +884,7 @@ public static class StyleParser
         if (rotate is null) return;
 
         var r = rotate.Value;
-        if(isNegative) r = -r;
+        if (isNegative) r = -r;
         EnsureAdvanced(set).RotateTransform = new RotateTransform { Angle = r };
     }
 

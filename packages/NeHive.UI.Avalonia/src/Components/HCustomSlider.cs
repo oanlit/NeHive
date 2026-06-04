@@ -15,97 +15,186 @@ public static class HSliderStyle
         Height = 20,
         Orientation = Orientation.Horizontal,
 
-        Foreground = Brushes.White,
+        Foreground = Brushes.DodgerBlue,
         Background = Brushes.Gray,
         BorderThickness = new Thickness(0)
     };
 }
 
-public class HCustomSliderState(StyleSet baseStyle)
+internal class HCustomSliderState(StyleSet baseStyle)
 {
-    public StyleSet BaseStyle = baseStyle;
-    public StyleSet CurrentStyle = StyleUtil.Copy(baseStyle);
-    public Dictionary<string, List<string>>? Variants;
+    internal StyleSet BaseStyle = baseStyle;
+    internal StyleSet CurrentStyle = StyleUtil.Copy(baseStyle);
+    internal Dictionary<string, List<string>>? Variants;
 
-    public bool IsHover;
-    public bool IsDragging;
+    // public bool IsHover;
+    // public bool IsDragging;
+    internal required HCustomSliderGroup Group;
 
-    public double Value;
-    public double Min;
-    public double Max = 100;
+    internal MutSignal<double> Value = new(0);
+    internal Accessor<double> Min = 0;
+    internal Accessor<double> Max = 100;
 
-    public void Reset()
+    internal void Reset()
     {
         CurrentStyle.Merge(BaseStyle);
     }
 
-    public void ApplyVariants()
+    internal void ApplyVariants()
     {
         if (Variants == null) return;
 
-        if (IsHover && Variants.TryGetValue("hover", out var hover))
+        if (Group.IsHover.Value && Variants.TryGetValue("hover", out var hover))
             StyleParser.Parse(hover, ref CurrentStyle);
 
-        if (IsDragging && Variants.TryGetValue("click", out var click))
+        if (Group.IsDragging.Value && Variants.TryGetValue("drag", out var click))
             StyleParser.Parse(click, ref CurrentStyle);
     }
 
-    public double Clamp(double v)
-        => Math.Clamp(v, Min, Max);
+    internal double Clamp(double v)
+        => Math.Clamp(v, Min.RxValue, Max.RxValue);
 
-    public double Ratio => (Value - Min) / (Max - Min);
+    internal double RxRatio() => (Value.RxValue - Min.RxValue) / (Max.RxValue - Min.RxValue);
+}
+
+public class HCustomSliderGroup : IGroupState
+{
+    private MutSignal<bool>? _isHover;
+    private MutSignal<bool>? _isFocus;
+    private MutSignal<bool>? _isDragging;
+
+    public Signal<bool> IsHover
+    {
+        get
+        {
+            _isHover ??= new MutSignal<bool>(false);
+            return _isHover;
+        }
+    }
+
+    internal void SetHover(bool value) => _isHover?.RxValue = value;
+
+    public Signal<bool> IsFocus
+    {
+        get
+        {
+            _isFocus ??= new MutSignal<bool>(false);
+            return _isFocus;
+        }
+    }
+
+    internal void SetFocus(bool value) => _isFocus?.RxValue = value;
+
+    public Signal<bool> IsDragging
+    {
+        get
+        {
+            _isDragging ??= new MutSignal<bool>(false);
+            return _isDragging;
+        }
+    }
+
+    internal void SetDragging(bool value) => _isDragging?.RxValue = value;
+}
+
+public class HCustomSliderProp
+{
+    public readonly Accessor<double>? Value;
+    public readonly MutSignal<double>? BindValue;
+    public readonly Accessor<double>? Minimum;
+    public readonly Accessor<double>? Maximum;
+    public readonly Accessor<FullStyle>? Style;
+    public readonly Action<double>? OnValueChanged;
+    public Func<HCustomSliderGroup, IElement>? Thumb { get; init; }
+
+    public HCustomSliderProp(
+        Accessor<double>? value = null,
+        MutSignal<double>? bindValue = null,
+        Accessor<double>? minimum = null,
+        Accessor<double>? maximum = null,
+        Accessor<string>? strStyle = null,
+        Action<double>? onValueChanged = null)
+    {
+        if (strStyle != null)
+        {
+            Style = StyleParser.ParseFull(strStyle, HSliderStyle.DefaultStyleSet);
+        }
+
+        Value = bindValue ?? value;
+        BindValue = bindValue;
+        Minimum = minimum;
+        Maximum = maximum;
+        OnValueChanged = onValueChanged;
+    }
 }
 
 public static partial class BaseComponent
 {
-    public static IElement HCustomSlider(
-        Accessor<double>? value = null,
-        MutSignal<double>? bindValue = null,
-        double minimum = 0,
-        double maximum = 100,
-        Accessor<string>? strStyle = null,
-        Accessor<FullStyle>? style = null,
-        Action<double>? onValueChanged = null)
+    public static IElement HCustomSlider(HCustomSliderProp prop)
     {
-        if (strStyle != null)
-            style = StyleParser.ParseFull(strStyle);
-
         var uiScope = new UiScope();
         HCustomSliderState state;
+        var group = new HCustomSliderGroup();
 
         var track = new Border
         {
-            // Height = 4,
             CornerRadius = new CornerRadius(2),
-            Background = Brushes.Gray,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch
         };
 
         var fill = new Border
         {
-            // Height = 4,
             CornerRadius = new CornerRadius(2),
-            Background = Brushes.DodgerBlue,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Stretch
         };
 
-        var thumb = new Border
+        // var thumb = new Border
+        // {
+        //     Width = 12,
+        //     Height = 12,
+        //     CornerRadius = new CornerRadius(6),
+        //     Background = Brushes.DodgerBlue,
+        //     HorizontalAlignment = HorizontalAlignment.Left,
+        //     VerticalAlignment = VerticalAlignment.Stretch
+        // };
+
+        Control thumb;
+
+        if (prop.Thumb is null)
         {
-            Width = 12,
-            Height = 12,
-            CornerRadius = new CornerRadius(6),
-            Background = Brushes.DodgerBlue,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
+            thumb = new Border
+            {
+                Width = 12,
+                Height = 12,
+                CornerRadius = new CornerRadius(6),
+                Background = Brushes.DodgerBlue,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
+        }
+        else
+        {
+            thumb = prop.Thumb(group).Content;
+            thumb.HorizontalAlignment = HorizontalAlignment.Center;
+            thumb.VerticalAlignment = VerticalAlignment.Center;
+            thumb = new Border
+            {
+                Width = thumb.Width,
+                Height = thumb.Height,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = thumb
+            };
+        }
 
         var touch = new Border
         {
             Background = Brushes.Transparent,
-            Width = 0,
-            ZIndex = 100
+            // Background = Brushes.Beige,
+            Width = Math.Max(thumb.Width, track.Width),
+            Height = Math.Max(thumb.Height, track.Height),
         };
 
         var panel = new Panel();
@@ -114,26 +203,30 @@ public static partial class BaseComponent
         panel.Children.Add(thumb);
         panel.Children.Add(touch);
 
-        if (style is null)
+        if (prop.Style is null)
         {
             state = new HCustomSliderState(HSliderStyle.DefaultStyleSet)
             {
-                Min = minimum,
-                Max = maximum
+                Group = group,
+                Min = prop.Minimum ?? 0,
+                Max = prop.Maximum ?? 100,
+                Value = prop.BindValue ?? new MutSignal<double>(0)
             };
             ApplyStyle(state.CurrentStyle); // 应用默认样式
         }
         else
         {
-            state = new HCustomSliderState(style.Value.Normal)
+            state = new HCustomSliderState(prop.Style.Value.Normal)
             {
-                Min = minimum,
-                Max = maximum
+                Group = group,
+                Min = prop.Minimum ?? 0,
+                Max = prop.Maximum ?? 100,
+                Value = prop.BindValue ?? new MutSignal<double>(0)
             };
             ApplyStyle(state.CurrentStyle);
             uiScope.CreateEffect(epochScope =>
             {
-                var styleValue = epochScope.Track(style);
+                var styleValue = epochScope.Track(prop.Style);
                 state.BaseStyle = styleValue.Normal;
                 state.Variants = styleValue.Variants;
                 state.CurrentStyle = StyleUtil.Copy(state.BaseStyle);
@@ -141,26 +234,49 @@ public static partial class BaseComponent
             });
         }
 
-        value = bindValue ?? value;
-        if (value is not null)
+        if (prop.Value is not null && prop.BindValue is null)
         {
             uiScope.CreateEffect(scope =>
             {
-                var v = scope.Track(value);
-                state.Value = state.Clamp(v);
+                var v = scope.Track(prop.Value);
+                state.Value.RxValue = state.Clamp(v);
             });
         }
-        else
-        {
-            state.Value = state.Clamp(0);
-        }
-
 
         uiScope.OnMount += () =>
         {
-            UpdateThumb();
+            uiScope.CreateEffect(epochScope =>
+            {
+                var ratio = epochScope.Track(state.RxRatio);
+                double fillValue;
+                if (state.CurrentStyle.Orientation is Orientation.Vertical)
+                {
+                    fillValue = panel.Bounds.Height;
+                }
+                else
+                {
+                    fillValue = panel.Bounds.Width;
+                }
+
+                if (fillValue <= 0) return;
+
+                fillValue *= ratio;
+
+                if (state.CurrentStyle.Orientation is Orientation.Vertical)
+                {
+                    thumb.Margin = new Thickness(0, 0, 0, fillValue - thumb.Bounds.Width / 2);
+                    fill.Height = fillValue;
+                }
+                else
+                {
+                    thumb.Margin = new Thickness(fillValue - thumb.Bounds.Width / 2, 0, 0, 0);
+                    fill.Width = fillValue;
+                }
+            });
+
             touch.PointerPressed += (_, e) =>
             {
+                state.Group.SetDragging(true);
                 touch.Height = 9999;
                 touch.Width = 9999;
                 DraggingThumb(e);
@@ -168,60 +284,55 @@ public static partial class BaseComponent
 
             touch.PointerMoved += (_, e) =>
             {
-                if (!state.IsDragging) return;
+                if (!state.Group.IsDragging.Value) return;
                 UpdateFromPointer(e);
             };
 
             touch.PointerReleased += (_, e) =>
             {
-                state.IsDragging = false;
+                state.Group.SetDragging(false);
                 e.Handled = true;
-                
-                touch.Width = track.Bounds.Width;
-                touch.Height = thumb.Bounds.Height;
+
+                // if (state.Group.IsHover.Value)
+                // {
+                //     touch.Width = Math.Max(thumb.Bounds.Width, track.Bounds.Width);
+                //     touch.Height = Math.Max(thumb.Bounds.Height, track.Bounds.Height);
+                // }
+                // else
+                // {
+                //     touch.Height = 0;
+                //     touch.Width = 0;
+                // }
+                touch.Width = Math.Max(thumb.Bounds.Width, track.Bounds.Width);
+                touch.Height = Math.Max(thumb.Bounds.Height, track.Bounds.Height);
             };
 
-            panel.PointerEntered += (_, _) =>
+            touch.PointerEntered += (_, _) =>
             {
-                state.IsHover = true;
-                
-                touch.Width = track.Bounds.Width;
-                touch.Height = thumb.Bounds.Height;
+                state.Group.SetHover(true);
+
+                touch.Width = Math.Max(thumb.Bounds.Height, Math.Max(thumb.Bounds.Width, track.Bounds.Width));
+                touch.Height = Math.Max(thumb.Bounds.Width, Math.Max(thumb.Bounds.Height, track.Bounds.Height));
 
                 state.ApplyVariants();
             };
 
-            panel.PointerExited += (_, _) =>
+            touch.PointerExited += (_, _) =>
             {
-                state.IsHover = false;
-                state.IsDragging = false;
-                touch.Height = 0;
-                touch.Width = 0;
+                state.Group.SetHover(false);
                 state.Reset();
             };
         };
 
         return new Element(uiScope, panel);
 
-        void UpdateThumb()
-        {
-            var ratio = state.Ratio;
-            var fillValue = panel.Bounds.Width;
-
-            if (fillValue <= 0) return;
-
-            fillValue *= ratio;
-
-            thumb.Margin = new Thickness(fillValue - thumb.Bounds.Width / 2, 0, 0, 0);
-            fill.Width = fillValue;
-        }
-
         void DraggingThumb(PointerEventArgs e)
         {
             if (!e.GetCurrentPoint(panel).Properties.IsLeftButtonPressed)
                 return;
 
-            state.IsDragging = true;
+
+            state.Group.SetDragging(true);
             UpdateFromPointer(e);
             e.Handled = true;
         }
@@ -230,18 +341,29 @@ public static partial class BaseComponent
         {
             var p = e.GetPosition(panel);
 
-            var ratio = panel.Bounds.Width <= 0
-                ? 0
-                : p.X / panel.Bounds.Width;
+            double ratio;
+
+            if (state.CurrentStyle.Orientation is Orientation.Vertical)
+            {
+                ratio = panel.Bounds.Height <= 0
+                    ? 0
+                    : 1 - p.Y / panel.Bounds.Height;
+            }
+            else
+            {
+                ratio = panel.Bounds.Width <= 0
+                    ? 0
+                    : p.X / panel.Bounds.Width;
+            }
 
             ratio = Math.Clamp(ratio, 0, 1);
 
-            state.Value = state.Min + ratio * (state.Max - state.Min);
+            state.Value.RxValue = state.Min.RxValue + ratio * (state.Max.RxValue - state.Min.RxValue);
 
-            bindValue?.RxValue = state.Value;
+            // prop.BindValue?.RxValue = state.Value;
 
-            onValueChanged?.Invoke(state.Value);
-            UpdateThumb();
+            prop.OnValueChanged?.Invoke(state.Value.Value);
+            // UpdateThumb();
         }
 
         void ApplyStyle(StyleSet styleSet)
@@ -270,6 +392,23 @@ public static partial class BaseComponent
 
             if (styleSet.MaxHeight is not null)
                 panel.MaxHeight = styleSet.MaxHeight.Value;
+
+            if (styleSet.Orientation is Orientation.Vertical)
+            {
+                fill.HorizontalAlignment = HorizontalAlignment.Stretch;
+                fill.VerticalAlignment = VerticalAlignment.Bottom;
+
+                thumb.HorizontalAlignment = HorizontalAlignment.Stretch;
+                thumb.VerticalAlignment = VerticalAlignment.Bottom;
+            }
+            else
+            {
+                fill.HorizontalAlignment = HorizontalAlignment.Left;
+                fill.VerticalAlignment = VerticalAlignment.Stretch;
+
+                thumb.HorizontalAlignment = HorizontalAlignment.Left;
+                thumb.VerticalAlignment = VerticalAlignment.Stretch;
+            }
 
             if (styleSet.Foreground is not null) fill.Background = styleSet.Foreground;
             if (styleSet.Background is not null) track.Background = styleSet.Background;

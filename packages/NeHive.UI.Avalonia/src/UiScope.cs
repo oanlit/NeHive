@@ -8,17 +8,6 @@ public class UiScope(Scope? parentOwner = null) : Scope(parentOwner)
     private readonly List<Action> _onMountQueue = [];
     private bool _mounted;
 
-    // public void OnMount(Action fn)
-    // {
-    //     if (_mounted)
-    //     {
-    //         fn();
-    //         return;
-    //     }
-    //
-    //     _onMountQueue.Add(fn);
-    // }
-
     public event Action OnMount
     {
         add

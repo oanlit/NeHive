@@ -68,7 +68,8 @@ public static class MusicPlayerDemo
         var currentMedia = new MutSignal<Media?>(null,
             onSet: (_, newValue, setter) => Dispatcher.UIThread.Post(() => setter(newValue)));
 
-        var triggerAsyncMemo = new MutSignal<bool>(false);
+        var triggerAsyncMemo = new MutSignal<bool>(false,
+            onSet: (_, newValue, setter) => Dispatcher.UIThread.Post(() => setter(newValue)));
         var songInfo = uiScope.CreateAsyncMemo<SongInfo?>(async epochScope =>
         {
             _ = epochScope.Pull(triggerAsyncMemo);
@@ -189,8 +190,7 @@ public static class MusicPlayerDemo
                                           ml-0.5 w-6 h-6 font-extralight
                                           fg-gradient-r fg-from-blue-400 fg-to-red-800
                                           """
-                            )
-                            // IfTrue
+                            ) // IfTrue
                         }) // Show
                     }), // HContentButton
                     HContentButton(new(
@@ -209,17 +209,22 @@ public static class MusicPlayerDemo
                         new(() => position.RxValue.ToString(@"mm\:ss")),
                         strStyle: "text-xs fg-gray-500 w-12 text-right"
                     ), // HTextBlock
-                    HSlider(
-                        value: new(() => position.RxValue.TotalMilliseconds),
+                    HCustomSlider(new(value: new(() => position.RxValue.TotalMilliseconds),
                         minimum: 0,
                         maximum: new(() => duration.RxValue.TotalMilliseconds),
-                        strStyle: "w-64 horizontal",
+                        strStyle: "w-64 h-0.5 horizontal fg-blue-200 bg-gray-500",
                         onValueChanged: val =>
                         {
                             if (Math.Abs(val - position.Value.TotalMilliseconds) > 1000)
                                 mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(val));
-                        }
-                    ), // HSlider
+                        })
+                    {
+                        Thumb = state => Show(new(new(() => state.IsHover.RxValue || state.IsDragging.RxValue))
+                        {
+                            IfTrue = () => HSvgImage("~/Assets/circle-star.svg",
+                                strStyle: "w-4 h-4 font-extralight fg-yellow-500 bg-yellow-200 rounded-full")
+                        }) // HCustomSlider.Thumb
+                    }), // HCustomSlider
                     HTextBlock(
                         new(() => duration.RxValue.ToString(@"mm\:ss")),
                         strStyle: "text-xs fg-gray-500 w-12"
@@ -234,23 +239,23 @@ public static class MusicPlayerDemo
                 {
                     Cases = new()
                     {
-                        [v => v == 0] = () => HSvgImage("~/Assets/volume.svg", strStyle: "my-auto w-4 h-4 font-extralight"),
-                        [v => v < 75] = () => HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 font-extralight")
+                        [v => v == 0] = () =>
+                            HSvgImage("~/Assets/volume.svg", strStyle: "my-auto w-4 h-4 font-extralight"),
+                        [v => v < 75] = () =>
+                            HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 font-extralight")
                     },
                     Default = () => HSvgImage("~/Assets/volume-2.svg", strStyle: "my-auto w-4 h-4 font-extralight")
                 }),
-                HCustomSlider(
-                    value: new(() => volume.RxValue),
+                HSlider(value: new(() => volume.RxValue),
                     minimum: 0,
                     maximum: 100,
-                    strStyle: "my-auto w-24 h-0.5",
+                    strStyle: "my-auto w-24",
                     onValueChanged: val =>
                     {
                         var v = (int)val;
                         volume.RxValue = v;
                         mediaPlayer.Volume = v;
-                    }
-                ), // HSlider
+                    }), // HSlider
                 HTextBlock(new(() => $"{volume.RxValue}%"), strStyle: "text-xs fg-gray-500 w-10")
             }) // HStackPanel
         }); // rootElement

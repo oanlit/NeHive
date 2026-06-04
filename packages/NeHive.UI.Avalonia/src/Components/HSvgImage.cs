@@ -60,6 +60,7 @@ public static partial class BaseComponent
         else
         {
             state = new HImageState(style.Value.Normal);
+            ApplyStyle(style.Value.Normal);
             uiScope.CreateEffect(epochScope =>
             {
                 var styleValue = epochScope.Track(style);
