@@ -362,7 +362,7 @@ public class MutSignal<T>(T value, Action<T, T, Action<T>>? onSet = null) : Sign
     internal bool HasObserver => InternalSignal.Observers.Count > 0;
 }
 
-public interface IScope : IDisposable
+public interface IScope : IContextSetter, IDisposable
 {
     public bool IsDisposed { get; }
 
@@ -403,12 +403,6 @@ public class Scope : IScope
         ScopeHolder[InnerScopeNode] = this;
     }
 
-    // public void OnDispose(Action fn)
-    // {
-    //     if (IsDisposed) return;
-    //     InnerScopeNode.Cleanups.Add(fn);
-    // }
-
     public event Action OnDispose
     {
         add
@@ -416,7 +410,7 @@ public class Scope : IScope
             if (IsDisposed) return;
             InnerScopeNode.Cleanups.Add(value);
         }
-        remove { }
+        remove => InnerScopeNode.Cleanups.Remove(value);
     }
 
     public void Clean()
@@ -487,6 +481,32 @@ public class Scope : IScope
 
             return scope;
         }
+    }
+
+    public T? GetContext<T>(ContextKey<T> contextKey) where T : notnull
+    {
+        var scope = InnerScopeNode;
+        do
+        {
+            if (scope.Context is not null)
+            {
+                if (scope.Context.TryGetValue(contextKey, out var value))
+                {
+                    if (value is T t) return t;
+                }
+            }
+
+            scope = scope.Parent;
+        } while (scope is not null);
+
+        return default;
+    }
+
+    public IContextSetter SetContext<T>(ContextKey<T> contextKey, T value) where T : notnull
+    {
+        InnerScopeNode.Context ??= [];
+        InnerScopeNode.Context[contextKey] = value;
+        return this;
     }
 
     public T RunInScope<T>(Func<T> fn)
@@ -1080,24 +1100,11 @@ public class Selector<T> where T : notnull
     }
 }
 
-public class Context<T>(string id = "context", T defaultValue = default!)
+public interface IContextSetter
 {
-    public readonly string Id = id;
-    public readonly T DefaultValue = defaultValue;
+    public IContextSetter SetContext<T>(ContextKey<T> contextKey, T value) where T : notnull;
+}
 
-    public void Provider(T value, Action fn)
-    {
-        var scope = ReactiveContext.CurrentScope;
-        if (scope is null) throw new Exception("CurrentOwner is None!");
-        scope.Context ??= new Dictionary<object, object?>();
-        scope.Context[Id] = value;
-        fn();
-    }
-
-    public T UseContext()
-    {
-        var owner = ReactiveContext.CurrentScope;
-        if (owner.Context?[Id] is T value) return value;
-        return DefaultValue;
-    }
+public class ContextKey<T> where T : notnull
+{
 }

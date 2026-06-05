@@ -789,28 +789,9 @@ public static class DemoComponent
         }); // HWrapPanel
     }
 
-    public static IElement SvgDemo()
-    {
-        return HStackPanel(new(
-            strStyle: "w-60 h-full gap-8 horizontal justify-center items-center")
-        {
-            HSvgImage("~/Assets/play.svg",
-                strStyle: """
-                          w-16 h-16 p-2.5 pl-3.5 
-                          font-normal
-                          fg-gradient-r fg-from-blue-400 fg-to-red-800
-                          bg-gradient-br bg-from-blue-200 bg-to-violet-800
-                          border-sky-100 
-                          border-w-0.75 rounded-full
-                          """),
-            HSvgImage("~/Assets/skip-back.svg",
-                strStyle: "w-16 h-16 fg-orange-200 hover:fg-orange-300"),
-            HSvgImage("~/Assets/skip-forward.svg",
-                strStyle: "w-16 h-16 fg-yellow-200 hover:fg-yellow-300"),
-            HSvgImage("~/Assets/stretch-vertical.svg",
-                strStyle: "w-16 h-16 fg-red-200 hover:fg-red-300"),
-        }); // HWrapPanel
-    }
+    #endregion
+
+    #region Group Demo
 
     public static IElement GroupDemo()
     {
@@ -832,6 +813,102 @@ public static class DemoComponent
 
         string ToValue(bool isHover)
             => isHover ? "300" : "200";
+    }
+
+    #endregion
+
+    #region ContextKey Demo
+
+    private static readonly ContextKey<Signal<string>> Theme = new();
+    private static readonly ContextKey<Action> ToggleTheme = new();
+
+    public static IElement ContextDemo()
+    {
+        var theme = new MutSignal<string>("light");
+        return HContext(ctx => ctx.SetContext(Theme, theme).SetContext(ToggleTheme, Toggle),
+            () => HStackPanel(new(strStyle: "h-full p-8")
+            {
+                UseContextDemo1(),
+                UseContextDemo2()
+            }));
+
+        void Toggle()
+        {
+            theme.RxValue = theme.Value is "dark" ? "light" : "dark";
+        }
+    }
+
+    private static IElement UseContextDemo1()
+    {
+        return Element.WithScope(uiScope =>
+        {
+            var theme = uiScope.GetContext(Theme);
+            var toggleTheme = uiScope.GetContext(ToggleTheme);
+            if (theme is null) throw new ArgumentNullException(nameof(theme));
+            if (toggleTheme is null) throw new ArgumentNullException(nameof(toggleTheme));
+            return uiScope.RootElement(new()
+            {
+                HContentButton(new(strStyle: new(() =>
+                        $"""
+                         px-4 py-2 horizontal 
+                         {(theme.RxValue is "dark" ? "fg-gray-200 bg-gray-700" : "fg-gray-800 bg-gray-200")} 
+                         rounded-lg
+                         """),
+                    onClick: _ => toggleTheme())
+                {
+                    Switch<string>(new(theme)
+                    {
+                        Cases = new()
+                        {
+                            ["dark"] = () => HSvgImage("~/Assets/sun.svg", strStyle: "w-4 h-4")
+                        },
+                        Default = () => HSvgImage("~/Assets/moon.svg", strStyle: "w-4 h-4")
+                    }), // Switch
+                    HTextBlock(new(() => $"Switch to {(theme.RxValue is "dark" ? "light" : "dark")} mode"),
+                        strStyle:"ml-1")
+                }) // HContentButton
+            }); // RootElement
+        });
+    }
+
+    private static IElement UseContextDemo2()
+    {
+        return Element.WithScope(uiScope =>
+        {
+            var theme = uiScope.GetContext(Theme);
+            var toggleTheme = uiScope.GetContext(ToggleTheme);
+            if (theme is null) throw new ArgumentNullException(nameof(theme));
+            if (toggleTheme is null) throw new ArgumentNullException(nameof(toggleTheme));
+
+            return uiScope.RootElement(new(strStyle: new(() =>
+                $"""
+                 mt-6 mx-auto max-w-md overflow-hidden 
+                 {(theme.RxValue is "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")} 
+                 border rounded-xl shadow-md
+                 """))
+            {
+                HStackPanel(new(strStyle: "p-6")
+                {
+                    HTextBlock("Theme Injection Demonstration",
+                        strStyle: new(() => $"""
+                                             text-2xl font-bold 
+                                             fg-{(theme.RxValue is "dark" ? "white" : "gray-900")}
+                                             """)),
+                    HTextBlock(new(() => $"Current Topic Mode: {theme.RxValue}"),
+                        strStyle: new(() => $"""
+                                             mt-2 
+                                             fg-{(theme.RxValue is "dark" ? "gray-300" : "gray-600")}
+                                             """)),
+                    HTextBlock(
+                        new(
+                            "The background, text and border color of this card component will automatically change according to the theme."),
+                        strStyle: new(() => $"""
+                                             mt-2 
+                                             text-{(theme.RxValue is "dark" ? "gray-400" : "gray-500")}
+                                             """)),
+                })
+            });
+        });
     }
 
     #endregion

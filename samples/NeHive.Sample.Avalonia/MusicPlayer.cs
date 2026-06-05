@@ -35,6 +35,8 @@ public static class MusicPlayerDemo
     // private static readonly MutSignal<string?> LibVlcPath = new(null);
     private static Scope _scope = new();
 
+    public static readonly ContextKey<string> Theme = new();
+
     static MusicPlayerDemo()
     {
         _scope.CreateEffect(() =>
@@ -102,7 +104,7 @@ public static class MusicPlayerDemo
             {
                 Loading<SongInfo?>(new(songInfo)
                 {
-                    Success = Audio,
+                    Success = user => HContext(Theme, "light", () => Audio(user)),
                     Loading = Audio,
                     Error = _ => Audio(null),
                 }) // Loading<SongInfo?>

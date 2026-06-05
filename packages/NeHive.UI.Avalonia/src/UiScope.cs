@@ -23,7 +23,7 @@ public class UiScope(Scope? parentOwner = null) : Scope(parentOwner)
         remove => _onMountQueue.Remove(value);
     }
 
-    public IElement RootElement(HStackPanelProp prop)
+    public IElement RootElement(RootProp prop)
         => BaseComponent.RootElement(prop, this);
 
     internal void RunMount()

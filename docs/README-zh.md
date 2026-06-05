@@ -68,6 +68,106 @@ NeHive 由三大核心模块构成，分层解耦、各司其职：
 ## 👀 示例预览
 
 ### 示例代码
+
+#### 简单计数器
+```csharp
+private static IElement CounterComp(int id, UiScope uiScope)
+{
+    Console.WriteLine($"Counter {id} is creating");
+    var count = new MutSignal<int>(0);
+    var countText = () => $"Count: {count.RxValue}";
+
+    var rootElement = uiScope.RootElement(new()
+    {
+        HTextBlock($"Id: {id}",
+            strStyle: "text-lg font-bold fg-sky-200"
+        ), // HTextBlock
+
+        HTextBlock(countText,
+            strStyle: "text-2xl fg-lime-300"
+        ), // HTextBlock
+
+        HButton("Add",
+            strStyle: """
+                      mt-1 ml-2 px-2 py-1 fg-white
+                      bg-green-300 hover:bg-green-400 click:bg-green-500
+                      border-w-1 border-green-400 rounded-lg
+                      """,
+            onClick: _ => count.RxValue++
+        ), // HButton
+
+        HButton("Sub",
+            strStyle: """
+                      mt-1 ml-2 px-2 py-1 fg-white 
+                      bg-pink-300 hover:bg-pink-400 click:bg-pink-500
+                      border-w-1 border-pink-400 rounded-lg
+                      """,
+            onClick: _ => count.RxValue--
+        ) // HButton
+    }); // rootElement
+
+    uiScope.OnDispose += () => Console.WriteLine($"Counter {id} disposed");
+    return rootElement;
+}
+
+public static IElement Counter(int prop)
+    => Element.WithScope(CounterComp, prop);
+```
+
+#### 异步组件
+```csharp
+private static IElement LoadingDemoComp(UiScope uiScope)
+{
+    var userId = new MutSignal<int>(1);
+
+    var userMemo = uiScope.CreateReactiveFlow(userId)
+        .Debounce(500)
+        .Filter(id => id > 0)
+        .Map(id => new User(id, $"User {id}"))
+        .PushAsyncMemo(async user =>
+        {
+            await Task.Delay(500);
+            return user;
+        }, initValue: new User(0, "Unknown"));
+
+    var rootElement = uiScope.RootElement(new()
+    {
+        HStackPanel(new(strStyle: "mb-4 horizontal gap-3")
+        {
+            HButton("Increase User Id",
+                strStyle: "px-3 py-1 bg-blue-400 fg-white rounded-lg",
+                onClick: _ => userId.RxValue++
+            ), // HButton
+            HButton("Decrease User Id",
+                strStyle: "px-3 py-1 bg-slate-400 fg-white rounded-lg",
+                onClick: _ => userId.RxValue--
+            ) // HButton
+        }), // HStackPanel
+
+        Loading<User>(new(userMemo)
+        {
+            Success = user => HChildren(
+                HTextBlock($"User Id: {user.Id}", strStyle: "mt-1.5 text-lg"),
+                HTextBlock($"Hello, {user.Name}", strStyle: "mt-1.5 fg-sky-600")
+            ), // Loading<User>.Success
+            Loading = _ => HTextBlock("Fetching user data...", strStyle: "fg-gray-500"),
+            Error = ex =>
+                HButton($"Retry: {ex.Message}",
+                    strStyle: "mt-2 px-3 py-1 bg-rose-400 fg-white rounded-lg",
+                    onClick: _ => userMemo.Refetch()
+                ) // HButton
+            // Loading<User>.Error
+        }) // Loading<User>
+    }); // rootElement
+
+    return rootElement;
+}
+
+public static IElement LoadingDemo()
+    => Element.WithScope(LoadingDemoComp);
+```
+
+#### 引用组件
 ```csharp
 private static IElement ScrollDemoComp(UiScope uiScope)
 {

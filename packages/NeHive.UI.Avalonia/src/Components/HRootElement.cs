@@ -5,6 +5,16 @@ using Avalonia.Layout;
 
 namespace NeHive.UI.Avalonia.Components;
 
+public class RootProp : HStackPanelProp
+{
+    public Action<IContextSetter>? ContextSetter;
+
+    public RootProp(Action<IContextSetter>? contextSetter = null, Accessor<string>? strStyle = null) : base(strStyle)
+    {
+        ContextSetter = contextSetter;
+    }
+}
+
 public static partial class BaseComponent
 {
     public static IElement RootElement(SingleChildrenProp prop)
@@ -22,14 +32,14 @@ public static partial class BaseComponent
         return new Element(uiScope, stack);
     }
 
-    public static IElement RootElement(HStackPanelProp prop, UiScope uiScope)
+    public static IElement RootElement(RootProp prop, UiScope uiScope)
     {
         var stack = new StackPanel();
         var border = new Border
         {
-            Child =  stack
+            Child = stack
         };
-        
+
         uiScope.CreateEffect(epochScope =>
         {
             if (prop.Style == null) return;
@@ -43,7 +53,7 @@ public static partial class BaseComponent
         }
 
         return new Element(uiScope, border);
-        
+
         void ApplyStyle(StyleSet style)
         {
             StyleUtil.ApplyStyle(style, stack, border);

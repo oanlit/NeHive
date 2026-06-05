@@ -930,12 +930,32 @@ public static class StyleParser
         advanced.SkewTransform = scaleTransform;
     }
 
+    private static readonly Dictionary<string, double> ParseLengthResultCache = new()
+    {
+        ["auto"] = double.NaN,
+        ["full"] = double.NaN,
+        ["xs"] = 20 * UnitScale,
+        ["sm"] = 24 * UnitScale,
+        ["md"] = 28 * UnitScale,
+        ["lg"] = 32 * UnitScale,
+        ["xl"] = 36 * UnitScale,
+        ["2xl"] = 42 * UnitScale,
+        ["3xl"] = 48 * UnitScale,
+        ["4xl"] = 56 * UnitScale,
+        ["5xl"] = 64 * UnitScale,
+        ["6xl"] = 72 * UnitScale,
+        ["7xl"] = 80 * UnitScale,
+    };
+
     private static double? TryParseLength(string s)
     {
-        if (s is "auto" or "full") return double.NaN;
-        if (s.EndsWith("px") && double.TryParse(s[..^2], out var px)) return px;
-        if (double.TryParse(s, out var val)) return val * UnitScale;
-        return null;
+        if (ParseLengthResultCache.TryGetValue(s, out var cacheValue)) return cacheValue;
+
+        double? result = null;
+        if (s.EndsWith("px") && double.TryParse(s[..^2], out var px)) result = px;
+        else if (double.TryParse(s, out var val)) result = val * UnitScale;
+        if(result is not null) ParseLengthResultCache[s] = result.Value;
+        return result;
     }
 
     private static readonly Dictionary<string, double> ValueResultCache = new();
