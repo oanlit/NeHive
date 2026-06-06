@@ -5,6 +5,8 @@ using Avalonia.Media;
 using System.Xml.Linq;
 using System.Text;
 
+using NeHive.Model;
+
 namespace NeHive.UI.Avalonia.Utils;
 
 public static class SvgUtil

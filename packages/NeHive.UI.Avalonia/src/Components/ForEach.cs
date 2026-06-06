@@ -48,7 +48,7 @@ public static partial class ControlFlow
             panel.Children.Add(prop.Container.Content);
         }
 
-        uiScope.OnDispose += () => memo.Dispose();
+        uiScope.OnCleanup += () => memo.Dispose();
 
         return new Element(uiScope, panel);
     }

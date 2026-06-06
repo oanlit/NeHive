@@ -1,3 +1,4 @@
+using NeHive.Model;
 namespace NeHive.Reactive.Tests;
 
 public class ReactiveLoopDetectionTests
@@ -125,7 +126,7 @@ public class NestedEffectTest
         s.RxValue = 1;
         Assert.Equal([0, 0, 1, 10], logs);
     
-        scope.Clean();
+        scope.DisposeChildren();
     
         s.RxValue = 2;
     

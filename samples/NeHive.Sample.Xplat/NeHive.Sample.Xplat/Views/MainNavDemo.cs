@@ -53,7 +53,7 @@ public static class DemoComponent
             ) // HButton
         }); // rootElement
 
-        uiScope.OnDispose += () => Console.WriteLine($"Counter {id} disposed");
+        uiScope.OnCleanup += () => Console.WriteLine($"Counter {id} disposed");
         return rootElement;
     }
 

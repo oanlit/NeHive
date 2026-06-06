@@ -1,3 +1,4 @@
+using NeHive.Model;
 namespace NeHive.Reactive.Tests;
 
 public class ReactiveFlowTest
@@ -6,7 +7,7 @@ public class ReactiveFlowTest
     public void PushEffect_Should_Create_Effect_And_Trigger_Value()
     {
         // ARRANGE
-        using var root = Scope.RootScope;
+        var root = Scope.RootScope;
         var signal = new MutSignal<int>(100);
         var effectValue = 0;
 
@@ -23,9 +24,9 @@ public class ReactiveFlowTest
     public void Map_Should_Transform_Value()
     {
         // ARRANGE
-        using var root = Scope.RootScope;
+        var root = Scope.RootScope;
         var signal = new MutSignal<int>(5);
-        int result = 0;
+        var result = 0;
 
         // ACT
         root.CreateReactiveFlow(signal)
@@ -41,9 +42,9 @@ public class ReactiveFlowTest
     public void Filter_Should_Skip_Invalid_Values()
     {
         // ARRANGE
-        using var root = Scope.RootScope;
+        var root = Scope.RootScope;
         var signal = new MutSignal<int>(3);
-        int effectCount = 0;
+        var effectCount = 0;
 
         // ACT
         root.CreateReactiveFlow(signal)
@@ -59,7 +60,7 @@ public class ReactiveFlowTest
     public void Signal_Change_Should_Trigger_Flow_Chain()
     {
         // ARRANGE
-        using var root = Scope.RootScope;
+        var root = Scope.RootScope;
         var signal = new MutSignal<int>(1);
         var last = 0;
 
@@ -80,7 +81,7 @@ public class ReactiveFlowTest
     public void Dispose_Scope_Should_Stop_Effect()
     {
         // ARRANGE
-        var scope = Scope.RootScope.RunInScope(() => Scope.CurrentScope);
+        var scope = Scope.RootScope.RunInScope(() => NeHiveContext.CurrentScope);
         var signal = new MutSignal<int>(10);
         var count = 0;
 

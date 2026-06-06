@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
-using NeHive.Reactive;
+using NeHive.Model;
 
 namespace NeHive.UI.Avalonia;
 
@@ -35,7 +35,7 @@ public class Element : IElement
 
     internal Element(Control content)
     {
-        Scope = NeHive.Reactive.Scope.CurrentScope;
+        Scope = NeHiveContext.CurrentScope;
         Content = content;
         OnDisposeContent(content);
     }
@@ -49,7 +49,7 @@ public class Element : IElement
 
     private void OnDisposeContent(Control control)
     {
-        Scope.OnDispose += () =>
+        Scope.OnCleanup += () =>
         {
             var parent = control.Parent;
             switch (parent)

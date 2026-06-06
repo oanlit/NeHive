@@ -4,7 +4,7 @@ public interface IScope : IContextSetter, IDisposable
 {
     public bool IsDisposed { get; }
 
-    public event Action OnDispose;
+    public event Action OnCleanup;
 }
 
 public class Scope : IScope
@@ -39,7 +39,7 @@ public class Scope : IScope
         return this;
     }
 
-    public event Action OnDispose
+    public event Action OnCleanup
     {
         add
         {
@@ -48,16 +48,16 @@ public class Scope : IScope
         }
         remove => Cleanups.Remove(value);
     }
-    
-    public void Clean()
+
+    public void DisposeChildren()
     {
         if (IsDisposed) return;
         List<(Exception, Action)> exceptions = [];
-        Clean(exceptions);
+        DisposeChildren(exceptions);
         if (exceptions.Count > 0) throw new Exception();
     }
 
-    public void Clean(List<(Exception, Action)>? exceptions)
+    public void DisposeChildren(List<(Exception, Action)>? exceptions)
     {
         if (IsDisposed) return;
         exceptions ??= [];
@@ -71,25 +71,24 @@ public class Scope : IScope
         _children.Clear();
     }
 
-    public void Clean(out List<(Exception, Action)>? exceptions)
+    public void DisposeChildren(out List<(Exception, Action)>? exceptions)
     {
         exceptions = [];
-        Clean(exceptions);
+        DisposeChildren(exceptions);
     }
 
-    public void Dispose()
+    public void Cleanup()
     {
         if (IsDisposed) return;
         List<(Exception, Action)> exceptions = [];
-        Dispose(exceptions);
+        Cleanup(exceptions);
         if (exceptions.Count > 0) throw new Exception();
     }
 
-    public void Dispose(List<(Exception, Action)> exceptions)
+    public void Cleanup(List<(Exception, Action)> exceptions)
     {
         if (IsDisposed) return;
-        IsDisposed = true;
-        Clean(exceptions);
+        DisposeChildren(exceptions);
 
         if (Cleanups.Count == 0) return;
 
@@ -109,10 +108,28 @@ public class Scope : IScope
         Cleanups.Clear();
     }
 
-    public void Dispose(out List<(Exception, Action)> exceptions)
+    public void Cleanup(out List<(Exception, Action)> exceptions)
     {
         exceptions = [];
-        Dispose(exceptions);
+        Cleanup(exceptions);
+    }
+
+    public void Dispose()
+    {
+        Cleanup();
+        IsDisposed = true;
+    }
+
+    public void Dispose(List<(Exception, Action)> exceptions)
+    {
+        Cleanup(exceptions);
+        IsDisposed = true;
+    }
+
+    public void Dispose(out List<(Exception, Action)> exceptions)
+    {
+        Cleanup(out exceptions);
+        IsDisposed = true;
     }
 
     public T? GetContext<T>(ContextKey<T> contextKey) where T : notnull
@@ -143,7 +160,6 @@ public class Scope : IScope
 
     public T RunInScope<T>(Func<T> fn)
     {
-        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Scope));
         T result;
         using (new ScopeFrame(this))
         {
@@ -155,7 +171,6 @@ public class Scope : IScope
 
     public void RunInScope(Action fn)
     {
-        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Scope));
         using (new ScopeFrame(this))
         {
             fn();
@@ -166,6 +181,15 @@ public class Scope : IScope
 public static class NeHiveContext
 {
     public static Scope CurrentScope { get; internal set; } = Scope.RootScope;
+    
+    private static string _projBaseUri = "";
+    public static string ProjBaseUri => _projBaseUri;
+
+    public static void SetProjBaseUri(string baseUri)
+    {
+        if (!baseUri.EndsWith('/')) baseUri += "/";
+        _projBaseUri = baseUri;
+    }
 }
 
 public interface IContextSetter
@@ -179,11 +203,12 @@ public class ScopeFrame : IDisposable
 
     public ScopeFrame(Scope scope)
     {
+        ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
         _lastScope = NeHiveContext.CurrentScope;
         NeHiveContext.CurrentScope = scope;
     }
 
-    public void Dispose()
+    public virtual void Dispose()
     {
         NeHiveContext.CurrentScope = _lastScope;
     }

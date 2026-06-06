@@ -1,10 +1,10 @@
 using Avalonia;
+using NeHive.Model;
 // using Avalonia.Media;
 // using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
-using NeHive.UI.Avalonia;
 
 namespace NeHive.Sample.Avalonia;
 

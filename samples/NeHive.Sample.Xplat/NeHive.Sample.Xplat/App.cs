@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
-using NeHive.UI.Avalonia;
+using NeHive.Model;
 using NeHive.Sample.Xplat.Views;
 
 namespace NeHive.Sample.Xplat;

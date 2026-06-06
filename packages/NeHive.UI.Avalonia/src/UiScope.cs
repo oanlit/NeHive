@@ -1,4 +1,4 @@
-using NeHive.Reactive;
+using NeHive.Model;
 using NeHive.UI.Avalonia.Components;
 
 namespace NeHive.UI.Avalonia;

@@ -18,6 +18,8 @@
 // This file is part of NeHive, released under the MIT License.
 //-----------------------------------------------------------------------------
 
+using NeHive.Model;
+
 namespace NeHive.Reactive;
 
 internal interface ISignalState
@@ -79,75 +81,75 @@ internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : IS
     }
 }
 
-internal class ScopeNode
-{
-    internal readonly ScopeNode? Parent;
-    internal readonly List<ScopeNode> Children;
-    internal readonly List<Action> Cleanups;
-    internal Dictionary<object, object?>? Context;
-
-    internal ScopeNode(ScopeNode? parent = null,
-        List<ScopeNode>? children = null,
-        List<Action>? cleanups = null,
-        Dictionary<object, object?>? context = null)
-    {
-        Parent = parent ?? ReactiveContext.CurrentScope;
-        Children = children ?? [];
-        Cleanups = cleanups ?? [];
-        Context = context;
-
-        Parent.Children.Add(this);
-    }
-
-    internal ScopeNode(bool isRoot)
-    {
-        _ = isRoot;
-        Parent = null;
-        Children = [];
-        Cleanups = [];
-        Context = null;
-    }
-
-    internal T RunInScope<T>(Func<T> fn)
-        => ReactiveContext.RunInContext(fn, this, null);
-
-    internal void RunInScope(Action fn)
-        => ReactiveContext.RunInContext(fn, this, null);
-
-    internal virtual void Dispose()
-    {
-        var currentComputation = ReactiveContext.CurrentExecute;
-        ReactiveContext.CurrentExecute = null;
-        try
-        {
-            DisposeChildren();
-            if (Cleanups.Count == 0) return;
-
-            for (var i = Cleanups.Count - 1; i >= 0; i--) Cleanups[i]();
-            Cleanups.Clear();
-        }
-        finally
-        {
-            ReactiveContext.CurrentExecute = currentComputation;
-        }
-    }
-
-    internal void DisposeChildren()
-    {
-        int i;
-        for (i = Children.Count - 1; i >= 0; i--)
-        {
-            var child = Children[i];
-            child.Dispose();
-        }
-
-        Children.Clear();
-    }
-}
+// internal class ScopeNode
+// {
+//     internal readonly ScopeNode? Parent;
+//     internal readonly List<ScopeNode> Children;
+//     internal readonly List<Action> Cleanups;
+//     internal Dictionary<object, object?>? Context;
+//
+//     internal ScopeNode(ScopeNode? parent = null,
+//         List<ScopeNode>? children = null,
+//         List<Action>? cleanups = null,
+//         Dictionary<object, object?>? context = null)
+//     {
+//         Parent = parent ?? ReactiveContext.CurrentScope;
+//         Children = children ?? [];
+//         Cleanups = cleanups ?? [];
+//         Context = context;
+//
+//         Parent.Children.Add(this);
+//     }
+//
+//     internal ScopeNode(bool isRoot)
+//     {
+//         _ = isRoot;
+//         Parent = null;
+//         Children = [];
+//         Cleanups = [];
+//         Context = null;
+//     }
+//
+//     internal T RunInScope<T>(Func<T> fn)
+//         => ReactiveContext.RunInContext(fn, this, null);
+//
+//     internal void RunInScope(Action fn)
+//         => ReactiveContext.RunInContext(fn, this, null);
+//
+//     internal virtual void Dispose()
+//     {
+//         var currentComputation = ReactiveContext.CurrentExecute;
+//         ReactiveContext.CurrentExecute = null;
+//         try
+//         {
+//             DisposeChildren();
+//             if (Cleanups.Count == 0) return;
+//
+//             for (var i = Cleanups.Count - 1; i >= 0; i--) Cleanups[i]();
+//             Cleanups.Clear();
+//         }
+//         finally
+//         {
+//             ReactiveContext.CurrentExecute = currentComputation;
+//         }
+//     }
+//
+//     internal void DisposeChildren()
+//     {
+//         int i;
+//         for (i = Children.Count - 1; i >= 0; i--)
+//         {
+//             var child = Children[i];
+//             child.Dispose();
+//         }
+//
+//         Children.Clear();
+//     }
+// }
 
 internal static class ReactiveContext
 {
-    public static ScopeNode CurrentScope = Constant.RootScopeTree; // 当前正在执行的所有者
+    // public static ScopeNode CurrentScope = Constant.RootScopeTree; // 当前正在执行的所有者
 
     public static ExecuteNode? CurrentExecute; // 当前计算节点
     // public static readonly Action BeforeTrigger = () => { };
@@ -155,65 +157,61 @@ internal static class ReactiveContext
 
     public static Action<Action>? Scheduler;
 
-    internal static T RunInContext<T>(Func<T> fn, ScopeNode root, ExecuteNode? node)
+    internal static T RunInContext<T>(Func<T> fn, Scope root, ExecuteNode? node)
     {
-        var currentComputation = CurrentExecute;
-        var currentOwner = CurrentScope;
-
-        CurrentScope = root;
-        CurrentExecute = node;
-
         T result;
-        try
+        using (new ScopeFrame(root))
         {
-            ExecuteNode.StartBatch();
-            result = fn();
-            ExecuteNode.EndBatch();
-        }
-        catch (InfiniteReactiveLoopException)
-        {
-            throw;
-        }
-        catch (Exception err)
-        {
-            ExecuteNode.HandleError(err);
-            return default!;
-        }
-        finally
-        {
-            CurrentExecute = currentComputation;
-            CurrentScope = currentOwner;
+            var currentComputation = CurrentExecute;
+            CurrentExecute = node;
+            try
+            {
+                ExecuteNode.StartBatch();
+                result = fn();
+                ExecuteNode.EndBatch();
+            }
+            catch (InfiniteReactiveLoopException)
+            {
+                throw;
+            }
+            catch (Exception err)
+            {
+                ExecuteNode.HandleError(err);
+                return default!;
+            }
+            finally
+            {
+                CurrentExecute = currentComputation;
+            }
         }
 
         return result;
     }
 
-    internal static void RunInContext(Action fn, ScopeNode root, ExecuteNode? node)
+    internal static void RunInContext(Action fn, Scope root, ExecuteNode? node)
     {
-        var currentComputation = CurrentExecute;
-        var currentOwner = CurrentScope;
-
-        CurrentScope = root;
-        CurrentExecute = node;
-
-        try
+        using (new ScopeFrame(root))
         {
-            ExecuteNode.StartBatch();
-            fn();
-            ExecuteNode.EndBatch();
-        }
-        catch (InfiniteReactiveLoopException)
-        {
-            throw;
-        }
-        catch (Exception err)
-        {
-            ExecuteNode.HandleError(err);
-        }
-        finally
-        {
-            CurrentExecute = currentComputation;
-            CurrentScope = currentOwner;
+            var currentComputation = CurrentExecute;
+            CurrentExecute = node;
+            try
+            {
+                ExecuteNode.StartBatch();
+                fn();
+                ExecuteNode.EndBatch();
+            }
+            catch (InfiniteReactiveLoopException)
+            {
+                throw;
+            }
+            catch (Exception err)
+            {
+                ExecuteNode.HandleError(err);
+            }
+            finally
+            {
+                CurrentExecute = currentComputation;
+            }
         }
     }
 
@@ -221,35 +219,32 @@ internal static class ReactiveContext
     {
         return CurrentExecute is null
             ? fn()
-            : RunInContext(fn, CurrentScope, null);
+            : RunInContext(fn, NeHiveContext.CurrentScope, null);
     }
 
     internal static void Untrack(Action fn)
     {
         if (CurrentExecute is null) fn();
-        RunInContext(fn, CurrentScope, null);
+        RunInContext(fn, NeHiveContext.CurrentScope, null);
     }
 }
 
-internal class ReactiveContextHelper : IDisposable
+internal class ReactiveContextHelper : ScopeFrame
 {
     private readonly ExecuteNode? _tempExecute;
-    private readonly ScopeNode _tempScope;
 
-    public ReactiveContextHelper(ScopeNode scope, ExecuteNode? tracker)
+    public ReactiveContextHelper(Scope scope, ExecuteNode? tracker) : base(scope)
     {
         _tempExecute = ReactiveContext.CurrentExecute;
-        _tempScope = ReactiveContext.CurrentScope;
-        ReactiveContext.CurrentScope = scope;
         ReactiveContext.CurrentExecute = tracker;
         ExecuteNode.StartBatch();
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         ExecuteNode.EndBatch();
         ReactiveContext.CurrentExecute = _tempExecute;
-        ReactiveContext.CurrentScope = _tempScope;
+        base.Dispose();
     }
 }
 
@@ -267,7 +262,12 @@ internal interface ITrack
     void Track(Action trackFn);
 }
 
-internal abstract class ExecuteNode : ScopeNode, ITrack
+internal static class ReactiveKey
+{
+    internal static ContextKey<ExecuteNode> ExecuteHolder = new();
+}
+
+internal abstract class ExecuteNode : Scope, ITrack
 {
     internal ExecutePhase Phase;
     internal readonly List<ISignalState> Sources;
@@ -281,20 +281,18 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         List<int>? sourceSlots = null,
         long version = 0,
         bool isPure = false,
-        ScopeNode? parent = null,
-        List<ScopeNode>? children = null,
-        List<Action>? cleanups = null,
-        Dictionary<object, object?>? context = null
-    ) : base(parent, children, cleanups, context)
+        Scope? parentScope = null
+    ): base(parentScope)
     {
         Phase = phase;
         Sources = sources ?? [];
         SourceSlots = sourceSlots ?? [];
         Version = version;
         IsPure = isPure;
+        OnCleanup += CleanDependence;
     }
 
-    internal override void Dispose()
+    public void CleanDependence()
     {
         while (Sources.Count != 0)
         {
@@ -313,8 +311,6 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         }
 
         Phase = ExecutePhase.Resolved; // 当前及旧的子Computation 不再执行
-
-        base.Dispose();
     }
 
     // 核心功能入口点
@@ -397,7 +393,7 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         public static int UpdateFromIndex; // 队列开始执行的位置
 
         public static long ExecCount; // 执行计数器，和 ExecuteNode.Version 配合使用
-        public static string? Error = null;
+        public static ContextKey<List<Action<object>>>? Error = null;
     }
 
     private static void Trigger()
@@ -437,10 +433,6 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         }
     }
 
-    // internal static void StartBatch()
-    // {
-    // Interlocked.Increment(ref SchedulerContext.BatchCount);
-    // }
     internal static void StartBatch()
         => SchedulerContext.BatchCount++;
 
@@ -538,7 +530,7 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
             node = parent;
         }
 
-        // 从根owner开始执行
+        // 从根Scope开始执行
         for (var i = ancestors.Count - 1; i >= 0; i--)
         {
             node = ancestors[i];
@@ -569,7 +561,8 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
 
     internal void UpdateComputation()
     {
-        Dispose(); // 动态更新依赖，先断开旧依赖
+        Cleanup(); // 动态更新依赖，先断开旧依赖
+        OnCleanup += CleanDependence;
         // 由 ExecuteNode<T> 完成
         RunComputation();
     }
@@ -586,13 +579,14 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
             Sources[i].UpdateIfNeeded();
     }
 
-    internal static void HandleError(Exception err, ScopeNode? owner = null)
+    internal static void HandleError(Exception err, Scope? scope = null)
     {
-        owner ??= ReactiveContext.CurrentScope;
+        scope ??= NeHiveContext.CurrentScope;
         List<Action<object>>? fns = null;
         if (SchedulerContext.Error is not null)
         {
-            fns = owner.Context?[SchedulerContext.Error] as List<Action<object>>;
+            // fns = scope.Context?[SchedulerContext.Error] as List<Action<object>>;
+            fns = scope.GetContext(SchedulerContext.Error);
         }
 
         var error = CastError(err);
@@ -602,14 +596,14 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         {
             ExecuteNode<object> handler = new((_, _) =>
                 {
-                    RunErrors(error, fns, owner);
+                    RunErrors(error, fns, scope);
                     return Constant.EmptyObj;
                 },
                 Constant.EmptyObj, isPure: false, phase: ExecutePhase.Stale);
             handler.Phase = ExecutePhase.Stale;
             SchedulerContext.EffectQueue.Add(handler);
         }
-        else RunErrors(error, fns, owner);
+        else RunErrors(error, fns, scope);
     }
 
     internal static Exception CastError(object err)
@@ -618,7 +612,7 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         return new Exception(err as string ?? "Unknown error");
     }
 
-    private static void RunErrors(object err, List<Action<object>> fns, ScopeNode? owner)
+    private static void RunErrors(object err, List<Action<object>> fns, Scope? scope)
     {
         try
         {
@@ -633,7 +627,7 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         }
         catch (Exception e)
         {
-            HandleError(e, owner?.Parent);
+            HandleError(e, scope?.Parent);
         }
     }
 
@@ -644,8 +638,6 @@ internal abstract class ExecuteNode : ScopeNode, ITrack
         SchedulerContext.UpdateFromIndex = 0;
         SchedulerContext.BatchCount = 0;
     }
-
-    // 额外API，非核心算法
 }
 
 internal class ExecuteNode<T>(
@@ -656,13 +648,10 @@ internal class ExecuteNode<T>(
     List<int>? sourceSlots = null,
     long version = 0,
     bool isPure = false,
-    ScopeNode? parent = null,
-    List<ScopeNode>? children = null,
-    List<Action>? cleanups = null,
-    Dictionary<object, object?>? context = null
+    Scope? parent = null
 ) : ExecuteNode(phase, sources, sourceSlots,
     version, isPure,
-    parent, children, cleanups, context)
+    parent)
 {
     public readonly Func<ExecuteNode, T, T> Fn = fn;
     public T Value { get; set; } = value;
@@ -686,8 +675,9 @@ internal class ExecuteNode<T>(
             if (IsPure)
             {
                 Phase = ExecutePhase.Stale;
-                Children.ForEach(node => node.DisposeChildren());
-                Children.Clear();
+                // Children.ForEach(node => node.DisposeChildren());
+                // Children.Clear();
+                DisposeChildren();
             }
 
             // won't be picked up until next update
@@ -733,13 +723,10 @@ internal class ComputedNode<T> : ExecuteNode<T>,
         List<ISignalState>? sources = null,
         List<int>? sourceSlots = null,
         long version = 0,
-        ScopeNode? parent = null,
-        List<ScopeNode>? children = null,
-        List<Action>? cleanups = null,
-        Dictionary<object, object?>? context = null
+        Scope? parent = null
     ) : base(fn, value!, phase,
         sources, sourceSlots, version, true,
-        parent, children, cleanups, context)
+        parent)
     {
         Comparator = comparator ?? Constant.EqualFn;
         Observers = observers ?? [];

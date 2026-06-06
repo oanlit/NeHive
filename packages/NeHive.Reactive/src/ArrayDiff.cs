@@ -15,9 +15,11 @@
 // This file is fully reimplemented for the NeHive reactive system
 // and is not a direct port.
 
+using System.Collections;
+using NeHive.Model;
 namespace NeHive.Reactive;
 
-using System.Collections;
+
 
 public struct ArrayDiffResult
 {
@@ -329,7 +331,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
 {
     public bool IsInvalid { get; private set; }
 
-    private readonly ScopeNode _scope;
+    private readonly Scope _scope;
 
     // private readonly ComputedNode<DenseBuffer<TMap>> _mapCache;
     private readonly Accessor<IReadOnlyList<TItem>> _sourceListSignal;
@@ -364,21 +366,21 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         InternalSignal = _createMapCache();
     }
 
-    private ScopeNode _createSelfScope()
+    private Scope _createSelfScope()
     {
-        var current = ReactiveContext.CurrentScope;
+        var current = NeHiveContext.CurrentScope;
 
-        var scope = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        scope.Cleanups.Add(() =>
+        var scope = new Scope(current);
+        // scope.Cleanups.Add(() =>
+        // {
+        //     IsInvalid = true;
+        //     _disposeAll();
+        // });
+        scope.OnCleanup += () =>
         {
             IsInvalid = true;
             _disposeAll();
-        });
+        };
 
         return scope;
     }
@@ -414,12 +416,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
 
     private TMap _mapper(IReadOnlyList<TItem> sourceList, int index)
     {
-        var scope = new ScopeNode(
-            parent: _scope,
-            children: null,
-            context: _scope.Context,
-            cleanups: null
-        );
+        var scope = new Scope(_scope);
 
         TMap result;
 

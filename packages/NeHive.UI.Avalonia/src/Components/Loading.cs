@@ -69,7 +69,7 @@ public static partial class ControlFlow
             }
 
             container.Children.Add(newChild.Content);
-            epochScope.OnDispose += newChild.Dispose;
+            epochScope.OnCleanup += newChild.Dispose;
         });
 
         return new Element(uiScope, container);

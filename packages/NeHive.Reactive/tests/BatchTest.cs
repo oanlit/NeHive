@@ -1,3 +1,4 @@
+using NeHive.Model;
 namespace NeHive.Reactive.Tests;
 
 public class BatchTest

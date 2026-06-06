@@ -18,6 +18,8 @@
 // This file is part of NeHive, released under the MIT License.
 //-----------------------------------------------------------------------------
 
+using NeHive.Model;
+
 namespace NeHive.Reactive;
 
 /// <summary>
@@ -73,14 +75,14 @@ public static partial class Rx
     /// <code>
     /// using var effect = new Effect(() =>
     /// {
-    ///     Rx.OnDispose(() => Console.WriteLine("Cleaning up"));
+    ///     Rx.OnCleanup(() => Console.WriteLine("Cleaning up"));
     /// });
     /// effect.Dispose(); // Prints "Cleaning up"
     /// </code>
     /// </example>
     public static void OnDispose(Action fn)
     {
-        Scope.CurrentScope.OnDispose += fn;
+        NeHiveContext.CurrentScope.OnCleanup += fn;
     }
 
     /// <summary>
@@ -362,163 +364,6 @@ public class MutSignal<T>(T value, Action<T, T, Action<T>>? onSet = null) : Sign
     internal bool HasObserver => InternalSignal.Observers.Count > 0;
 }
 
-public interface IScope : IContextSetter, IDisposable
-{
-    public bool IsDisposed { get; }
-
-    // public void OnDispose(Action fn);
-    public event Action OnDispose;
-}
-
-/// <summary>
-/// Reactive scope for managing lifecycle, cleanup, and ownership of effects, computed values, and async memos.
-/// Scopes form a hierarchical tree for nested disposal.
-/// </summary>
-/// <example>
-/// <code>
-/// using var scope = new Scope();
-/// var signal = new MutSignal&lt;int&gt;(0);
-/// var effect = scope.CreateEffect(() => Console.WriteLine(signal.RxValue));
-/// scope.Dispose(); // Effect stops reacting
-/// </code>
-/// </example>
-public class Scope : IScope
-{
-    private static readonly Dictionary<ScopeNode, Scope> ScopeHolder = [];
-
-    internal readonly ScopeNode InnerScopeNode;
-    public bool IsDisposed { get; private set; }
-
-    public Scope(Scope? parentScope = null)
-    {
-        var currentScope = ReactiveContext.CurrentScope;
-        var current = parentScope?.InnerScopeNode ?? currentScope;
-        InnerScopeNode = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        InnerScopeNode.Cleanups.Add(_onDispose);
-        ScopeHolder[InnerScopeNode] = this;
-    }
-
-    public event Action OnDispose
-    {
-        add
-        {
-            if (IsDisposed) return;
-            InnerScopeNode.Cleanups.Add(value);
-        }
-        remove => InnerScopeNode.Cleanups.Remove(value);
-    }
-
-    public void Clean()
-    {
-        if (IsDisposed) return;
-        InnerScopeNode.DisposeChildren();
-    }
-
-    public void Dispose()
-    {
-        if (IsDisposed) return;
-        InnerScopeNode.Dispose();
-    }
-
-    private void _onDispose()
-    {
-        IsDisposed = true;
-        ScopeHolder.Remove(InnerScopeNode);
-    }
-
-    private Scope(bool isRoot)
-    {
-        _ = isRoot;
-        InnerScopeNode = Constant.RootScopeTree;
-        ScopeHolder[InnerScopeNode] = this;
-    }
-
-    static Scope()
-    {
-        var root = new Scope(true);
-        ScopeHolder[Constant.RootScopeTree] = root;
-    }
-
-    public static Scope RootScope
-        => ScopeHolder[Constant.RootScopeTree];
-
-    internal Scope(ScopeNode scope)
-        => InnerScopeNode = scope;
-
-    public static Scope CurrentScope
-    {
-        get
-        {
-            var currentScopeNode = ReactiveContext.CurrentScope;
-            ScopeHolder.TryGetValue(currentScopeNode, out var scope);
-            if (scope is not null) return scope;
-
-            scope = new Scope(currentScopeNode);
-            ScopeHolder[currentScopeNode] = scope;
-            if (currentScopeNode is ExecuteNode)
-            {
-                // ExecuteNode 每次运行时都会dispose自己，为了复用，我们绑定到 Parent Scope
-                var parent = currentScopeNode.Parent!; // 除了 RootScope 以外都有
-                parent.Cleanups.Add(() =>
-                {
-                    ScopeHolder.Remove(currentScopeNode);
-                    scope.IsDisposed = true;
-                });
-            }
-            else
-            {
-                currentScopeNode.Cleanups.Add(() =>
-                {
-                    ScopeHolder.Remove(currentScopeNode);
-                    scope.IsDisposed = true;
-                });
-            }
-
-            return scope;
-        }
-    }
-
-    public T? GetContext<T>(ContextKey<T> contextKey) where T : notnull
-    {
-        var scope = InnerScopeNode;
-        do
-        {
-            if (scope.Context is not null)
-            {
-                if (scope.Context.TryGetValue(contextKey, out var value))
-                {
-                    if (value is T t) return t;
-                }
-            }
-
-            scope = scope.Parent;
-        } while (scope is not null);
-
-        return default;
-    }
-
-    public IContextSetter SetContext<T>(ContextKey<T> contextKey, T value) where T : notnull
-    {
-        InnerScopeNode.Context ??= [];
-        InnerScopeNode.Context[contextKey] = value;
-        return this;
-    }
-
-    public T RunInScope<T>(Func<T> fn)
-    {
-        ObjectDisposedException.ThrowIf(IsDisposed, nameof(Scope));
-        return InnerScopeNode.RunInScope(fn)!;
-    }
-
-    public void RunInScope(Action fn)
-        => RunInScope(Util.WrapAction(fn));
-}
-
 /// <summary>
 /// Provides manual dependency tracking for Effects in non-auto-tracking mode.
 /// </summary>
@@ -586,7 +431,7 @@ public class EpochScope : Scope
 /// </example>
 public class Effect : IDisposable
 {
-    private readonly ScopeNode _scope;
+    private readonly Scope _scope;
     public bool IsInvalid { get; private set; }
 
     /// <summary>
@@ -604,15 +449,10 @@ public class Effect : IDisposable
     /// </example>
     public Effect(Action executeFn, Scope? scope = null)
     {
-        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
+        var current = scope ?? NeHiveContext.CurrentScope;
 
-        _scope = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        _scope.Cleanups.Add(() => IsInvalid = true);
+        _scope = new Scope(current);
+        _scope.OnCleanup += () => IsInvalid = true;
 
         using (new ReactiveContextHelper(_scope, null))
         {
@@ -664,25 +504,20 @@ public class Effect : IDisposable
     /// </example>
     public Effect(Func<Scope, Action<EpochScope>> setupFn, Scope? scope = null)
     {
-        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
+        var current = scope ?? NeHiveContext.CurrentScope;
 
-        _scope = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        _scope.Cleanups.Add(() => IsInvalid = true);
+        _scope = new Scope(current);
+        _scope.OnCleanup += () => IsInvalid = true;
 
         using (new ReactiveContextHelper(_scope, null))
         {
-            var effectScope = Scope.CurrentScope;
+            var effectScope = NeHiveContext.CurrentScope;
             var executeFn = setupFn(effectScope);
-            EpochScope? epochScope = null;
+            // EpochScope? epochScope = null;
             _ = new EffectNode<object>(
                 (tracker, _) =>
                 {
-                    epochScope ??= new EpochScope(tracker);
+                    var epochScope = new EpochScope(tracker);
                     executeFn(epochScope);
                     return Constant.EmptyObj;
                 },
@@ -713,7 +548,7 @@ public class Effect : IDisposable
 /// </example>
 public class Computed<T> : Signal<T>
 {
-    private readonly ScopeNode _scope;
+    private readonly Scope _scope;
     private readonly ComputedNode<T> _computedNode;
 
     private T _value;
@@ -758,14 +593,10 @@ public class Computed<T> : Signal<T>
     {
         _fn = fn;
 
-        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
-        _scope = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        _scope.Cleanups.Add(_afterDisposed);
+        var current = scope ?? NeHiveContext.CurrentScope;
+        _scope = new Scope(current);
+        // _scope.Cleanups.Add(_afterDisposed);
+        _scope.OnCleanup += _afterDisposed;
 
         using (new ReactiveContextHelper(_scope, null))
         {
@@ -834,7 +665,7 @@ public enum AsyncMemoState
 /// </example>
 public class AsyncMemo<T> : Signal<T?>
 {
-    private readonly ScopeNode _scope;
+    private readonly Scope _scope;
     private EpochScope? _epochScope;
     private readonly bool _isSimpleUse;
 
@@ -896,14 +727,10 @@ public class AsyncMemo<T> : Signal<T?>
     {
         InternalSignal = new SignalState<T?>(default);
 
-        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
-        _scope = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        _scope.Cleanups.Add(() => _state.RxValue = AsyncMemoState.IsInvalid);
+        var current = scope ?? NeHiveContext.CurrentScope;
+        _scope = new Scope(current);
+        // _scope.Cleanups.Add(() => _state.RxValue = AsyncMemoState.IsInvalid);
+        _scope.OnCleanup += () => _state.RxValue = AsyncMemoState.IsInvalid;
         _isSimpleUse = true;
 
         _executeFn = _ => executeFn();
@@ -927,24 +754,19 @@ public class AsyncMemo<T> : Signal<T?>
     {
         InternalSignal = new SignalState<T?>(default);
 
-        var current = scope?.InnerScopeNode ?? ReactiveContext.CurrentScope;
-        _scope = new ScopeNode(
-            parent: current,
-            children: null,
-            context: current.Context,
-            cleanups: null
-        );
-        _scope.Cleanups.Add(() => _state.RxValue = AsyncMemoState.IsInvalid);
+        var current = scope ?? NeHiveContext.CurrentScope;
+        _scope = new Scope(current);
+        _scope.OnCleanup += () => _state.RxValue = AsyncMemoState.IsInvalid;
         _isSimpleUse = false;
 
         using (new ReactiveContextHelper(_scope, null))
         {
-            var currentScope = Scope.CurrentScope;
+            var currentScope = NeHiveContext.CurrentScope;
             _executeFn = setupFn(currentScope);
             _ = new EffectNode<object>(
                 (tracker, _) =>
                 {
-                    _epochScope ??= new EpochScope(tracker);
+                    _epochScope = new EpochScope(tracker);
                     _load(false);
                     return Constant.EmptyObj;
                 },
@@ -1098,13 +920,4 @@ public class Selector<T> where T : notnull
         });
         return CompareFn(key, value);
     }
-}
-
-public interface IContextSetter
-{
-    public IContextSetter SetContext<T>(ContextKey<T> contextKey, T value) where T : notnull;
-}
-
-public class ContextKey<T> where T : notnull
-{
 }

@@ -118,34 +118,34 @@ public static class Shapes
 
         return new Element(uiScope, rect);
 
-        void ApplyStyle(HShapeStyle style)
-        {
-            rect.Margin = style.Margin;
-            if (style.ZIndex is not null) rect.ZIndex = style.ZIndex.Value;
-
-            if (style.Width is not null) rect.Width = style.Width.Value;
-            if (style.Height is not null) rect.Height = style.Height.Value;
-            if (style.MinWidth is not null) rect.MinWidth = style.MinWidth.Value;
-            if (style.MaxWidth is not null) rect.MaxWidth = style.MaxWidth.Value;
-            if (style.MinHeight is not null) rect.MinHeight = style.MinHeight.Value;
-            if (style.MaxHeight is not null) rect.MaxHeight = style.MaxHeight.Value;
-
-            rect.HorizontalAlignment = style.HorizontalAlignment;
-            rect.VerticalAlignment = style.VerticalAlignment;
-
-            rect.Fill = style.Background;
-            rect.Stroke = style.BorderBrush;
-            rect.StrokeThickness =
-                (style.BorderThickness.Top + style.BorderThickness.Bottom +
-                 style.BorderThickness.Left + style.BorderThickness.Right) / 4.0;
-            
-            if (style.Opacity is not null) rect.Opacity = style.Opacity.Value;
-            // rect.RenderTransform = new TranslateTransform
-            // {
-            //     X = 1.0,
-            //     Y = 1.0
-            // };
-            // rect.RenderTransformOrigin
-        }
+        // void ApplyStyle(HShapeStyle style)
+        // {
+        //     rect.Margin = style.Margin;
+        //     if (style.ZIndex is not null) rect.ZIndex = style.ZIndex.Value;
+        //
+        //     if (style.Width is not null) rect.Width = style.Width.Value;
+        //     if (style.Height is not null) rect.Height = style.Height.Value;
+        //     if (style.MinWidth is not null) rect.MinWidth = style.MinWidth.Value;
+        //     if (style.MaxWidth is not null) rect.MaxWidth = style.MaxWidth.Value;
+        //     if (style.MinHeight is not null) rect.MinHeight = style.MinHeight.Value;
+        //     if (style.MaxHeight is not null) rect.MaxHeight = style.MaxHeight.Value;
+        //
+        //     rect.HorizontalAlignment = style.HorizontalAlignment;
+        //     rect.VerticalAlignment = style.VerticalAlignment;
+        //
+        //     rect.Fill = style.Background;
+        //     rect.Stroke = style.BorderBrush;
+        //     rect.StrokeThickness =
+        //         (style.BorderThickness.Top + style.BorderThickness.Bottom +
+        //          style.BorderThickness.Left + style.BorderThickness.Right) / 4.0;
+        //     
+        //     if (style.Opacity is not null) rect.Opacity = style.Opacity.Value;
+        //     // rect.RenderTransform = new TranslateTransform
+        //     // {
+        //     //     X = 1.0,
+        //     //     Y = 1.0
+        //     // };
+        //     // rect.RenderTransformOrigin
+        // }
     }
 }

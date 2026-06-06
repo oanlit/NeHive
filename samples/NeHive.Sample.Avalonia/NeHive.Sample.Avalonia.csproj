@@ -18,12 +18,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="12.0.3" />
-        <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.3" />
+        <PackageReference Include="Avalonia" Version="12.*" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.*" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.*" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.*" />
         <PackageReference Include="LibVLCSharp.Avalonia" Version="3.9.0" />
-        
+
+        <ProjectReference Include="..\..\packages\NeHive.Model\src\NeHive.Model.csproj"/>
         <ProjectReference Include="..\..\packages\NeHive.Reactive\src\NeHive.Reactive.csproj" />
         <ProjectReference Include="..\..\packages\NeHive.UI.Avalonia\src\NeHive.UI.Avalonia.csproj" />
     </ItemGroup>

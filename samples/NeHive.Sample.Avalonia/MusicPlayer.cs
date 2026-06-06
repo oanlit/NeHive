@@ -1,4 +1,5 @@
 using LibVLCSharp.Shared;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia;
 using Avalonia.Threading;
@@ -17,7 +18,7 @@ public static class MediaPlayerExtensions
             var libVlc = new LibVLC();
             var mediaPlayer = new MediaPlayer(libVlc);
 
-            scope.OnDispose += () =>
+            scope.OnCleanup += () =>
             {
                 mediaPlayer.Dispose();
                 libVlc.Dispose();

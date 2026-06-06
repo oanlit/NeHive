@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="12.*"/>
+        <ProjectReference Include="..\..\NeHive.Model\src\NeHive.Model.csproj"/>
         <ProjectReference Include="..\..\NeHive.Reactive\src\NeHive.Reactive.csproj"/>
     </ItemGroup>
 </Project>

@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using NeHive.Reactive;
+using NeHive.Model;
 using NeHive.UI.Avalonia.Styles;
 using Avalonia.Layout;
 
@@ -19,7 +20,7 @@ public static partial class BaseComponent
 {
     public static IElement RootElement(SingleChildrenProp prop)
     {
-        var scope = Scope.CurrentScope;
+        var scope = Model.NeHiveContext.CurrentScope;
         if (scope is not UiScope uiScope)
             throw new InvalidOperationException("CurrentScope is not UiScope");
 

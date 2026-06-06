@@ -78,6 +78,7 @@ namespace NeHive.Generator
             var usingNamespaces = new HashSet<string>
             {
                 "System",
+                "NeHive.Model",
                 "NeHive.Reactive"
             };
             CollectNameSpaces(classSymbol.BaseType, usingNamespaces);

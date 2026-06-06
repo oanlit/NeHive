@@ -1,4 +1,5 @@
-﻿using NeHive.Reactive;
+﻿using NeHive.Model;
+using NeHive.Reactive;
 
 // using NeHive.Sample.Console.Store;
 
@@ -60,7 +61,7 @@
 //
 // store.Clear();
 //
-// scope.Clean();
+// scope.DisposeChildren();
 
 // new StudentStore();
 

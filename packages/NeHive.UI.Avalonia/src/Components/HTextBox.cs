@@ -49,7 +49,7 @@ public static partial class BaseComponent
                 return;
 
             var wm = scope.Track(watermark);
-            textBox.Watermark = wm;
+            textBox.PlaceholderText = wm;
         });
 
         // 处理只读

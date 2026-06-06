@@ -1,4 +1,5 @@
-﻿namespace NeHive.Reactive.Tests;
+﻿using NeHive.Model;
+namespace NeHive.Reactive.Tests;
 
 public class ListStoreTest
 {

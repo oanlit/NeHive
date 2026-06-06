@@ -1,3 +1,4 @@
+using NeHive.Model;
 namespace NeHive.Reactive.Tests;
 
 public class LifeCycleTest
@@ -29,7 +30,7 @@ public class LifeCycleTest
 
         var effect = new Effect(selfScope =>
         {
-            selfScope.OnDispose += () => cleaned = true;
+            selfScope.OnCleanup += () => cleaned = true;
 
             return _ =>
             {
@@ -54,7 +55,7 @@ public class LifeCycleTest
         using var effect = new Effect(epoch =>
         {
             _ = epoch.Pull(signal);
-            epoch.OnDispose += () => cleanupCount++;
+            epoch.OnCleanup += () => cleanupCount++;
         });
 
         Assert.Equal(0, cleanupCount);
@@ -127,7 +128,7 @@ public class LifeCycleTest
             return epochScope =>
             {
                 _ = epochScope.Pull(signal);
-                epochScope.OnDispose += () => log.Add("cleanup");
+                epochScope.OnCleanup += () => log.Add("cleanup");
                 log.Add("run");
             };
         });
@@ -150,7 +151,7 @@ public class LifeCycleTest
             return epochScope =>
             {
                 _ = epochScope.Pull(signal);
-                epochScope.OnDispose += () => cleanupCount++;
+                epochScope.OnCleanup += () => cleanupCount++;
             };
         });
 
@@ -166,7 +167,7 @@ public class LifeCycleTest
     {
         var cleaned = false;
 
-        var effect = new Effect(epoch => { epoch.OnDispose += () => cleaned = true; });
+        var effect = new Effect(epoch => { epoch.OnCleanup += () => cleaned = true; });
 
         Assert.False(cleaned);
 
@@ -295,7 +296,7 @@ public class LifeCycleTest
         s.RxValue = 1;
         Assert.Equal([0, 1], values);
 
-        scope.Clean();
+        scope.DisposeChildren();
         Assert.False(scope.IsDisposed);
         Assert.True(e.IsInvalid);
 

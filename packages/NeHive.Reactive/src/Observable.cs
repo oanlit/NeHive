@@ -6,9 +6,8 @@
 // Implemented independently for NeHive reactive runtime.
 //-----------------------------------------------------------------------------
 
+using NeHive.Model;
 namespace NeHive.Reactive;
-
-using System;
 
 /// <summary>
 /// Converts a <see cref="MutSignal{T}"/> into a standard <see cref="IObservable{T}"/> sequence.
@@ -76,7 +75,7 @@ public static partial class Rx
         var scope = new Scope();
         var signal = new MutSignal<T>(initialValue);
         var subscription = producer.Subscribe(new ObserverSignal<T>(signal));
-        scope.OnDispose += subscription.Dispose;
+        scope.OnCleanup += subscription.Dispose;
         return signal;
     }
 

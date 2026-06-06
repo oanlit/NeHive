@@ -25,7 +25,7 @@ public static partial class ControlFlow
                 if (prop.IfFalse is null) return;
                 var fallback = prop.IfFalse();
                 panel.Children.Add(fallback.Content);
-                epochScope.OnDispose += fallback.Dispose;
+                epochScope.OnCleanup += fallback.Dispose;
                 return;
             }
 
@@ -33,7 +33,7 @@ public static partial class ControlFlow
             panel.Children.Add(child.Content);
             panel.Width = child.Content.Width;
             panel.Height = child.Content.Height;
-            epochScope.OnDispose += child.Dispose;
+            epochScope.OnCleanup += child.Dispose;
         });
         return new Element(uiScope, panel);
     }

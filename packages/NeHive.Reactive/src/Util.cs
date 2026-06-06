@@ -1,8 +1,5 @@
 namespace NeHive.Reactive;
 
-using System.Diagnostics;
-using System.Text;
-
 internal static class Util
 {
     public static T RemoveLast<T>(List<T> list)
