@@ -1,0 +1,4 @@
+<Solution>
+   <Project Path="src/NeHive.Model.csproj" />
+  <Project Path="tests/NeHive.Model.Tests.csproj" />
+</Solution>

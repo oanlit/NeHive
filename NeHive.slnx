@@ -15,6 +15,13 @@
         </Project>
     </Folder>
     <Folder Name="/packages/" />
+    <Folder Name="/packages/NeHive.Model/" />
+    <Folder Name="/packages/NeHive.Model/src/">
+        <Project Path="packages/NeHive.Model/src/NeHive.Model.csproj" />
+    </Folder>
+    <Folder Name="/packages/NeHive.Model/tests/">
+        <Project Path="packages/NeHive.Model/tests/NeHive.Model.Tests.csproj" />
+    </Folder>
     <Folder Name="/packages/NeHive.Reactive/" />
     <Folder Name="/packages/NeHive.Reactive/src/">
         <Project Path="packages/NeHive.Reactive/src/NeHive.Reactive.csproj" />
