@@ -397,6 +397,7 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
                 Value = new DenseBuffer<TMap>()
             });
         mapCache.UpdateComputation();
+        mapCache.Holder = new(this);
 
         return mapCache;
     }

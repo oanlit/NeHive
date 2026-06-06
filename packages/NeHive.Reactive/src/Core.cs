@@ -27,6 +27,7 @@ internal interface ISignalState
     List<ExecuteNode> Observers { get; }
 
     List<int> ObserverSlots { get; }
+    WeakReference<Signal>? Holder { get; set; }
 
     internal void UpdateIfNeeded(ExecuteNode? ignore = null);
 }
@@ -43,7 +44,7 @@ internal static class Common
 {
     internal static T BaseReadSignal<T>(ISignalState<T> signal)
     {
-        var currentExecute = ReactiveContext.CurrentExecute;
+        var currentExecute = ReactiveContext.CurrentTracker;
         if (currentExecute is null) return signal.Value;
         return currentExecute.Pull(signal);
     }
@@ -70,6 +71,8 @@ internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : IS
     public Func<T, T, bool> Comparator { get; init; } = comparator ?? Constant.EqualFn;
     public T Value { get; set; } = value;
 
+    public WeakReference<Signal>? Holder { get; set; }
+
     public T ReadSignal()
         => Common.BaseReadSignal(this);
 
@@ -81,77 +84,9 @@ internal class SignalState<T>(T value, Func<T, T, bool>? comparator = null) : IS
     }
 }
 
-// internal class ScopeNode
-// {
-//     internal readonly ScopeNode? Parent;
-//     internal readonly List<ScopeNode> Children;
-//     internal readonly List<Action> Cleanups;
-//     internal Dictionary<object, object?>? Context;
-//
-//     internal ScopeNode(ScopeNode? parent = null,
-//         List<ScopeNode>? children = null,
-//         List<Action>? cleanups = null,
-//         Dictionary<object, object?>? context = null)
-//     {
-//         Parent = parent ?? ReactiveContext.CurrentScope;
-//         Children = children ?? [];
-//         Cleanups = cleanups ?? [];
-//         Context = context;
-//
-//         Parent.Children.Add(this);
-//     }
-//
-//     internal ScopeNode(bool isRoot)
-//     {
-//         _ = isRoot;
-//         Parent = null;
-//         Children = [];
-//         Cleanups = [];
-//         Context = null;
-//     }
-//
-//     internal T RunInScope<T>(Func<T> fn)
-//         => ReactiveContext.RunInContext(fn, this, null);
-//
-//     internal void RunInScope(Action fn)
-//         => ReactiveContext.RunInContext(fn, this, null);
-//
-//     internal virtual void Dispose()
-//     {
-//         var currentComputation = ReactiveContext.CurrentExecute;
-//         ReactiveContext.CurrentExecute = null;
-//         try
-//         {
-//             DisposeChildren();
-//             if (Cleanups.Count == 0) return;
-//
-//             for (var i = Cleanups.Count - 1; i >= 0; i--) Cleanups[i]();
-//             Cleanups.Clear();
-//         }
-//         finally
-//         {
-//             ReactiveContext.CurrentExecute = currentComputation;
-//         }
-//     }
-//
-//     internal void DisposeChildren()
-//     {
-//         int i;
-//         for (i = Children.Count - 1; i >= 0; i--)
-//         {
-//             var child = Children[i];
-//             child.Dispose();
-//         }
-//
-//         Children.Clear();
-//     }
-// }
-
 internal static class ReactiveContext
 {
-    // public static ScopeNode CurrentScope = Constant.RootScopeTree; // 当前正在执行的所有者
-
-    public static ExecuteNode? CurrentExecute; // 当前计算节点
+    public static ITrack? CurrentTracker;
     // public static readonly Action BeforeTrigger = () => { };
     // public static readonly Action AfterTrigger = () => { };
 
@@ -162,8 +97,8 @@ internal static class ReactiveContext
         T result;
         using (new ScopeFrame(root))
         {
-            var currentComputation = CurrentExecute;
-            CurrentExecute = node;
+            var currentComputation = CurrentTracker;
+            CurrentTracker = node;
             try
             {
                 ExecuteNode.StartBatch();
@@ -181,7 +116,7 @@ internal static class ReactiveContext
             }
             finally
             {
-                CurrentExecute = currentComputation;
+                CurrentTracker = currentComputation;
             }
         }
 
@@ -192,8 +127,8 @@ internal static class ReactiveContext
     {
         using (new ScopeFrame(root))
         {
-            var currentComputation = CurrentExecute;
-            CurrentExecute = node;
+            var currentComputation = CurrentTracker;
+            CurrentTracker = node;
             try
             {
                 ExecuteNode.StartBatch();
@@ -210,40 +145,40 @@ internal static class ReactiveContext
             }
             finally
             {
-                CurrentExecute = currentComputation;
+                CurrentTracker = currentComputation;
             }
         }
     }
 
     internal static T Untrack<T>(Func<T> fn)
     {
-        return CurrentExecute is null
+        return CurrentTracker is null
             ? fn()
             : RunInContext(fn, NeHiveContext.CurrentScope, null);
     }
 
     internal static void Untrack(Action fn)
     {
-        if (CurrentExecute is null) fn();
+        if (CurrentTracker is null) fn();
         RunInContext(fn, NeHiveContext.CurrentScope, null);
     }
 }
 
 internal class ReactiveContextHelper : ScopeFrame
 {
-    private readonly ExecuteNode? _tempExecute;
+    private readonly ITrack? _tempTracker;
 
     public ReactiveContextHelper(Scope scope, ExecuteNode? tracker) : base(scope)
     {
-        _tempExecute = ReactiveContext.CurrentExecute;
-        ReactiveContext.CurrentExecute = tracker;
+        _tempTracker = ReactiveContext.CurrentTracker;
+        ReactiveContext.CurrentTracker = tracker;
         ExecuteNode.StartBatch();
     }
 
     public override void Dispose()
     {
         ExecuteNode.EndBatch();
-        ReactiveContext.CurrentExecute = _tempExecute;
+        ReactiveContext.CurrentTracker = _tempTracker;
         base.Dispose();
     }
 }
@@ -260,6 +195,48 @@ internal interface ITrack
     T Pull<T>(ISignalState<T> signal);
     T Track<T>(Func<T> trackFn);
     void Track(Action trackFn);
+}
+
+internal class Tracker : ITrack
+{
+    internal readonly HashSet<ISignalState> Sources = [];
+
+    public T Pull<T>(ISignalState<T> signal)
+    {
+        Sources.Add(signal);
+        return signal.Value;
+    }
+
+    public T Track<T>(Func<T> trackFn)
+    {
+        var tempTracker = ReactiveContext.CurrentTracker;
+        ReactiveContext.CurrentTracker = this;
+        T result;
+        try
+        {
+            result = trackFn();
+        }
+        finally
+        {
+            ReactiveContext.CurrentTracker = tempTracker;
+        }
+
+        return result;
+    }
+
+    public void Track(Action trackFn)
+    {
+        var tempTracker = ReactiveContext.CurrentTracker;
+        ReactiveContext.CurrentTracker = this;
+        try
+        {
+            trackFn();
+        }
+        finally
+        {
+            ReactiveContext.CurrentTracker = tempTracker;
+        }
+    }
 }
 
 internal static class ReactiveKey
@@ -282,7 +259,7 @@ internal abstract class ExecuteNode : Scope, ITrack
         long version = 0,
         bool isPure = false,
         Scope? parentScope = null
-    ): base(parentScope)
+    ) : base(parentScope)
     {
         Phase = phase;
         Sources = sources ?? [];
@@ -710,6 +687,8 @@ internal class ComputedNode<T> : ExecuteNode<T>,
     public Func<T, T, bool> Comparator { get; }
     public List<ExecuteNode> Observers { get; }
     public List<int> ObserverSlots { get; }
+
+    public WeakReference<Signal>? Holder { get; set; }
 
     protected override void UpdateValue(T value) => WriteSignal(value);
 

@@ -50,7 +50,7 @@ public class ListStore<T> : IReactiveCollection<T>
 
     private void _subscribeSignal(int index, T? initValue)
     {
-        if (ReactiveContext.CurrentExecute is null) return;
+        if (ReactiveContext.CurrentTracker is null) return;
         if (!_oldValueSignals.TryGetValue(index, out var signal))
         {
             signal = new MutSignal<T?>(initValue);

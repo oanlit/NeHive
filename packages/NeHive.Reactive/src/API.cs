@@ -111,6 +111,22 @@ public static partial class Rx
         ExecuteNode.EndBatch();
     }
 
+    public static IReadOnlyList<Signal> Track(Action fn)
+    {
+        var tracker = new Tracker();
+        tracker.Track(fn);
+        var sources = tracker.Sources;
+        var result = new List<Signal>();
+        foreach (var source in sources)
+        {
+            Signal? signal = null;
+            source.Holder?.TryGetTarget(out signal);
+            if (signal is not null) result.Add(signal);
+        }
+
+        return result;
+    }
+
     extension(Scope scope)
     {
         /// <summary>
@@ -235,6 +251,7 @@ public class Accessor<T> : ISignal<T>
         InternalSignal = null;
         RxValueGetter = () => value;
         ValueGetter = () => Rx.Untrack(RxValueGetter);
+        IsReactive = false;
     }
 
     public Accessor(Func<T> rxValueGetter)
@@ -242,7 +259,10 @@ public class Accessor<T> : ISignal<T>
         InternalSignal = null;
         RxValueGetter = rxValueGetter;
         ValueGetter = () => Rx.Untrack(RxValueGetter);
-        // TODO 设计一个可以发现 RxValue 的API
+
+        var tracker = new Tracker();
+        tracker.Track(rxValueGetter);
+        IsReactive = tracker.Sources.Count > 0;
     }
 
     public Accessor(Signal<T> signal)
@@ -290,18 +310,30 @@ public class Signal<T> : Signal, ISignal<T>
 
     internal Signal()
     {
-        InternalSignal = new SignalState<T>(default!);
+        InternalSignal = new SignalState<T>(default!)
+        {
+            Holder = new(this)
+        };
     }
 }
 
-/// <summary>
-/// Mutable reactive signal that supports read (tracked/untracked) and write operations.
-/// </summary>
-/// <typeparam name="T">Value type</typeparam>
-/// <param name="value">Initial value</param>
-public class MutSignal<T>(T value, Action<T, T, Action<T>>? onSet = null) : Signal<T>(new SignalState<T>(value)),
+public class MutSignal<T> : Signal<T>,
     ISetOnlySignal<T>
 {
+    private Func<T, T>? _onGet;
+    private Action<T, T, Action<T>>? _onSet;
+
+    public MutSignal(
+        T value,
+        Func<T, T>? onGet = null,
+        Action<T, T, Action<T>>? onSet = null
+    ) : base(new SignalState<T>(value))
+    {
+        _onGet = onGet;
+        _onSet = onSet;
+        InternalSignal.Holder = new(this);
+    }
+
     /// <summary>
     /// Gets or sets the value **with full reactivity**.
     /// Get: automatically tracks dependencies for Effects and Computed.
@@ -316,28 +348,43 @@ public class MutSignal<T>(T value, Action<T, T, Action<T>>? onSet = null) : Sign
     /// </example>
     public new T RxValue
     {
-        get => InternalSignal.ReadSignal();
+        get
+        {
+            var result = InternalSignal.ReadSignal();
+            if (_onGet is not null) result = _onGet(result);
+            return result;
+        }
         set
         {
-            if (onSet is null)
+            if (_onSet is null)
             {
                 InternalSignal.WriteSignal(value);
                 return;
             }
 
-            onSet(InternalSignal.Value, value, val => InternalSignal.WriteSignal(val));
+            _onSet(InternalSignal.Value, value, val => InternalSignal.WriteSignal(val));
+        }
+    }
+
+    public override T Value
+    {
+        get
+        {
+            var result = InternalSignal.Value;
+            if (_onGet is not null) result = _onGet(result);
+            return result;
         }
     }
 
     public void NotifySet(T value)
     {
-        if (onSet is null)
+        if (_onSet is null)
         {
             InternalSignal.WriteSignal(value);
             return;
         }
 
-        onSet(InternalSignal.Value, value, val => InternalSignal.WriteSignal(val));
+        _onSet(InternalSignal.Value, value, val => InternalSignal.WriteSignal(val));
     }
 
     /// <summary>
@@ -352,13 +399,13 @@ public class MutSignal<T>(T value, Action<T, T, Action<T>>? onSet = null) : Sign
     /// </example>
     public void NotifySet(Func<T, T> value)
     {
-        if (onSet is null)
+        if (_onSet is null)
         {
             InternalSignal.WriteSignal(value(InternalSignal.Value));
             return;
         }
 
-        onSet(InternalSignal.Value, value(InternalSignal.Value), val => InternalSignal.WriteSignal(val));
+        _onSet(InternalSignal.Value, value(InternalSignal.Value), val => InternalSignal.WriteSignal(val));
     }
 
     internal bool HasObserver => InternalSignal.Observers.Count > 0;
@@ -595,7 +642,6 @@ public class Computed<T> : Signal<T>
 
         var current = scope ?? NeHiveContext.CurrentScope;
         _scope = new Scope(current);
-        // _scope.Cleanups.Add(_afterDisposed);
         _scope.OnCleanup += _afterDisposed;
 
         using (new ReactiveContextHelper(_scope, null))
@@ -607,7 +653,8 @@ public class Computed<T> : Signal<T>
             )
             {
                 Phase = ExecutePhase.Resolved,
-                Value = value!
+                Value = value!,
+                Holder = new(this)
             };
         }
 
@@ -868,7 +915,7 @@ public class AsyncMemo<T> : Signal<T?>
 
 public class Selector<T> where T : notnull
 {
-    private readonly Dictionary<T, HashSet<ExecuteNode>> _subs;
+    private readonly Dictionary<T, HashSet<ITrack>> _subs;
     private readonly Computed<T> _computed;
     private readonly MutSignal<bool> _logicMutSignal = new(true);
 
@@ -877,7 +924,7 @@ public class Selector<T> where T : notnull
     public Selector(ISignal<T> source, Func<T, T, bool>? compareFn = null)
     {
         CompareFn = compareFn ?? Constant.EqualFn;
-        _subs = new Dictionary<T, HashSet<ExecuteNode>>();
+        _subs = new Dictionary<T, HashSet<ITrack>>();
 
         _computed = new Computed<T>(fn: ComputationFn);
         return;
@@ -885,11 +932,17 @@ public class Selector<T> where T : notnull
         T ComputationFn(T? prevValue)
         {
             var nextValue = source.RxValue;
-            foreach (var (key, observers) in _subs.AsEnumerable())
+            foreach (var (key, trackers) in _subs.AsEnumerable())
             {
                 // 异或比较
                 if (CompareFn(key, nextValue) == CompareFn(key, prevValue!)) continue;
-                ExecuteNode.NotifyObservers(observers);
+                List<ExecuteNode> obs = [];
+                foreach (var tracker in trackers)
+                {
+                    if (tracker is ExecuteNode executeNode) obs.Add(executeNode);
+                }
+
+                ExecuteNode.NotifyObservers(obs);
             }
 
             return nextValue;
@@ -901,7 +954,7 @@ public class Selector<T> where T : notnull
         _ = _logicMutSignal.RxValue; // 逻辑依赖，不会导致外部观察者误以为没有信号而失效
 
         var value = _computed.Value;
-        var currentComputation = ReactiveContext.CurrentExecute;
+        var currentComputation = ReactiveContext.CurrentTracker;
         if (currentComputation is null) return CompareFn(key, value);
 
         // 建立一个逻辑依赖
