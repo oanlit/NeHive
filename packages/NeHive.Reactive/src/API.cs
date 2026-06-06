@@ -127,6 +127,14 @@ public static partial class Rx
         return result;
     }
 
+    public static bool HasRx(Action fn)
+    {
+        var tracker = new Tracker();
+        tracker.Track(fn);
+        var sources = tracker.Sources;
+        return sources.Count > 0;
+    }
+
     extension(Scope scope)
     {
         /// <summary>
@@ -776,7 +784,6 @@ public class AsyncMemo<T> : Signal<T?>
 
         var current = scope ?? NeHiveContext.CurrentScope;
         _scope = new Scope(current);
-        // _scope.Cleanups.Add(() => _state.RxValue = AsyncMemoState.IsInvalid);
         _scope.OnCleanup += () => _state.RxValue = AsyncMemoState.IsInvalid;
         _isSimpleUse = true;
 
@@ -799,7 +806,10 @@ public class AsyncMemo<T> : Signal<T?>
 
     public AsyncMemo(Func<Scope, Func<EpochScope, Task<T>>> setupFn, Scope? scope = null)
     {
-        InternalSignal = new SignalState<T?>(default);
+        InternalSignal = new SignalState<T?>(default)
+        {
+            Holder = new(this)
+        };
 
         var current = scope ?? NeHiveContext.CurrentScope;
         _scope = new Scope(current);
