@@ -408,14 +408,14 @@ public static class StyleParser
             advanced.Transform = builder.Build();
         }
 
-        var duration = advanced.Duration;
-        if (duration is null) return;
-
-        advanced.Transition ??= new TransformOperationsTransition();
-        advanced.Transition.Duration = TimeSpan.FromMilliseconds(duration.Value);
-
-        if (advanced.Easing is null) return;
-        advanced.Transition.Easing = advanced.Easing;
+        // var duration = advanced.Duration;
+        // if (duration is null) return;
+        //
+        // advanced.Transition ??= new TransformOperationsTransition();
+        // advanced.Transition.Duration = TimeSpan.FromMilliseconds(duration.Value);
+        //
+        // if (advanced.Easing is null) return;
+        // advanced.Transition.Easing = advanced.Easing;
     }
 
     private static void ApplyMargin(string[] v, bool isNegative, StyleSet set)

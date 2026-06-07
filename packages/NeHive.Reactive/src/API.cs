@@ -126,8 +126,31 @@ public static partial class Rx
 
         return result;
     }
+    
+    public static IReadOnlyList<Signal> Track<T>(Func<T> fn)
+    {
+        var tracker = new Tracker();
+        tracker.Track(fn);
+        var sources = tracker.Sources;
+        var result = new List<Signal>();
+        foreach (var source in sources)
+        {
+            Signal? signal = null;
+            source.Holder?.TryGetTarget(out signal);
+            if (signal is not null) result.Add(signal);
+        }
+
+        return result;
+    }
 
     public static bool HasRx(Action fn)
+    {
+        var tracker = new Tracker();
+        tracker.Track(fn);
+        var sources = tracker.Sources;
+        return sources.Count > 0;
+    }
+    public static bool HasRx<T>(Func<T> fn)
     {
         var tracker = new Tracker();
         tracker.Track(fn);
@@ -267,10 +290,7 @@ public class Accessor<T> : ISignal<T>
         InternalSignal = null;
         RxValueGetter = rxValueGetter;
         ValueGetter = () => Rx.Untrack(RxValueGetter);
-
-        var tracker = new Tracker();
-        tracker.Track(rxValueGetter);
-        IsReactive = tracker.Sources.Count > 0;
+        IsReactive = Rx.HasRx(rxValueGetter);
     }
 
     public Accessor(Signal<T> signal)

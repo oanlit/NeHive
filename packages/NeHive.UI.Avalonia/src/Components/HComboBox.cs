@@ -18,6 +18,9 @@ public class HComboBoxProp<T>
     // 项模板
     public required Func<T, IElement> ItemTemplate { get; init; }
 
+    // 选中项
+    public readonly Accessor<T?>? SelectedItem;
+
     // 选中项（双向绑定）
     public readonly MutSignal<T?>? BindSelectedItem;
 
@@ -32,6 +35,7 @@ public class HComboBoxProp<T>
 
     public HComboBoxProp(
         Accessor<IReadOnlyList<T>> itemsSource,
+        Accessor<T?>? selectedItem = null,
         MutSignal<T?>? bindSelectedItem = null,
         Accessor<bool>? isEditable = null,
         Accessor<string>? placeholderText = null,
@@ -39,22 +43,18 @@ public class HComboBoxProp<T>
         Accessor<string>? strStyle = null
     )
     {
-        // 数据源
         ItemsSource = itemsSource;
 
-        // 选中项（双向绑定）
         BindSelectedItem = bindSelectedItem;
+        SelectedItem = bindSelectedItem ?? selectedItem;
 
-        // 是否可编辑
         IsEditable = isEditable;
 
-        // 占位文本（当没有选中时显示）
         PlaceholderText = placeholderText;
 
-        // 最大下拉高度
         MaxDropDownHeight = maxDropDownHeight;
-        
-        if (strStyle != null)
+
+        if (strStyle is not null)
         {
             Style = StyleParser.ParseFull(strStyle);
         }
@@ -67,22 +67,29 @@ public static partial class BaseComponent
     {
         var uiScope = new UiScope();
         var comboBox = new ComboBox();
-        var border =  new Border
+        var border = new Border
         {
             Child = comboBox
         };
 
-        if (prop.Style != null)
+        if (prop.Style is not null)
         {
-            uiScope.CreateEffect(scope =>
+            var style = prop.Style.Value;
+            StyleUtil.ApplyStyle(style.Normal, comboBox, border);
+            if (prop.Style.IsReactive)
             {
-                var style = scope.Track(prop.Style);
-                StyleUtil.ApplyStyle(style.Normal, comboBox,border);
-            });
+                uiScope.CreateEffect(scope =>
+                {
+                    var style2 = scope.Track(prop.Style);
+                    StyleUtil.ApplyStyle(style2.Normal, comboBox, border);
+                });
+            }
         }
 
         // 绑定数据源
-        uiScope.CreateEffect(() => comboBox.ItemsSource = prop.ItemsSource.RxValue);
+        comboBox.ItemsSource = prop.ItemsSource.Value;
+        if (prop.ItemsSource.IsReactive)
+            uiScope.CreateEffect(() => comboBox.ItemsSource = prop.ItemsSource.RxValue);
 
         // 绑定项模板
         comboBox.ItemTemplate = new FuncDataTemplate<T>((item, _) =>
@@ -93,19 +100,31 @@ public static partial class BaseComponent
         }, supportsRecycling: true);
 
         // 绑定是否可编辑
-        if (prop.IsEditable != null)
-            uiScope.CreateEffect(() => comboBox.IsEditable = prop.IsEditable.RxValue);
+        if (prop.IsEditable is not null)
+        {
+            comboBox.IsEditable = prop.IsEditable.Value;
+            if (prop.IsEditable.IsReactive)
+                uiScope.CreateEffect(() => comboBox.IsEditable = prop.IsEditable.RxValue);
+        }
 
         // 绑定占位文本
-        if (prop.PlaceholderText != null)
-            uiScope.CreateEffect(() => comboBox.PlaceholderText = prop.PlaceholderText.RxValue);
+        if (prop.PlaceholderText is not null)
+        {
+            comboBox.PlaceholderText = prop.PlaceholderText.Value;
+            if (prop.PlaceholderText.IsReactive)
+                uiScope.CreateEffect(() => comboBox.PlaceholderText = prop.PlaceholderText.RxValue);
+        }
 
         // 绑定最大下拉高度
-        if (prop.MaxDropDownHeight != null)
-            uiScope.CreateEffect(() => comboBox.MaxDropDownHeight = prop.MaxDropDownHeight.RxValue);
+        if (prop.MaxDropDownHeight is not null)
+        {
+            comboBox.MaxDropDownHeight = prop.MaxDropDownHeight.Value;
+            if (prop.MaxDropDownHeight.IsReactive)
+                uiScope.CreateEffect(() => comboBox.MaxDropDownHeight = prop.MaxDropDownHeight.RxValue);
+        }
 
         // 双向绑定 BindSelectedItem
-        if (prop.BindSelectedItem != null)
+        if (prop.BindSelectedItem is not null)
         {
             // 信号 -> 控件
             uiScope.CreateEffect(() =>
@@ -120,6 +139,18 @@ public static partial class BaseComponent
                 var newSelected = comboBox.SelectedItem is T val ? val : default;
                 prop.BindSelectedItem.RxValue = newSelected;
             };
+        }
+        else if (prop.SelectedItem is not null)
+        {
+            comboBox.SelectedItem = prop.SelectedItem.Value;
+            if (prop.SelectedItem.IsReactive)
+            {
+                uiScope.CreateEffect(() =>
+                {
+                    var selected = prop.SelectedItem.RxValue;
+                    comboBox.SelectedItem = selected;
+                });
+            }
         }
 
         return new Element<ComboBox>(uiScope, border, comboBox);

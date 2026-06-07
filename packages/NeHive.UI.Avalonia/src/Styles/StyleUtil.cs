@@ -123,36 +123,38 @@ public static class StyleUtil
         if (style.Advanced is null) return;
         var advanced = style.Advanced;
 
-        if (advanced.Effect is not null) layout.Effect = advanced.Effect;
+        if (advanced.Effect is not null) border.Effect = advanced.Effect;
         if (advanced.Cursor is not null) border.Cursor = advanced.Cursor;
-        if (advanced.FlowDirection is not null) layout.FlowDirection = advanced.FlowDirection.Value;
+        if (advanced.FlowDirection is not null) border.FlowDirection = advanced.FlowDirection.Value;
 
-        layout.RenderTransformOrigin = advanced.RelativePoint ?? RelativePoint.Center;
+        border.RenderTransformOrigin = advanced.RelativePoint ?? RelativePoint.Center;
 
-        if (advanced.Transform is not null) layout.RenderTransform = advanced.Transform;
+        if (advanced.Transform is not null) border.RenderTransform = advanced.Transform;
 
         var scope = advanced.TransitionScope;
         if (scope is not null)
         {
-            advanced.Transition ??= new TransformOperationsTransition();
-            AvaloniaProperty? prop = scope switch
+            advanced.Transition = scope switch
             {
-                TransitionScope.Transform => Visual.RenderTransformProperty,
-                TransitionScope.Opacity => Visual.OpacityProperty,
-                TransitionScope.Colors => Border.BackgroundProperty,
+                TransitionScope.Transform => new TransformOperationsTransition
+                    { Property = Visual.RenderTransformProperty },
+                TransitionScope.Opacity => new DoubleTransition { Property = Visual.OpacityProperty },
+                TransitionScope.Colors => new BrushTransition { Property = Border.BackgroundProperty },
                 _ => null
             };
-            if (prop is not null)
-                advanced.Transition.Property = prop;
         }
 
-        if (advanced.Transition is not null)
-        {
-            layout.Transitions =
-            [
-                advanced.Transition
-            ];
-        }
+        if (advanced.Transition is null) return;
+        var duration = advanced.Duration;
+        advanced.Transition.Duration = TimeSpan.FromMilliseconds(duration ?? 300);
+
+        Console.WriteLine($"advanced.Easing:{(advanced.Easing is null ? "null" : advanced.Easing)}");
+        if (advanced.Easing is not null) advanced.Transition.Easing = advanced.Easing;
+
+        border.Transitions ??=
+        [
+            advanced.Transition
+        ];
     }
 
     extension(StyleSet style)
@@ -210,15 +212,19 @@ public static class StyleUtil
 
             if (otherAdvanced.RelativePoint is not null) style.Advanced.RelativePoint = otherAdvanced.RelativePoint;
 
+            if (otherAdvanced.TransitionScope is not null)
+                style.Advanced.TransitionScope = otherAdvanced.TransitionScope;
+            if (otherAdvanced.Duration is not null) style.Advanced.Duration = otherAdvanced.Duration;
+            if (otherAdvanced.Easing is not null) style.Advanced.Easing = otherAdvanced.Easing;
+            // if (otherAdvanced.Transition is not null) style.Advanced.Transition = otherAdvanced.Transition;
+
             if (otherAdvanced.ScaleTransform is not null) style.Advanced.ScaleTransform = otherAdvanced.ScaleTransform;
             if (otherAdvanced.RotateTransform is not null)
                 style.Advanced.RotateTransform = otherAdvanced.RotateTransform;
             if (otherAdvanced.SkewTransform is not null) style.Advanced.SkewTransform = otherAdvanced.SkewTransform;
             if (otherAdvanced.MatrixTransform is not null)
                 style.Advanced.MatrixTransform = otherAdvanced.MatrixTransform;
-
             if (otherAdvanced.Transform is not null) style.Advanced.Transform = otherAdvanced.Transform;
-            if (otherAdvanced.Transition is not null) style.Advanced.Transition = otherAdvanced.Transition;
         }
 
         public void MergeMany(params StyleSet[] styles)

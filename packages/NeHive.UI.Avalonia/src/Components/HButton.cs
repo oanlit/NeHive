@@ -35,6 +35,7 @@ public static partial class BaseComponent
     {
         public StyleSet BaseStyle = baseStyle;
         public StyleSet CurrentStyle = StyleUtil.Copy(baseStyle);
+        public bool CurrentIsBase { get; private set; } = true;
         public Dictionary<string, List<string>>? Variants;
 
         // 鼠标交互状态（悬停、按下等）
@@ -43,7 +44,9 @@ public static partial class BaseComponent
 
         public void ResetSetStyle()
         {
+            if(CurrentIsBase) return;
             CurrentStyle.Merge(BaseStyle);
+            CurrentIsBase = true;
         }
 
         public void SetCurrentStyle()
@@ -52,11 +55,13 @@ public static partial class BaseComponent
             if (IsHover && Variants.TryGetValue("hover", out var strs))
             {
                 StyleParser.Parse(strs, ref CurrentStyle);
+                CurrentIsBase = false;
             }
 
             if (IsClicked && Variants.TryGetValue("click", out strs))
             {
                 StyleParser.Parse(strs, ref CurrentStyle);
+                CurrentIsBase = false;
             }
         }
 
@@ -66,6 +71,7 @@ public static partial class BaseComponent
             if (IsHover && Variants.TryGetValue("hover", out var strs))
             {
                 StyleParser.Parse(strs, ref CurrentStyle);
+                CurrentIsBase = false;
             }
         }
 
@@ -75,6 +81,7 @@ public static partial class BaseComponent
             if (IsClicked && Variants.TryGetValue("click", out var strs))
             {
                 StyleParser.Parse(strs, ref CurrentStyle);
+                CurrentIsBase = false;
             }
         }
     }
@@ -102,7 +109,9 @@ public static partial class BaseComponent
             Child = textBlock
         };
 
-        uiScope.CreateEffect(() => textBlock.Text = text.RxValue);
+        textBlock.Text = text.Value;
+        if (text.IsReactive)
+            uiScope.CreateEffect(() => textBlock.Text = text.RxValue);
 
         HButtonState state;
 
@@ -115,14 +124,18 @@ public static partial class BaseComponent
         {
             state = new HButtonState(style.Value.Normal);
             ApplyStyle(state.CurrentStyle);
-            uiScope.CreateEffect(epochScope =>
+
+            if (style.IsReactive)
             {
-                var styleValue = epochScope.Track(style);
-                state.BaseStyle = styleValue.Normal;
-                state.Variants = styleValue.Variants;
-                state.CurrentStyle = StyleUtil.Copy(state.BaseStyle);
-                ApplyStyle(state.CurrentStyle);
-            });
+                uiScope.CreateEffect(epochScope =>
+                {
+                    var styleValue = epochScope.Track(style);
+                    state.BaseStyle = styleValue.Normal;
+                    state.Variants = styleValue.Variants;
+                    state.CurrentStyle = StyleUtil.Copy(state.BaseStyle);
+                    ApplyStyle(state.CurrentStyle);
+                });
+            }
         }
 
         var expose = new HButtonExpose();

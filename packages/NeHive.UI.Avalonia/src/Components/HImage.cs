@@ -177,6 +177,7 @@ public static partial class BaseComponent
         public void ResetSetStyle()
         {
             CurrentStyle.Merge(BaseStyle);
+            // CurrentStyle = StyleUtil.Copy(BaseStyle);
         }
 
         // public void SetCurrentStyle()

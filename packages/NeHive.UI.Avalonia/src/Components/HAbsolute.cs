@@ -51,7 +51,7 @@ public static partial class BaseComponent
     private static readonly Component<HAbsoluteProp> CompAbsolute = new((prop, uiScope) =>
     {
         var canvas = new Canvas();
-        
+
         var border = new Border
         {
             Child = canvas
@@ -59,28 +59,50 @@ public static partial class BaseComponent
 
         if (prop.Style is not null)
         {
-            uiScope.CreateEffect(epochScope =>
+            var style = prop.Style.Value;
+            StyleUtil.ApplyStyle(style.Normal, canvas, border);
+
+            if (prop.Style.IsReactive)
             {
-                var style = epochScope.Track(prop.Style);
-                StyleUtil.ApplyStyle(style.Normal,canvas, border);
-            });
+                uiScope.CreateEffect(epochScope =>
+                {
+                    var style2 = epochScope.Track(prop.Style);
+                    StyleUtil.ApplyStyle(style2.Normal, canvas, border);
+                });
+            }
+        }
+        else
+        {
+            StyleUtil.ApplyStyle(StyleUtil.FromDefault(), canvas, border);
         }
 
         foreach (var (pos, element) in prop)
         {
             var control = element.Content;
-            uiScope.CreateEffect(() =>
-            {
-                if (pos.Left is not null) Canvas.SetLeft(control, pos.Left.RxValue);
-                if (pos.Top is not null) Canvas.SetTop(control, pos.Top.RxValue);
-                if (pos.Right is not null) Canvas.SetRight(control, pos.Right.RxValue);
-                if (pos.Bottom is not null) Canvas.SetBottom(control, pos.Bottom.RxValue);
-            });
+            SetPos(control, pos.Left?.Value, pos.Top?.Value, pos.Right?.Value, pos.Bottom?.Value);
+
+            if (pos.Left?.IsReactive is true ||
+                pos.Top?.IsReactive is true ||
+                pos.Right?.IsReactive is true ||
+                pos.Bottom?.IsReactive is true
+               )
+                uiScope.CreateEffect(() =>
+                {
+                    SetPos(control, pos.Left?.RxValue, pos.Top?.RxValue, pos.Right?.RxValue, pos.Bottom?.RxValue);
+                });
 
             canvas.Children.Add(control);
         }
 
         return new Element(uiScope, border);
+
+        void SetPos(Control control, double? left, double? top, double? right, double? bottom)
+        {
+            if (left is not null) Canvas.SetLeft(control, left.Value);
+            if (top is not null) Canvas.SetTop(control, top.Value);
+            if (right is not null) Canvas.SetRight(control, right.Value);
+            if (bottom is not null) Canvas.SetBottom(control, bottom.Value);
+        }
     });
 
     public static IElement HAbsolute(HAbsoluteProp prop) => CompAbsolute.Create(prop);

@@ -18,7 +18,7 @@ public class HContentButtonProp : ISingleChildrenProp
         Action<RoutedEventArgs>? onClick = null)
     {
         OnClick = onClick;
-        if (strStyle != null)
+        if (strStyle is not null)
         {
             Style = StyleParser.ParseFull(strStyle);
         }

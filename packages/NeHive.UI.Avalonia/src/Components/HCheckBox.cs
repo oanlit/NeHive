@@ -68,22 +68,35 @@ public static partial class BaseComponent
         };
 
         // 应用样式
-        if (prop.Style != null)
+        if (prop.Style is not null)
         {
-            uiScope.CreateEffect(scope =>
+            var style = prop.Style.Value;
+            StyleUtil.ApplyStyle(style.Normal, checkBox, border);
+            if (prop.Style.IsReactive)
             {
-                var style = scope.Track(prop.Style);
-                StyleUtil.ApplyStyle(style.Normal, checkBox, border);
-            });
+                uiScope.CreateEffect(scope =>
+                {
+                    var style2 = scope.Track(prop.Style);
+                    StyleUtil.ApplyStyle(style2.Normal, checkBox, border);
+                });
+            }
         }
 
         // 绑定启用状态
         if (prop.IsEnabled != null)
-            uiScope.CreateEffect(() => checkBox.IsEnabled = prop.IsEnabled.RxValue);
+        {
+            checkBox.IsEnabled = prop.IsEnabled.Value;
+            if (prop.IsEnabled.IsReactive)
+                uiScope.CreateEffect(() => checkBox.IsEnabled = prop.IsEnabled.RxValue);
+        }
 
         // 绑定三态支持
         if (prop.IsThreeState != null)
-            uiScope.CreateEffect(() => checkBox.IsThreeState = prop.IsThreeState.RxValue);
+        {
+            checkBox.IsThreeState = prop.IsThreeState.Value;
+            if (prop.IsThreeState.IsReactive)
+                uiScope.CreateEffect(() => checkBox.IsThreeState = prop.IsThreeState.RxValue);
+        }
 
         // 双向绑定 BindIsChecked + 点击回调
         // 信号 -> 控件
@@ -102,8 +115,10 @@ public static partial class BaseComponent
         }
         else if (prop.IsChecked is not null)
         {
-            uiScope.CreateEffect(() => checkBox.IsChecked = prop.IsChecked.RxValue);
-            checkBox.Click += (_, _) => { prop.Click?.Invoke(prop.IsChecked.Value); };
+            checkBox.IsChecked = prop.IsChecked.Value;
+            checkBox.Click += (_, _) => prop.Click?.Invoke(prop.IsChecked.Value);
+            if (prop.IsChecked.IsReactive)
+                uiScope.CreateEffect(() => checkBox.IsChecked = prop.IsChecked.RxValue);
         }
         else if (prop.Click is not null)
         {

@@ -60,7 +60,7 @@ public sealed class AdvancedStyle
     public TransitionScope? TransitionScope;
     public double? Duration;
     public Easing? Easing;
-    public TransformOperationsTransition? Transition;
+    public TransitionBase? Transition;
 
     public RelativePoint? RelativePoint;
 
@@ -95,6 +95,7 @@ public sealed class AdvancedStyle
             Duration = style.Duration,
             RelativePoint = style.RelativePoint,
             Transform = style.Transform,
+
             TranslateTransform = style.TranslateTransform,
             ScaleTransform = style.ScaleTransform,
             RotateTransform = style.RotateTransform,

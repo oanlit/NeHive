@@ -853,7 +853,7 @@ public static class DemoComponent
                         $"""
                          px-4 py-2 horizontal 
                          {(theme.RxValue is "dark" ? "fg-gray-200 bg-gray-700" : "fg-gray-800 bg-gray-200")} 
-                         rounded-lg
+                         transition-colors rounded-lg
                          """),
                     onClick: _ => toggleTheme())
                 {
@@ -861,9 +861,9 @@ public static class DemoComponent
                     {
                         Cases = new()
                         {
-                            ["dark"] = () => HSvgImage("~/Assets/sun.svg", strStyle: "w-4 h-4")
+                            ["dark"] = () => HSvgImage("~/Assets/sun.svg", strStyle: "w-4 h-4 font-extralight")
                         },
-                        Default = () => HSvgImage("~/Assets/moon.svg", strStyle: "w-4 h-4")
+                        Default = () => HSvgImage("~/Assets/moon.svg", strStyle: "w-4 h-4 font-extralight")
                     }), // Switch
                     HTextBlock(new(() => $"Switch to {(theme.RxValue is "dark" ? "light" : "dark")} mode"),
                         strStyle:"ml-1")
@@ -885,7 +885,7 @@ public static class DemoComponent
                 $"""
                  mt-6 mx-auto max-w-md overflow-hidden 
                  {(theme.RxValue is "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")} 
-                 border rounded-xl shadow-md
+                 border rounded-xl shadow-md transition-colors
                  """))
             {
                 HStackPanel(new(strStyle: "p-6")
