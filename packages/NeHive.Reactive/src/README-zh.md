@@ -1,7 +1,7 @@
 [![Language](https://img.shields.io/badge/README-English-green.svg)](README.md)
 [![Language](https://img.shields.io/badge/README-中文-green.svg)](README-zh.md)
 
-# NeHive.Core
+# NeHive.Reactive
 轻量高性能的 .NET 响应式库，采用单线程依赖图模型，以信号驱动细粒度状态更新。
 
 该项目处于早期开发阶段（0.1.x 系列）。其 API 可能会有所变动。
@@ -238,6 +238,24 @@ list.Reverse();
 3. 表单输入防抖、搜索联想、高频交互节流优化
 4. 业务流程状态联动、多数据依赖自动联动更新
 5. 替代传统 MVVM 繁杂绑定，简化状态流转
+
+## 互操作性
+
+### SignalObservable<T>
+将 MutSignal<T> 转换为标准 IObservable<T> 序列。
+
+### Rx.From(IObservable<T>, T)
+将外部 IObservable<T> 转换为响应式 ISignal<T>。
+
+### 数组 Diff 工具
+
+| API                    | 描述                                         |
+| ---------------------- | -------------------------------------------- |
+| ArrayDiffUtil        | 计算两个列表之间的最小差异                    |
+| ArrayMapResult       | 增量数组映射（保持已移动项引用）              |
+| ArrayMapMemo         | 响应式增量数组映射信号                       |
+
+---
 
 ## 灵感来源
 NeHive.Reactive 深受以下项目背后的思想和研究的启发：

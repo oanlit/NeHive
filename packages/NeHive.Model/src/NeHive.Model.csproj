@@ -9,10 +9,13 @@
 
         <PackageId>NeHive.Model</PackageId>
         <Version>0.1.0</Version>
-        <Authors>NeHive</Authors>
-        <Description>A single-threaded reactive runtime based on scoped graphs and signal propagation.</Description>
+        <Authors>oanlit</Authors>
+        <PackageIcon>logo.png</PackageIcon>
+        <Description>A general-purpose runtime semantic model layer</Description>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>runtime;model;scope;context;dsl;reactive;architecture</PackageTags>
 
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -27,6 +30,12 @@
         <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-    </ItemGroup>
 
+        <None Include="assets\logo.png"
+              Pack="true"
+              PackagePath="\"/>
+
+        <None Include="README.md" Pack="true" PackagePath="README.md"/>
+        <None Include="README-zh.md" Pack="true" PackagePath="README-zh.md"/>
+    </ItemGroup>
 </Project>

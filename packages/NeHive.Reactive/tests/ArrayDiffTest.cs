@@ -352,7 +352,7 @@ public class ArrayDiffTest
             signal,
             x =>
             {
-                Rx.OnDispose(() => disposed++);
+                Rx.OnCleanup(() => disposed++);
                 return x;
             }
         );
@@ -379,7 +379,7 @@ public class ArrayDiffTest
             signal,
             x =>
             {
-                Rx.OnDispose(() => disposed++);
+                Rx.OnCleanup(() => disposed++);
                 return x;
             }
         );

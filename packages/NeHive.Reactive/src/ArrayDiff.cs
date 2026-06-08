@@ -17,19 +17,46 @@
 
 using System.Collections;
 using NeHive.Model;
+
 namespace NeHive.Reactive;
 
-
-
+/// <summary>
+/// Represents the difference between two arrays,
+/// including removed items, moved items,
+/// and newly added items.
+/// </summary>
 public struct ArrayDiffResult
 {
+    /// <summary>
+    /// Indices removed from the old array.
+    /// </summary>
     public List<int> RemoveItemsIndex;
+
+    /// <summary>
+    /// Mapping from old indices to new indices
+    /// for preserved items.
+    /// </summary>
     public List<(int OldIndex, int NewIndex)> OldIndex2News;
+
+    /// <summary>
+    /// Indices that correspond to newly added items.
+    /// </summary>
     public List<int> NewItemsIndex;
 }
 
+/// <summary>
+/// Provides array diffing algorithms used by
+/// incremental collection reconciliation.
+/// </summary>
 public static class ArrayDiffUtil
 {
+    /// <summary>
+    /// Computes the diff between two lists using default equality comparison.
+    /// </summary>
+    /// <typeparam name="T">The element type (must be notnull for dictionary-based diffing)</typeparam>
+    /// <param name="newList">The new/replacement list</param>
+    /// <param name="oldList">The current/previous list</param>
+    /// <returns>An ArrayDiffResult describing all changes</returns>
     public static ArrayDiffResult ArrayDiff<T>(
         IReadOnlyList<T> newList,
         IReadOnlyList<T> oldList) where T : notnull
@@ -40,6 +67,16 @@ public static class ArrayDiffUtil
             item => item);
     }
 
+    /// <summary>
+    /// Computes the diff between two lists using a custom key selector.
+    /// Items are identified by their key, not by index or reference equality.
+    /// </summary>
+    /// <typeparam name="T">The element type</typeparam>
+    /// <typeparam name="TKey">The key type</typeparam>
+    /// <param name="newList">The new/replacement list</param>
+    /// <param name="oldList">The current/previous list</param>
+    /// <param name="keyFn">A function extracting a stable key from each element</param>
+    /// <returns>An ArrayDiffResult describing all changes</returns>
     public static ArrayDiffResult ArrayDiff<T, TKey>(
         IReadOnlyList<T> newList,
         IReadOnlyList<T> oldList,
@@ -103,7 +140,7 @@ public static class ArrayDiffUtil
         {
             var key = keyFn(newList[newIndex]);
             var lastRepeatIndex = newIndices.GetValueOrDefault(key, noIndex);
-            
+
             newIndicesNext[newIndex] = lastRepeatIndex;
             newIndices[key] = newIndex;
         }
@@ -160,33 +197,64 @@ public static class ArrayDiffUtil
     }
 }
 
-public class ArrayMapResult<T, TU> where T : notnull
+/// <summary>
+/// Maintains a mapped cache of a source list
+/// and updates it incrementally using array diffing.
+///
+/// Existing mapped values are reused whenever
+/// possible to avoid unnecessary allocations.
+/// </summary>
+public class ArrayMapResult<T, Tu> where T : notnull
 {
+    private IReadOnlyList<T> _sourceList;
+    private readonly List<Tu> _mapCache;
+    private readonly Func<T, Tu> _mapFn;
+    private readonly Action<Tu>? _removeFn;
+    private readonly Func<T, object>? _keyFn;
+
+    /// <summary>
+    /// Updates the source list and applies
+    /// incremental reconciliation.
+    /// </summary>
     public IReadOnlyList<T> SourceList
     {
         get => _sourceList;
         set => SetSourceList(value);
     }
 
-    public IReadOnlyList<TU> MapList => _mapCache;
-    private IReadOnlyList<T> _sourceList;
-    private readonly List<TU> _mapCache;
-    private readonly Func<T, TU> _mapFn;
-    private readonly Action<TU>? _removeFn;
-    private readonly Func<T, object>? _keyFn;
+    /// <summary>
+    /// The current mapped list.
+    /// </summary>
+    public IReadOnlyList<Tu> MapList => _mapCache;
 
+    
+    /// <summary>
+    /// Creates an incrementally maintained mapped list.
+    /// </summary>
+    /// <param name="initSourceList">
+    /// Initial source items.
+    /// </param>
+    /// <param name="mapFn">
+    /// Maps source items to result items.
+    /// </param>
+    /// <param name="keyFn">
+    /// Optional key selector used for identity tracking.
+    /// </param>
+    /// <param name="removeFn">
+    /// Invoked when a mapped item is removed.
+    /// </param>
     public ArrayMapResult(
         T[] initSourceList,
-        Func<T, TU> mapFn,
+        Func<T, Tu> mapFn,
         Func<T, object>? keyFn = null,
-        Action<TU>? removeFn = null)
+        Action<Tu>? removeFn = null)
     {
         _sourceList = initSourceList;
         _mapFn = mapFn;
         _removeFn = removeFn;
         _keyFn = keyFn;
 
-        _mapCache = new List<TU>(initSourceList.Length);
+        _mapCache = new List<Tu>(initSourceList.Length);
 
         for (var i = 0; i < initSourceList.Length; i++)
         {
@@ -194,6 +262,12 @@ public class ArrayMapResult<T, TU> where T : notnull
         }
     }
 
+    /// <summary>
+    /// Maintains a mapped derived list that is incrementally updated when the source list changes.
+    /// Uses array diffing to minimize re-mapping: moved items preserve their mapped value.
+    /// </summary>
+    /// <typeparam name="T">The source element type</typeparam>
+    /// <typeparam name="Tu">The mapped result type</typeparam>
     private void SetSourceList(IReadOnlyList<T> newList)
     {
         var diff = _keyFn is null
@@ -219,7 +293,7 @@ public class ArrayMapResult<T, TU> where T : notnull
         while (_mapCache.Count < maxLen)
             _mapCache.Add(default!);
 
-        var tempMap = new TU[maxLen];
+        var tempMap = new Tu[maxLen];
         Span<bool> definedTempMap = stackalloc bool[maxLen];
 
         foreach (var (oldIndex, newIndex) in diff.OldIndex2News)
@@ -242,6 +316,13 @@ public class ArrayMapResult<T, TU> where T : notnull
     }
 }
 
+/// <summary>
+/// A resizable contiguous buffer with
+/// separately managed logical length.
+///
+/// Similar to List&lt;T&gt; but exposes direct
+/// control over Length and Capacity.
+/// </summary>
 internal class DenseBuffer<T> : IReadOnlyList<T>
 {
     private T[] _items;
@@ -301,7 +382,6 @@ internal class DenseBuffer<T> : IReadOnlyList<T>
     public void EnsureCapacity(int capacity)
     {
         if (capacity <= _items.Length) return;
-
         var newCap = Math.Max(capacity, _items.Length * 2);
         Array.Resize(ref _items, newCap);
     }
@@ -325,15 +405,26 @@ internal class DenseBuffer<T> : IReadOnlyList<T>
     }
 }
 
+/// <summary>
+/// A reactive signal that maintains a mapped array derived from a source signal.
+/// Uses incremental array diffing to minimize re-creation of mapped items.
+/// Supports key-based identity tracking and per-item disposal.
+/// </summary>
+/// <typeparam name="TItem">The source element type</typeparam>
+/// <typeparam name="TMap">The mapped result type</typeparam>
+/// <typeparam name="TKey">The key type used for identity tracking</typeparam>
 public class ArrayMapMemo<TItem, TMap, TKey> :
     Signal<IReadOnlyList<TMap>>
     where TItem : notnull where TKey : notnull
 {
+    /// <summary>
+    /// Indicates whether this memo
+    /// has been disposed.
+    /// </summary>
     public bool IsInvalid { get; private set; }
 
     private readonly Scope _scope;
 
-    // private readonly ComputedNode<DenseBuffer<TMap>> _mapCache;
     private readonly Accessor<IReadOnlyList<TItem>> _sourceListSignal;
     private IReadOnlyList<TItem> _oldList = [];
     private readonly DenseBuffer<Action> _disposers = []; // _oldList的平行数组
@@ -343,6 +434,51 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
     private readonly Func<TItem, ISignal<int>, TMap>? _mapFnWithIndex;
     private readonly Func<TItem, TKey>? _keyFn;
 
+    /// <summary>
+    /// Creates a reactive mapped array that incrementally
+    /// reconciles items when the source list changes.
+    ///
+    /// Existing mapped items are preserved whenever possible,
+    /// allowing per-item state and scopes to survive reordering.
+    /// </summary>
+    /// <param name="sourceListSignal">
+    /// The source list accessor.
+    /// Changes to this list trigger incremental reconciliation.
+    /// </param>
+    /// <param name="mapFn">
+    /// Maps a source item to a result item.
+    /// Each mapped item is created inside its own scope.
+    /// </param>
+    /// <param name="keyFn">
+    /// Optional key selector used to preserve item identity
+    /// across insertions, removals, and reordering.
+    /// If omitted, items are matched using default equality.
+    /// </param>
+    /// <example>
+    /// <code>
+    /// var users = new MutSignal&lt;IReadOnlyList&lt;User&gt;&gt;(
+    /// [
+    ///     new User(1, "Alice"),
+    ///     new User(2, "Bob")
+    /// ]);
+    ///
+    /// var rows = new ArrayMapMemo&lt;User, UserRow, int&gt;(
+    ///     users,
+    ///     user => new UserRow(user),
+    ///     user => user.Id
+    /// );
+    ///
+    /// // Reorder items
+    /// users.RxValue =
+    /// [
+    ///     new User(2, "Bob"),
+    ///     new User(1, "Alice")
+    /// ];
+    ///
+    /// // Existing UserRow instances are preserved.
+    /// // Only their positions are updated.
+    /// </code>
+    /// </example>
     public ArrayMapMemo(Accessor<IReadOnlyList<TItem>> sourceListSignal, Func<TItem, TMap>? mapFn,
         Func<TItem, TKey>? keyFn = null)
     {
@@ -353,6 +489,47 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         InternalSignal = _createMapCache();
     }
 
+    /// <summary>
+    /// Creates a reactive mapped array that incrementally
+    /// reconciles items when the source list changes and
+    /// exposes a reactive index signal for each item.
+    ///
+    /// The index signal automatically updates when items
+    /// are inserted, removed, or moved within the list.
+    /// </summary>
+    /// <param name="sourceListSignal">
+    /// The source list accessor.
+    /// Changes to this list trigger incremental reconciliation.
+    /// </param>
+    /// <param name="mapFnWithIndex">
+    /// Maps a source item to a result item and provides
+    /// a reactive signal representing the item's current index.
+    /// </param>
+    /// <param name="keyFn">
+    /// Optional key selector used to preserve item identity
+    /// across insertions, removals, and reordering.
+    /// If omitted, items are matched using default equality.
+    /// </param>
+    /// <example>
+    /// <code>
+    /// var rows = new ArrayMapMemo&lt;User, UserRow, int&gt;(
+    ///     users,
+    ///     (user, index) =>
+    ///         new UserRow(user, index),
+    ///     user => user.Id
+    /// );
+    ///
+    /// // Inside UserRow:
+    /// new Effect(() =>
+    /// {
+    ///     Console.WriteLine(
+    ///         $"{user.Name}: {index.RxValue}");
+    /// });
+    ///
+    /// // When the list is reordered,
+    /// // the index signal updates automatically.
+    /// </code>
+    /// </example>
     public ArrayMapMemo(Accessor<IReadOnlyList<TItem>> sourceListSignal,
         Func<TItem, ISignal<int>, TMap>? mapFnWithIndex,
         Func<TItem, TKey>? keyFn = null)
@@ -362,7 +539,6 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         _keyFn = keyFn;
         _indexSignals = [];
         _scope = _createSelfScope();
-        // _mapCache = _createMapCache();
         InternalSignal = _createMapCache();
     }
 
@@ -371,11 +547,6 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         var current = NeHiveContext.CurrentScope;
 
         var scope = new Scope(current);
-        // scope.Cleanups.Add(() =>
-        // {
-        //     IsInvalid = true;
-        //     _disposeAll();
-        // });
         scope.OnCleanup += () =>
         {
             IsInvalid = true;
@@ -515,6 +686,9 @@ public class ArrayMapMemo<TItem, TMap, TKey> :
         return newMap;
     }
 
+    /// <summary>
+    /// Disposes the memo and all mapped item scopes.
+    /// </summary>
     public void Dispose()
     {
         if (IsInvalid) return;

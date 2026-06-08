@@ -7,9 +7,9 @@ public class AccessorTest
     {
         Accessor<int> acc = 10;
 
-        var rx = Rx.Track(() => { _ = acc.RxValue; });
+        var rx = Rx.Track(() => acc.RxValue);
 
-        var value = Rx.Track(() => { _ = acc.Value; });
+        var value = Rx.Track(() => acc.Value);
 
         Assert.Empty(rx);
         Assert.Empty(value);
@@ -43,7 +43,7 @@ public class AccessorTest
 
         Assert.Empty(deps);
     }
-    
+
     [Fact]
     public void Accessor_FromSignal_Should_Be_Reactive()
     {
@@ -53,15 +53,12 @@ public class AccessorTest
 
         Assert.True(acc.IsReactive);
 
-        var deps = Rx.Track(() =>
-        {
-            _ = acc.RxValue;
-        });
+        var deps = Rx.Track(() => { _ = acc.RxValue; });
 
         Assert.Single(deps);
         Assert.Same(signal, deps[0]);
     }
-    
+
     [Fact]
     public void Accessor_Value_Should_Not_Track()
     {
@@ -69,14 +66,11 @@ public class AccessorTest
 
         Accessor<int> acc = signal;
 
-        var deps = Rx.Track(() =>
-        {
-            _ = acc.Value;
-        });
+        var deps = Rx.Track(() => acc.Value);
 
         Assert.Empty(deps);
     }
-    
+
     [Fact]
     public void Accessor_RxValue_And_Value_Should_Be_Separated()
     {
@@ -84,15 +78,9 @@ public class AccessorTest
 
         Accessor<int> acc = signal;
 
-        var rxDeps = Rx.Track(() =>
-        {
-            _ = acc.RxValue;
-        });
+        var rxDeps = Rx.Track(() => { _ = acc.RxValue; });
 
-        var valueDeps = Rx.Track(() =>
-        {
-            _ = acc.Value;
-        });
+        var valueDeps = Rx.Track(() => { _ = acc.Value; });
 
         Assert.Single(rxDeps);
         Assert.Empty(valueDeps);

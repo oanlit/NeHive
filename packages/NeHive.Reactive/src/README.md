@@ -252,7 +252,7 @@ list.Reverse();
 Enhanced reactive list container.
 
 Features:
-- Fine-grained index tracking
+- Fine-grained index tracking (each index is an independent signal)
 - `BatchModify` merged updates
 - Native `Add` / `RemoveAt` / `Sort` / `Reverse` / `Clear`
 - Built-in reactive LINQ-style queries
@@ -271,6 +271,54 @@ Features:
 4. Business workflow orchestration and reactive dependency updates
 
 5. Fine-grained reactive systems without heavy runtime overhead
+
+---
+
+## Interoperability
+
+### `SignalObservable<T>`
+Converts a `MutSignal<T>` into a standard `IObservable<T>` sequence.
+
+```csharp
+var signal = new MutSignal<int>(0);
+var observable = new SignalObservable<int>(signal);
+observable.Subscribe(value => Console.WriteLine(value));
+signal.RxValue = 42; // Observer receives 42
+```
+
+### `Rx.From(IObservable<T>, T)`
+Converts an external `IObservable<T>` into a reactive `ISignal<T>`.
+
+### `StoreAttribute` / `NoSignalAttribute` / `ComputedAttribute`
+Attribute-based reactive store generation markers.
+
+---
+
+## Interoperability
+
+### SignalObservable<T>
+Converts a MutSignal<T> into a standard IObservable<T> sequence.
+
+### Rx.From(IObservable<T>, T)
+Converts an external IObservable<T> into a reactive ISignal<T> with automatic lifecycle management.
+
+### Array Diffing
+
+| API                    | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| ArrayDiffUtil        | Compute minimal diffs between two lists           |
+| ArrayMapResult       | Incremental array map with move preservation      |
+| ArrayMapMemo         | Reactive signal for incremental array mapping     |
+
+---
+
+## Array Diffing
+
+| API                    | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| ArrayDiffUtil        | Compute minimal diffs between two lists           |
+| ArrayMapResult       | Incremental array map with move preservation      |
+| ArrayMapMemo         | Reactive signal for incremental array mapping     |
 
 ---
 

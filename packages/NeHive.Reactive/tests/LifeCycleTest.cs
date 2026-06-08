@@ -9,7 +9,7 @@ public class LifeCycleTest
         MutSignal<int> s = new(0);
         List<int> values = [];
 
-        var e = new Effect(() => { values.Add(s.RxValue); });
+        var e = new Effect(() => values.Add(s.RxValue));
 
         s.RxValue = 1;
         Assert.Equal([0, 1], values);
@@ -185,12 +185,12 @@ public class LifeCycleTest
 
         scope.CreateEffect(() =>
         {
-            Rx.OnDispose(() => logs.Add("cleanup"));
+            Rx.OnCleanup(() => logs.Add("cleanup"));
 
             _ = new Effect(() =>
             {
                 logs.Add("child run");
-                Rx.OnDispose(() => logs.Add("child dispose"));
+                Rx.OnCleanup(() => logs.Add("child dispose"));
             });
         });
 

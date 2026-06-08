@@ -81,7 +81,7 @@ public class ReactiveFlowTest
     public void Dispose_Scope_Should_Stop_Effect()
     {
         // ARRANGE
-        var scope = Scope.RootScope.RunInScope(() => NeHiveContext.CurrentScope);
+        var scope = new Scope();
         var signal = new MutSignal<int>(10);
         var count = 0;
 

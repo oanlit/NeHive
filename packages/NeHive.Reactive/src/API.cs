@@ -54,6 +54,13 @@ public static partial class Rx
         ExecuteNode.EndBatch();
     }
 
+    /// <summary>
+    /// Batches reactive updates and returns a value.
+    /// All signal changes inside the function are flushed at the end of the batch.
+    /// </summary>
+    /// <typeparam name="T">The return type</typeparam>
+    /// <param name="fn">The function returning a value</param>
+    /// <returns>The return value of the function</returns>
     public static T Batch<T>(Func<T> fn)
     {
         ExecuteNode.StartBatch();
@@ -62,6 +69,11 @@ public static partial class Rx
         return result;
     }
 
+    /// <summary>
+    /// Replaces the default synchronous flush scheduler with a custom strategy.
+    /// The scheduler receives an Action representing the pending batch flush.
+    /// </summary>
+    /// <param name="scheduler">A delegate that controls when the batch flush runs</param>
     public static void SetScheduler(Action<Action> scheduler)
     {
         ReactiveContext.Scheduler = scheduler;
@@ -80,7 +92,7 @@ public static partial class Rx
     /// effect.Dispose(); // Prints "Cleaning up"
     /// </code>
     /// </example>
-    public static void OnDispose(Action fn)
+    public static void OnCleanup(Action fn)
     {
         NeHiveContext.CurrentScope.OnCleanup += fn;
     }
@@ -101,9 +113,20 @@ public static partial class Rx
     public static T Untrack<T>(Func<T> fn)
         => ReactiveContext.Untrack(fn);
 
+    /// <summary>
+    /// Executes an action without establishing reactive dependencies.
+    /// Signal reads inside this action will not trigger effects or computed values.
+    /// </summary>
+    /// <param name="fn">The action to execute without tracking</param>
     public static void Untrack(Action fn)
         => ReactiveContext.Untrack(fn);
 
+    /// <summary>
+    /// Executes an action inside a batch without establishing reactive dependencies.
+    /// Combines Batch and Untrack semantics.
+    /// Useful for preventing infinite loops when an effect modifies its own dependencies.
+    /// </summary>
+    /// <param name="fn">The action to execute with batch+untrack semantics</param>
     public static void BatchUntrack(Action fn)
     {
         ExecuteNode.StartBatch();
@@ -111,6 +134,28 @@ public static partial class Rx
         ExecuteNode.EndBatch();
     }
 
+    /// <summary>
+    /// Executes an action and returns the list of signals
+    /// accessed via RxValue.
+    /// </summary>
+    /// <param name="fn">
+    /// The function to execute while tracking
+    /// </param>
+    /// <returns>A read-only list of Signal instances that were read</returns>
+    /// <example>
+    /// <code>
+    /// var firstName = new MutSignal&lt;string&gt;("Tom");
+    /// var lastName = new MutSignal&lt;string&gt;("Lee");
+    ///
+    /// var dependencies = Rx.Track(() =>
+    /// {
+    ///     _ = firstName.RxValue;
+    ///     _ = lastName.RxValue;
+    /// });
+    ///
+    /// Console.WriteLine(dependencies.Count); // 2
+    /// </code>
+    /// </example>
     public static IReadOnlyList<Signal> Track(Action fn)
     {
         var tracker = new Tracker();
@@ -126,7 +171,13 @@ public static partial class Rx
 
         return result;
     }
-    
+
+    /// <summary>
+    /// Executes a function and returns the list of signals accessed via RxValue.
+    /// </summary>
+    /// <typeparam name="T">The return type of the function</typeparam>
+    /// <param name="fn">The function to execute while tracking</param>
+    /// <returns>A read-only list of Signal instances that were read</returns>
     public static IReadOnlyList<Signal> Track<T>(Func<T> fn)
     {
         var tracker = new Tracker();
@@ -143,6 +194,29 @@ public static partial class Rx
         return result;
     }
 
+    /// <summary>
+    /// Checks whether any reactive signal reads (RxValue)
+    /// occur inside the given action.
+    /// </summary>
+    /// <param name="fn">
+    /// The action to inspect.
+    /// </param>
+    /// <returns>
+    /// true if at least one signal was accessed;
+    /// otherwise false.
+    /// </returns>
+    /// <example>
+    /// <code>
+    /// var count = new MutSignal&lt;int&gt;(1);
+    ///
+    /// bool result = Rx.HasRx(() =>
+    /// {
+    ///     _ = count.RxValue;
+    /// });
+    ///
+    /// Console.WriteLine(result); // True
+    /// </code>
+    /// </example>
     public static bool HasRx(Action fn)
     {
         var tracker = new Tracker();
@@ -150,6 +224,13 @@ public static partial class Rx
         var sources = tracker.Sources;
         return sources.Count > 0;
     }
+
+    /// <summary>
+    /// Checks whether any reactive signal reads (RxValue) occur inside the given function.
+    /// </summary>
+    /// <typeparam name="T">The return type of the inspected function</typeparam>
+    /// <param name="fn">The function to inspect</param>
+    /// <returns>true if at least one signal was accessed; otherwise false</returns>
     public static bool HasRx<T>(Func<T> fn)
     {
         var tracker = new Tracker();
@@ -158,6 +239,10 @@ public static partial class Rx
         return sources.Count > 0;
     }
 
+    /// <summary>
+    /// Extension methods for creating reactive primitives within a Scope.
+    /// Provides factory methods for Effect, Computed, AsyncMemo.
+    /// </summary>
     extension(Scope scope)
     {
         /// <summary>
@@ -181,12 +266,23 @@ public static partial class Rx
             return new Effect(fn, scope);
         }
 
+        /// <summary>
+        /// Creates an effect with manual dependency tracking via EpochScope.
+        /// RxValue access will NOT auto-bind dependencies.
+        /// </summary>
+        /// <param name="fn">The effect logic receiving an EpochScope for manual tracking</param>
+        /// <returns>A disposable Effect instance</returns>
         public Effect CreateEffect(Action<EpochScope> fn)
         {
             ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
             return new Effect(fn, scope);
         }
 
+        /// <summary>
+        /// Creates an effect with setup/execution separation. Setup runs once.
+        /// </summary>
+        /// <param name="fn">Setup function returning the execution logic</param>
+        /// <returns>A disposable Effect instance</returns>
         public Effect CreateEffect(Func<Scope, Action<EpochScope>> fn)
         {
             ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
@@ -215,24 +311,49 @@ public static partial class Rx
             return new Computed<T>(fn, value, scope);
         }
 
+        /// <summary>
+        /// Creates a cached computed value that recalculates only on dependency changes.
+        /// </summary>
+        /// <typeparam name="T">The computed value type</typeparam>
+        /// <param name="fn">The computation function</param>
+        /// <param name="value">Optional initial value</param>
+        /// <returns>A disposable Computed instance</returns>
         public Computed<T> CreateComputed<T>(Func<T> fn, T? value = default)
         {
             ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
             return new Computed<T>(fn, value, scope);
         }
 
+        /// <summary>
+        /// Creates an AsyncMemo with automatic dependency tracking.
+        /// </summary>
+        /// <typeparam name="T">The async result type</typeparam>
+        /// <param name="executeFn">The async execution function</param>
+        /// <returns>A disposable AsyncMemo instance</returns>
         public AsyncMemo<T> CreateAsyncMemo<T>(Func<Task<T>> executeFn)
         {
             ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
             return new AsyncMemo<T>(executeFn, scope);
         }
 
+        /// <summary>
+        /// Creates an AsyncMemo with manual dependency tracking via EpochScope.
+        /// </summary>
+        /// <typeparam name="T">The async result type</typeparam>
+        /// <param name="executeFn">Async function receiving an EpochScope</param>
+        /// <returns>A disposable AsyncMemo instance</returns>
         public AsyncMemo<T> CreateAsyncMemo<T>(Func<EpochScope, Task<T>> executeFn)
         {
             ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
             return new AsyncMemo<T>(executeFn, scope);
         }
 
+        /// <summary>
+        /// Creates an AsyncMemo with setup/execution separation.
+        /// </summary>
+        /// <typeparam name="T">The async result type</typeparam>
+        /// <param name="setupFn">Setup function returning the async execution logic</param>
+        /// <returns>A disposable AsyncMemo instance</returns>
         public AsyncMemo<T> CreateAsyncMemo<T>(Func<Scope, Func<EpochScope, Task<T>>> setupFn)
         {
             ObjectDisposedException.ThrowIf(scope.IsDisposed, nameof(Scope));
@@ -260,23 +381,68 @@ public interface ISignal<out T>
     public T Value { get; }
 }
 
+/// <summary>
+/// Write-only reactive signal interface. Setting RxValue triggers reactive notifications.
+/// </summary>
+/// <typeparam name="T">The type of the signal value</typeparam>
 public interface ISetOnlySignal<T>
 {
+    /// <summary>
+    /// Sets the value with full reactive notification.
+    /// </summary>
     public T RxValue { set; }
+
+    /// <summary>
+    /// Sets a new value using a transformer function that receives the current value.
+    /// </summary>
+    /// <param name="value">A function that transforms the current value</param>
     public void NotifySet(Func<T, T> value);
 }
 
+/// <summary>
+/// A lightweight accessor wrapping a constant, delegate, or Signal.
+/// Automatically detects whether the source is reactive.
+/// Supports implicit conversions from T, Func, and Signal.
+/// </summary>
+/// <typeparam name="T">The value type</typeparam>
+/// <example>
+/// <code>
+/// var userName = new MutSignal("UserName");
+/// Accessor&lt;string&gt; title1 = "Hello";
+/// Accessor&lt;string&gt; title2 = new(() => userName.RxValue);
+/// Accessor&lt;string&gt; title3 = userName;
+///
+/// Console.WriteLine(title1.IsReactive); // False
+/// Console.WriteLine(title2.IsReactive); // True
+/// Console.WriteLine(title3.IsReactive); // True
+/// </code>
+/// </example>
 public class Accessor<T> : ISignal<T>
 {
     internal readonly ISignalState<T>? InternalSignal;
     internal readonly Func<T> RxValueGetter;
     internal readonly Func<T> ValueGetter;
 
+    /// <summary>
+    /// Indicates whether evaluating this accessor
+    /// establishes reactive dependencies.
+    /// </summary>
     public bool IsReactive;
+
+    /// <summary>
+    /// Gets the value with reactive tracking.
+    /// </summary>
     public T RxValue => RxValueGetter();
 
+    /// <summary>
+    /// Gets the value without reactive tracking.
+    /// </summary>
     public T Value => ValueGetter();
 
+    /// <summary>
+    /// Creates a non-reactive accessor wrapping a constant value.
+    /// </summary>
+    /// <param name="value">The constant value</param>
     public Accessor(T value)
     {
         InternalSignal = null;
@@ -285,6 +451,10 @@ public class Accessor<T> : ISignal<T>
         IsReactive = false;
     }
 
+    /// <summary>
+    /// Creates an accessor from a delegate. Detects reactive signal access.
+    /// </summary>
+    /// <param name="rxValueGetter">The value-producing delegate</param>
     public Accessor(Func<T> rxValueGetter)
     {
         InternalSignal = null;
@@ -293,6 +463,10 @@ public class Accessor<T> : ISignal<T>
         IsReactive = Rx.HasRx(rxValueGetter);
     }
 
+    /// <summary>
+    /// Creates a reactive accessor from an existing Signal.
+    /// </summary>
+    /// <param name="signal">The signal to wrap</param>
     public Accessor(Signal<T> signal)
     {
         InternalSignal = signal.InternalSignal;
@@ -301,34 +475,59 @@ public class Accessor<T> : ISignal<T>
         IsReactive = true;
     }
 
+    /// <summary>
+    /// Implicitly converts a constant value to a non-reactive accessor.
+    /// </summary>
+    /// <param name="value">The constant value</param>
     public static implicit operator Accessor<T>(T value)
     {
         return new Accessor<T>(value);
     }
 
+    /// <summary>
+    /// Implicitly converts a delegate to an accessor with reactive detection.
+    /// </summary>
+    /// <param name="getter">The value-producing delegate</param>
     public static implicit operator Accessor<T>(Func<T> getter)
     {
         return new Accessor<T>(getter);
     }
 
+    /// <summary>
+    /// Implicitly converts a Signal to a reactive accessor.
+    /// </summary>
+    /// <param name="signal">The signal to wrap</param>
     public static implicit operator Accessor<T>(Signal<T> signal)
     {
         return new Accessor<T>(signal);
     }
 }
 
+/// <summary>
+/// Abstract base class for all reactive signal types.
+/// </summary>
 public abstract class Signal
 {
     internal abstract ISignalState GetInternalSignal();
 }
 
+/// <summary>
+/// A read-only reactive signal with both tracked and untracked value access.
+/// </summary>
+/// <typeparam name="T">The signal value type</typeparam>
 public class Signal<T> : Signal, ISignal<T>
 {
     internal ISignalState<T> InternalSignal;
     internal override ISignalState<T> GetInternalSignal() => InternalSignal;
 
+    /// <summary>
+    /// Gets the value with reactive tracking. Establishes dependency in Effects/Computed.
+    /// </summary>
     public virtual T RxValue => InternalSignal.ReadSignal();
 
+    /// <summary>
+    /// Gets the value without reactive tracking.
+    /// </summary>
     public virtual T Value => InternalSignal.Value;
 
     internal Signal(ISignalState<T> internalSignal)
@@ -345,12 +544,23 @@ public class Signal<T> : Signal, ISignal<T>
     }
 }
 
+/// <summary>
+/// A mutable reactive signal supporting read and write with full reactivity.
+/// Supports optional onGet/onSet interceptors and functional updates.
+/// </summary>
+/// <typeparam name="T">The signal value type</typeparam>
 public class MutSignal<T> : Signal<T>,
     ISetOnlySignal<T>
 {
     private Func<T, T>? _onGet;
     private Action<T, T, Action<T>>? _onSet;
 
+    /// <summary>
+    /// Creates a mutable reactive signal.
+    /// </summary>
+    /// <param name="value">Initial value</param>
+    /// <param name="onGet">Optional read interceptor</param>
+    /// <param name="onSet">Optional write interceptor; receives (oldValue, newValue, writeAction)</param>
     public MutSignal(
         T value,
         Func<T, T>? onGet = null,
@@ -394,6 +604,9 @@ public class MutSignal<T> : Signal<T>,
         }
     }
 
+    /// <summary>
+    /// Gets the value without reactive tracking.
+    /// </summary>
     public override T Value
     {
         get
@@ -404,6 +617,10 @@ public class MutSignal<T> : Signal<T>,
         }
     }
 
+    /// <summary>
+    /// Sets the value with full reactive notification.
+    /// </summary>
+    /// <param name="value">The new value</param>
     public void NotifySet(T value)
     {
         if (_onSet is null)
@@ -460,6 +677,10 @@ public class EpochScope : Scope
         return _tracker.Pull(signal.InternalSignal);
     }
 
+    /// <summary>
+    /// Manually creates dependencies on multiple signals in batch.
+    /// </summary>
+    /// <param name="signals">The signals to pull as dependencies</param>
     public void Pull(IEnumerable<Signal> signals)
     {
         foreach (var signal in signals)
@@ -470,18 +691,28 @@ public class EpochScope : Scope
 
     /// <summary>
     /// Manually tracks dependencies by executing a function.
-    /// Any <see cref="RxValue"/> access inside the function will be tracked.
+    /// Any <see cref="ISignal{T}.RxValue"/> access inside the function will be tracked.
     /// </summary>
     public T Track<T>(Func<T> trackFn)
     {
         return _tracker.Track(trackFn);
     }
 
+    /// <summary>
+    /// Tracks dependencies by executing an action.
+    /// Any RxValue access inside the action
+    /// will be recorded as dependencies.
+    /// </summary>
     public void Track(Action trackFn)
     {
         _tracker.Track(trackFn);
     }
 
+    /// <summary>
+    /// Tracks an Accessor value.
+    /// Reactive accessors establish dependencies,
+    /// while constant accessors simply return their value.
+    /// </summary>
     public T Track<T>(Accessor<T> accessor)
     {
         return accessor.InternalSignal is null
@@ -511,7 +742,7 @@ public class Effect : IDisposable
 
     /// <summary>
     /// Creates an Effect with **automatic dependency tracking**.
-    /// Any access to <see cref="RxValue"/> inside the action will create reactive bindings.
+    /// Any access to <see cref="ISignal{T}.RxValue"/> inside the action will create reactive bindings.
     /// </summary>
     /// <example>
     /// <code>
@@ -541,7 +772,7 @@ public class Effect : IDisposable
 
     /// <summary>
     /// Creates an Effect with **manual dependency tracking**.
-    /// <see cref="RxValue"/> access will NOT automatically bind dependencies.
+    /// <see cref="ISignal{T}.RxValue"/> access will NOT automatically bind dependencies.
     /// You must explicitly call <see cref="EpochScope.Pull{T}(Signal{T})"/> or <see cref="EpochScope.Track(Action)"/>.
     /// </summary>
     /// <example>
@@ -562,7 +793,7 @@ public class Effect : IDisposable
     /// <summary>
     /// Creates an Effect with **setup + execution separation**.
     /// Setup runs ONCE. Execution runs reactively with manual tracking.
-    /// <see cref="RxValue"/> does not auto-bind in the execution phase.
+    /// <see cref="ISignal{T}.RxValue"/> does not auto-bind in the execution phase.
     /// Use <see cref="EpochScope.Pull{T}(Signal{T})"/> or <see cref="EpochScope.Track(Action)"/>.
     /// </summary>
     /// <example>
@@ -630,7 +861,11 @@ public class Computed<T> : Signal<T>
 
     private readonly Func<T, T> _fn;
 
-    // 缓存是否失效 (不影响依赖建立)
+    /// <summary>
+    /// Indicates whether the Computed
+    /// has been disposed and detached
+    /// from the reactive graph.
+    /// </summary>
     public bool IsInvalid { get; private set; }
 
     public override T RxValue
@@ -643,6 +878,9 @@ public class Computed<T> : Signal<T>
         }
     }
 
+    /// <summary>
+    /// Gets the value without reactive tracking.
+    /// </summary>
     public override T Value
     {
         get
@@ -697,6 +935,9 @@ public class Computed<T> : Signal<T>
     {
     }
 
+    /// <summary>
+    /// Disposes the computed value, releasing reactive subscriptions and cleanup.
+    /// </summary>
     public void Dispose()
     {
         if (IsInvalid) return;
@@ -943,6 +1184,26 @@ public class AsyncMemo<T> : Signal<T?>
     }
 }
 
+/// <summary>
+/// Provides key-based reactive subscriptions.
+///
+/// Observers only re-run when the selected key
+/// changes matching state, avoiding unnecessary
+/// updates across large collections.
+/// </summary>
+/// <example>
+/// <code>
+/// var selectedId = new MutSignal&lt;int&gt;(1);
+/// var selector = new Selector&lt;int&gt;(selectedId);
+/// new Effect(() =>
+/// {
+///     if (selector.Select(1))
+///     {
+///         Console.WriteLine("Item 1 selected");
+///     }
+/// });
+/// </code>
+/// </example>
 public class Selector<T> where T : notnull
 {
     private readonly Dictionary<T, HashSet<ITrack>> _subs;
@@ -951,6 +1212,16 @@ public class Selector<T> where T : notnull
 
     public readonly Func<T, T, bool> CompareFn;
 
+    /// <summary>
+    /// Creates a key-based selector.
+    /// </summary>
+    /// <param name="source">
+    /// The source signal whose value determines
+    /// selector matches.
+    /// </param>
+    /// <param name="compareFn">
+    /// Optional equality comparer used to match keys.
+    /// </param>
     public Selector(ISignal<T> source, Func<T, T, bool>? compareFn = null)
     {
         CompareFn = compareFn ?? Constant.EqualFn;
@@ -979,6 +1250,11 @@ public class Selector<T> where T : notnull
         }
     }
 
+    /// <summary>
+    /// Determines whether the current selector value
+    /// matches the specified key and establishes
+    /// a keyed reactive subscription.
+    /// </summary>
     public bool Select(T key)
     {
         _ = _logicMutSignal.RxValue; // 逻辑依赖，不会导致外部观察者误以为没有信号而失效
@@ -996,7 +1272,7 @@ public class Selector<T> where T : notnull
             _subs.Add(key, computations);
         }
 
-        Rx.OnDispose(() =>
+        Rx.OnCleanup(() =>
         {
             computations.Remove(currentComputation);
             if (computations.Count == 0) _subs.Remove(key);

@@ -4,15 +4,45 @@ using System.Collections;
 using System.Collections.ObjectModel;
 
 /// <summary>
-/// Don't treat it as a regular collection,
-/// especially in the Track environment of Effect.
-/// So it's best for you to be aware that it is a reactive type.
+/// Marker interface for reactive collections.
+///
+/// Enumerating or accessing elements may establish
+/// reactive dependencies depending on the operation.
+/// Reactive collections should not be treated as
+/// ordinary immutable snapshots.
 /// </summary>
-/// <typeparam name="T"></typeparam>
 public interface IReactiveCollection<out T> : IEnumerable<T>
 {
 }
 
+/// <summary>
+/// A reactive list container that tracks individual element access, count changes,
+/// and structural modifications. Provides fine-grained signal-based reactivity
+/// for each index, batch updates, and version-based change detection.
+/// 
+/// Unlike Signal&lt;List&lt;T&gt;&gt;,
+/// ListStore provides fine-grained reactivity.
+/// Reading store[0] only depends on index 0,
+/// while reading Count only depends on collection size.
+/// </summary>
+/// <typeparam name="T">The element type</typeparam>
+/// <example>
+/// <code>
+/// var store = new ListStore&lt;string&gt;
+/// {
+///     "Alice",
+///     "Bob"
+/// };
+///
+/// new Effect(() =>
+/// {
+///     Console.WriteLine(store[0]);
+/// });
+///
+/// store[0] = "Tom";
+/// // Effect re-executes
+/// </code>
+/// </example>
 public class ListStore<T> : IReactiveCollection<T>
 {
     private const int DefaultCapacity = 4;
@@ -25,27 +55,45 @@ public class ListStore<T> : IReactiveCollection<T>
     private bool _isBatch;
     private bool _isChange;
 
+    /// <summary>
+    /// Gets or sets the equality comparer used to detect value changes.
+    /// Defaults to <see cref="EqualityComparer{T}.Default"/>.
+    /// </summary>
     public Func<T?, T?, bool> Comparator { get; init; } = Constant.EqualFn;
 
     // 模仿 List 的用法
+    /// <summary>
+    /// Creates an empty ListStore with the specified capacity.
+    /// </summary>
+    /// <param name="capacity">Initial capacity (default 4)</param>
     public ListStore(int capacity = DefaultCapacity)
     {
         _items = new(capacity);
         _countMutSignal = new(_items.Count);
     }
 
+    /// <summary>
+    /// Creates a ListStore populated from an existing collection.
+    /// </summary>
+    /// <param name="collection">Initial elements</param>
     public ListStore(IEnumerable<T> collection)
     {
         _items = new(collection);
         _countMutSignal = new(_items.Count);
     }
 
+    /// <summary>
+    /// Gets or sets the underlying list capacity.
+    /// </summary>
     public int Capacity
     {
         get => _items.Capacity;
         set => _items.Capacity = value;
     }
 
+    /// <summary>
+    /// Gets the number of elements (reactive - tracks dependency on count changes).
+    /// </summary>
     public int Count => _countMutSignal.RxValue;
 
     private void _subscribeSignal(int index, T? initValue)
@@ -74,6 +122,15 @@ public class ListStore<T> : IReactiveCollection<T>
         });
     }
 
+    /// <summary>
+    /// Gets or sets the element at the specified index.
+    ///
+    /// Reading an element establishes a dependency on
+    /// that specific index only.
+    /// </summary>
+    /// <param name="index">
+    /// Element index.
+    /// </param>
     public T this[int index]
     {
         get
@@ -90,11 +147,13 @@ public class ListStore<T> : IReactiveCollection<T>
     }
 
     /// <summary>
-    /// Prevent index loss errors
+    /// Attempts to read an element by index.
+    ///
+    /// Unlike the indexer, this method does not throw
+    /// when the index is out of range.
+    /// Reading still establishes a dependency on the
+    /// specified index.
     /// </summary>
-    /// <param name="index"></param>
-    /// <param name="value"></param>
-    /// <returns></returns>
     public bool TryGetValue(int index, out T? value)
     {
         value = default;
@@ -103,6 +162,12 @@ public class ListStore<T> : IReactiveCollection<T>
         return value is not null;
     }
 
+    /// <summary>
+    /// Safely sets a value by index without throwing on out-of-range.
+    /// </summary>
+    /// <param name="index">Element index</param>
+    /// <param name="value">The new value</param>
+    /// <returns>The new value or default if index was out of range</returns>
     public T? TrySetValue(int index, T value)
     {
         if (index < 0 || index >= _items.Count) return default;
@@ -268,6 +333,12 @@ public class ListStore<T> : IReactiveCollection<T>
     public int FindLastIndex(int startIndex, Predicate<T> match)
         => FindLastIndex(startIndex, startIndex + 1, match);
 
+    /// <summary>
+    /// Performs an action on each element. Establishes version-based reactive dependency.
+    /// </summary>
+    ///  <param name="action">
+    /// Invoked for each element and its index.
+    /// </param>
     public void ForEach(Action<T> action)
     {
         _ = _versionMutSignal.RxValue;
@@ -275,6 +346,10 @@ public class ListStore<T> : IReactiveCollection<T>
     }
 
     // 新增API
+    /// <summary>
+    /// Performs an action on each element with its index.
+    /// Throws if the collection is modified during iteration.
+    /// </summary>
     public void ForEach(Action<T, int> action)
     {
         var version = _versionMutSignal.RxValue;
@@ -306,6 +381,10 @@ public class ListStore<T> : IReactiveCollection<T>
         return result;
     }
 
+    /// <summary>
+    /// Returns a slice of the list from start with the given length.
+    /// Alias for GetRange.
+    /// </summary>
     public List<T> Slice(int start, int length) => GetRange(start, length);
 
     public int IndexOf(T item)
@@ -436,6 +515,18 @@ public class ListStore<T> : IReactiveCollection<T>
     /// Batch modification to enhance performance, especially for structural changes
     /// </summary>
     /// <param name="fn"></param>
+    /// <example>
+    /// <code>
+    /// store.BatchModify(list =>
+    /// {
+    ///     list.Add("A");
+    ///     list.Add("B");
+    ///     list.RemoveAt(0);
+    /// });
+    ///
+    /// // Observers are notified only once.
+    /// </code>
+    /// </example>
     public void BatchModify(Action<ListStore<T>> fn)
     {
         _isBatch = true;
@@ -450,6 +541,10 @@ public class ListStore<T> : IReactiveCollection<T>
         return _items.ToArray();
     }
 
+    /// <summary>
+    /// Removes internal per-index signals that are no
+    /// longer observed, reducing memory usage.
+    /// </summary>
     public void TrimSignals()
     {
         foreach (var (key, signal) in _oldValueSignals)
@@ -461,11 +556,17 @@ public class ListStore<T> : IReactiveCollection<T>
         }
     }
 
+    /// <summary>
+    /// Trims the underlying list capacity to match the current element count.
+    /// </summary>
     public void TrimExcess()
     {
         _items.TrimExcess();
     }
 
+    /// <summary>
+    /// Trims both internal signal storage and list capacity.
+    /// </summary>
     public void TrimAll()
     {
         TrimSignals();

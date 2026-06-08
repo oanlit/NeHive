@@ -44,9 +44,9 @@ internal static class Common
 {
     internal static T BaseReadSignal<T>(ISignalState<T> signal)
     {
-        var currentExecute = ReactiveContext.CurrentTracker;
-        if (currentExecute is null) return signal.Value;
-        return currentExecute.Pull(signal);
+        var currentTracker = ReactiveContext.CurrentTracker;
+        if (currentTracker is null) return signal.Value;
+        return currentTracker.Pull(signal);
     }
 
     internal static T WriteSignal<T>(ISignalState<T> signal, T value)

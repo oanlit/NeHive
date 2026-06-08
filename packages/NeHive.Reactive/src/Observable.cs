@@ -10,9 +10,16 @@ using NeHive.Model;
 namespace NeHive.Reactive;
 
 /// <summary>
-/// Converts a <see cref="MutSignal{T}"/> into a standard <see cref="IObservable{T}"/> sequence.
-/// Subscriptions are backed by reactive Effects that automatically track dependencies.
+/// Bridges a <see cref="MutSignal{T}"/> into an <see cref="IObservable{T}"/> sequence.
+/// Each subscription creates an <see cref="Effect"/> that tracks the signal reactively
+/// and emits the latest value whenever the signal changes.
 /// </summary>
+/// <remarks>
+/// This observable is:
+/// - Hot (shared source signal)
+/// - Infinite (never completes)
+/// - Error-free (exceptions propagate through Effect execution context)
+/// </remarks>
 /// <typeparam name="T">The type of value being observed</typeparam>
 public class SignalObservable<T>(MutSignal<T> mutSignal) : IObservable<T>
 {
@@ -27,7 +34,8 @@ public class SignalObservable<T>(MutSignal<T> mutSignal) : IObservable<T>
     /// var signal = new MutSignal&lt;int&gt;(0);
     /// var observable = new SignalObservable&lt;int&gt;(signal);
     /// using var disposable = observable.Subscribe(Console.WriteLine);
-    /// signal.RxValue = 1; // Observer receives 1
+    /// signal.RxValue = 1; // emits 1
+    /// signal.RxValue = 2; // emits 2
     /// </code>
     /// </example>
     public IDisposable Subscribe(IObserver<T> observer)
@@ -59,6 +67,11 @@ public static partial class Rx
     /// Converts an <see cref="IObservable{T}"/> into a reactive <see cref="ISignal{T}"/>.
     /// The signal is automatically updated when the observable produces values.
     /// Resources are cleaned up when the created scope is disposed.
+    /// <remarks>
+    /// The internal <see cref="Scope"/> is not exposed.
+    /// Cleanup occurs only if the produced signal is attached to a parent lifecycle
+    /// or explicitly tracked by the caller.
+    /// </remarks>
     /// </summary>
     /// <typeparam name="T">Value type</typeparam>
     /// <param name="producer">The source observable sequence</param>
@@ -107,6 +120,16 @@ internal delegate bool ProducerFn<T>(out T value);
 /// Supports operators like Filter, Map, Debounce, ThrottleLatest.
 /// </summary>
 /// <typeparam name="T">Value type of the flow</typeparam>
+/// <example>
+/// <code>
+/// var flow = scope
+///     .CreateReactiveFlow(searchText)
+///     .Filter(text => !string.IsNullOrWhiteSpace(text))
+///     .Debounce(300);
+///
+/// flow.PushEffect(Console.WriteLine);
+/// </code>
+/// </example>
 public readonly struct ReactiveFlow<T>
 {
     internal readonly Scope Scope;
@@ -127,9 +150,13 @@ public static partial class Rx
     extension(Scope scope)
     {
         /// <summary>
-        /// Creates a <see cref="ReactiveFlow{T}"/> from a reactive <see cref="Signal{T}"/>.
-        /// The flow reads <see cref="ISignal{T}.RxValue"/> (with automatic dependency tracking).
+        /// Creates a <see cref="ReactiveFlow{T}"/> from a signal source.
+        /// The flow is lazy and does not execute until a terminal operator is invoked.
         /// </summary>
+        /// <remarks>
+        /// The flow reads the current <see cref="Signal{T}.RxValue"/> on demand.
+        /// No subscription or execution occurs at creation time.
+        /// </remarks>
         /// <typeparam name="T">Value type</typeparam>
         /// <param name="signal">Source signal</param>
         /// <returns>A new reactive flow</returns>
@@ -171,18 +198,19 @@ public static class ReactiveFlowExtensions
             });
         }
 
+        /// <inheritdoc cref="Filter(ReactiveFlow{T}, Func{T, bool})"/>
         public ReactiveFlow<T> Where(Func<T, bool> predicate)
             => Filter(flow, predicate);
 
         /// <summary>
         /// Transforms each value in the flow using a mapper function.
         /// </summary>
-        /// <typeparam name="TU">Result type</typeparam>
+        /// <typeparam name="Tu">Result type</typeparam>
         /// <param name="mapper">Transformation function</param>
         /// <returns>Mapped reactive flow</returns>
-        public ReactiveFlow<TU> Map<TU>(Func<T, TU> mapper)
+        public ReactiveFlow<Tu> Map<Tu>(Func<T, Tu> mapper)
         {
-            return new ReactiveFlow<TU>(flow.Scope, (out value) =>
+            return new ReactiveFlow<Tu>(flow.Scope, (out value) =>
             {
                 if (!flow.Producer(out var current))
                 {
@@ -195,7 +223,10 @@ public static class ReactiveFlowExtensions
             });
         }
 
-        public ReactiveFlow<TU> Select<TU>(Func<T, TU> mapper)
+        /// <summary>
+        /// LINQ alias for Map.
+        /// </summary>
+        public ReactiveFlow<Tu> Select<Tu>(Func<T, Tu> mapper)
             => Map(flow, mapper);
 
         // 去重
@@ -221,8 +252,9 @@ public static class ReactiveFlowExtensions
         // }
 
         /// <summary>
-        /// Debounce values by the specified time span.
-        /// Only the last value after a quiet period is emitted.
+        /// Delays emission until the source has been silent for the specified duration.
+        /// Each new value resets the debounce timer.
+        /// Only the latest value after the quiet period is emitted.
         /// </summary>
         /// <param name="delay">Quiet period</param>
         /// <returns>Debounced reactive flow</returns>
@@ -265,12 +297,14 @@ public static class ReactiveFlowExtensions
             return flow.Scope.CreateReactiveFlow(output);
         }
 
+        /// <inheritdoc cref="Debounce(ReactiveFlow{T}, TimeSpan)"/>
         public ReactiveFlow<T> Debounce(long delay)
             => Debounce(flow, TimeSpan.FromMilliseconds(delay));
 
         /// <summary>
-        /// Throttles the flow to emit at most once per interval.
-        /// During throttling, only the latest value is preserved and emitted.
+        /// Limits emission to at most one value per interval.
+        /// The first value is emitted immediately, and subsequent values
+        /// within the interval are buffered, with only the latest value preserved.
         /// </summary>
         /// <param name="interval">Throttle window</param>
         /// <returns>Throttled reactive flow</returns>
@@ -347,6 +381,14 @@ public static class ReactiveFlowTerminals
         /// </summary>
         /// <param name="effect">Value handler</param>
         /// <returns>The running Effect</returns>
+        /// <example>
+        /// <code>
+        /// scope.CreateReactiveFlow(searchText)
+        ///     .Filter(text => text.Length > 2)
+        ///     .Debounce(300)
+        ///     .PushEffect(Console.WriteLine);
+        /// </code>
+        /// </example>
         public Effect PushEffect(
             Action<TSource> effect)
         {
@@ -358,7 +400,8 @@ public static class ReactiveFlowTerminals
         }
 
         /// <summary>
-        /// Starts the flow and creates a cached Computed value from the latest result.
+        /// Creates a computed value derived from the flow.
+        /// The computation is reactive and updates whenever the flow produces a new value.
         /// </summary>
         /// <typeparam name="TResult">Computed type</typeparam>
         /// <param name="executeFn">Transform function</param>
