@@ -6,12 +6,12 @@
 
 该项目处于早期开发阶段（0.1.x 系列）。其 API 可能会有所变动。
 
-[![NuGet](https://img.shields.io/nuget/v/NeHive.Core.svg)](https://www.nuget.org/packages/NeHive.Core)
+[![NuGet](https://img.shields.io/nuget/v/NeHive.Reactive.svg)](https://www.nuget.org/packages/NeHive.Reactive)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Target Framework](https://img.shields.io/badge/.NET-7.0%2F8.0%2F9.0%2F10.0-green)]()
 
 ## 简介
-**NeHive.Core** 是一套专为 .NET 设计的**轻量高性能单线程响应式运行时**，基于**作用域依赖图 + 信号传播**架构实现，对标 SolidJS/Vue3 细粒度响应式思想，无反射、无重型依赖、低 GC 开销。
+**NeHive.Reactive** 是一套专为 .NET 设计的**轻量高性能单线程响应式运行时**，基于**作用域依赖图 + 信号传播**架构实现，对标 SolidJS/Vue3 细粒度响应式思想，无反射、无重型依赖、低 GC 开销。
 
 专为声明式 UI、状态管理、业务流联动场景打造，也是 **NeHive.UI** 跨平台声明式 UI 框架底层核心引擎。
 
@@ -26,10 +26,10 @@
 ## 安装
 ### NuGet
 ```bash
-Install-Package NeHive.Core
+Install-Package NeHive.Reactive
 ```
 ```bash
-dotnet add package NeHive.Core
+dotnet add package NeHive.Reactive
 ```
 
 # 快速入门
@@ -196,17 +196,16 @@ list.Reverse();
 | `Effect`           | 响应式副作用               |
 | `AsyncMemo<T>`     | 异步响应式计算值           |
 | `Selector<T>`      | 基于键的选择性依赖追踪      |
-| `Context<T>`       | 作用域依赖/上下文传播       |
 
 ---
 
 ## 运行时工具
 
-| API                  | 描述                          |
-| -------------------- | ---------------------------- |
-| `Rx.Batch()`         | 批量处理信号更新                |
-| `Rx.Untrack()`       | 读取值但不进行依赖追踪           |
-| `Rx.OnDispose()`     | 注册清理回调                   |
+| API              | 描述                                   |
+|------------------|--------------------------------------|
+| `Rx.Track()`     | 显式追踪函数执行过程中访问的 Signal 依赖 |
+| `Rx.Batch()`     | 批量合并多次信号更新，减少重复触发         |
+| `Rx.Untrack()`   | 读取 Signal，但不参与依赖收集             |
 
 ---
 
@@ -262,11 +261,6 @@ NeHive.Reactive 深受以下项目背后的思想和研究的启发：
 
 * [SolidJS](https://github.com/solidjs/solid)
 * [ReactiveX](https://github.com/dotnet/reactive)
-
-## 兼容性
-- 支持 .NET 7.0 / .NET 8.0 / .NET 9.0 / .NET 10.0
-- 开启可空引用、隐式命名空间、最新 C# 语法
-- 全平台兼容：Windows / macOS / Linux / WebAssembly / 移动端
 
 ## 开源协议
 MIT

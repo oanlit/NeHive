@@ -185,12 +185,12 @@ public class LifeCycleTest
 
         scope.CreateEffect(() =>
         {
-            Rx.OnCleanup(() => logs.Add("cleanup"));
+            Scope.CurrentOnCleanup(() => logs.Add("cleanup"));
 
             _ = new Effect(() =>
             {
                 logs.Add("child run");
-                Rx.OnCleanup(() => logs.Add("child dispose"));
+                Scope.CurrentOnCleanup(() => logs.Add("child dispose"));
             });
         });
 

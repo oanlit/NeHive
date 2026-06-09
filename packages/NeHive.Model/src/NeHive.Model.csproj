@@ -13,7 +13,7 @@
         <PackageIcon>logo.png</PackageIcon>
         <Description>A general-purpose runtime semantic model layer</Description>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageTags>runtime;model;scope;context;dsl;reactive;architecture</PackageTags>
+        <PackageTags>runtime;model;scope;context;architecture</PackageTags>
 
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>

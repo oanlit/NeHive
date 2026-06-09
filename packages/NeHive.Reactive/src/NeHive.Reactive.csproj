@@ -12,8 +12,9 @@
         <Authors>oanlit</Authors>
         <Description>A single-threaded reactive runtime based on scoped graphs and signal propagation.</Description>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>runtime;model;scope;context;reactive;architecture</PackageTags>
+        
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 
         <PublishRepositoryUrl>true</PublishRepositoryUrl>

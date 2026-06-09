@@ -80,24 +80,6 @@ public static partial class Rx
     }
 
     /// <summary>
-    /// Registers a cleanup action to run when the current reactive scope is disposed.
-    /// </summary>
-    /// <param name="fn">The cleanup action to execute on disposal</param>
-    /// <example>
-    /// <code>
-    /// using var effect = new Effect(() =>
-    /// {
-    ///     Rx.OnCleanup(() => Console.WriteLine("Cleaning up"));
-    /// });
-    /// effect.Dispose(); // Prints "Cleaning up"
-    /// </code>
-    /// </example>
-    public static void OnCleanup(Action fn)
-    {
-        NeHiveContext.CurrentScope.OnCleanup += fn;
-    }
-
-    /// <summary>
     /// Executes a function without establishing reactive dependencies.
     /// Signal reads inside this function will not trigger effects or computed values.
     /// </summary>
@@ -1272,7 +1254,7 @@ public class Selector<T> where T : notnull
             _subs.Add(key, computations);
         }
 
-        Rx.OnCleanup(() =>
+        Scope.CurrentOnCleanup(() =>
         {
             computations.Remove(currentComputation);
             if (computations.Count == 0) _subs.Remove(key);

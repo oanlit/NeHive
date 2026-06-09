@@ -31,9 +31,7 @@ public static class MediaPlayerExtensions
 
 public static class MusicPlayerDemo
 {
-    private static readonly MutSignal<string?> LibVlcPath = new("D:/Software/VideoLAN/VLC");
-
-    // private static readonly MutSignal<string?> LibVlcPath = new(null);
+    private static readonly MutSignal<string?> LibVlcPath = new(null);
     private static Scope _scope = new();
 
     public static readonly ContextKey<string> Theme = new();

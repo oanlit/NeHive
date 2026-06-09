@@ -24,14 +24,14 @@ public class HListBoxProp<T>
 
     public HListBoxProp(
         Accessor<IReadOnlyList<T>> itemsSource,
-        MutSignal<T?>? bindBindSelectedItem = null,
+        MutSignal<T?>? bindSelectedItem = null,
         Accessor<SelectionMode>? selectionMode = null,
         Accessor<string>? strStyle = null,
         Accessor<HPanelStyle>? style = null
     )
     {
         ItemsSource = itemsSource;
-        BindSelectedItem = bindBindSelectedItem;
+        BindSelectedItem = bindSelectedItem;
         SelectionMode = selectionMode;
 
         if (strStyle != null)

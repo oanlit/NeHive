@@ -331,16 +331,5 @@ NeHive.Reactive is heavily inspired by the ideas and research behind:
 
 ---
 
-# Compatibility
-
-- .NET 7.0 / 8.0 / 9.0 / 10.0
-- Nullable reference types enabled
-- Implicit usings supported
-- Modern C# syntax
-- Cross-platform compatible:
-  Windows / macOS / Linux / WebAssembly / Mobile
-
----
-
 # License
 MIT

@@ -148,7 +148,6 @@ public static class StyleUtil
         var duration = advanced.Duration;
         advanced.Transition.Duration = TimeSpan.FromMilliseconds(duration ?? 300);
 
-        Console.WriteLine($"advanced.Easing:{(advanced.Easing is null ? "null" : advanced.Easing)}");
         if (advanced.Easing is not null) advanced.Transition.Easing = advanced.Easing;
 
         border.Transitions ??=

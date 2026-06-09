@@ -1,3 +1,4 @@
+using NeHive.Model;
 namespace NeHive.Reactive.Tests;
 
 public class ArrayDiffTest
@@ -352,7 +353,7 @@ public class ArrayDiffTest
             signal,
             x =>
             {
-                Rx.OnCleanup(() => disposed++);
+                Scope.CurrentOnCleanup(() => disposed++);
                 return x;
             }
         );
@@ -379,7 +380,7 @@ public class ArrayDiffTest
             signal,
             x =>
             {
-                Rx.OnCleanup(() => disposed++);
+                Scope.CurrentOnCleanup(() => disposed++);
                 return x;
             }
         );

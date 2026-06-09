@@ -143,6 +143,24 @@ public class Scope : IScope
         }
         remove => Cleanups.Remove(value);
     }
+    
+    /// <summary>
+    /// Registers a cleanup action to run when the current reactive scope is disposed.
+    /// </summary>
+    /// <param name="fn">The cleanup action to execute on disposal</param>
+    /// <example>
+    /// <code>
+    /// using var effect = new Effect(() =>
+    /// {
+    ///     Scope.CurrentOnCleanup(() => Console.WriteLine("Cleaning up"));
+    /// });
+    /// effect.Dispose(); // Prints "Cleaning up"
+    /// </code>
+    /// </example>
+    public static void CurrentOnCleanup(Action fn)
+    {
+        NeHiveContext.CurrentScope.OnCleanup += fn;
+    }
 
     /// <summary>
     /// Disposes all child scopes.

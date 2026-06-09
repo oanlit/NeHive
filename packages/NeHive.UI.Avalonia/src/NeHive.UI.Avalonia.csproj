@@ -1,14 +1,37 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+
     <PropertyGroup>
         <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <LangVersion>latest</LangVersion>
+        <RootNamespace>NeHive.UI.Avalonia</RootNamespace>
+        
+        <PackageId>NeHive.UI.Avalonia</PackageId>
+        <Version>0.0.1</Version>
+        <Authors>oanlit</Authors>
+        <Description>UI integration layer for NeHive runtime model on Avalonia</Description>
+        <PackageTags>ui;avalonia;runtime;ne-hive;reactive;dsl</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+
+<!--        <GenerateDocumentationFile>true</GenerateDocumentationFile>-->
+<!--        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>-->
+
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+<!--        <RepositoryUrl>https://github.com/oanlit/NeHive</RepositoryUrl>-->
+<!--        <RepositoryType>git</RepositoryType>-->
+
+<!--        <PublishRepositoryUrl>true</PublishRepositoryUrl>-->
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="12.*"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\..\NeHive.Model\src\NeHive.Model.csproj"/>
         <ProjectReference Include="..\..\NeHive.Reactive\src\NeHive.Reactive.csproj"/>
     </ItemGroup>
+
 </Project>

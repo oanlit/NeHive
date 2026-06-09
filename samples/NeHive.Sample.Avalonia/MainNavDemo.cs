@@ -635,7 +635,7 @@ public static class DemoComponent
         {
             HListBox<User>(new(
                 users,
-                bindBindSelectedItem: selectedUser,
+                bindSelectedItem: selectedUser,
                 selectionMode: SelectionMode.Single,
                 strStyle: "w-full h-60 bg-gray-100"
             )
