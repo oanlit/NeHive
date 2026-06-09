@@ -140,11 +140,21 @@ NeHive 统一了三类核心能力，形成了从底层运行时到顶层 UI 的
 
 👉 **最好的理解方式不是阅读文档，而是直接运行它！**
 
+> [!IMPORTANT]
+> 示例项目需要安装 **.NET 8 或更高版本运行时/SDK**。
+>
+> 当前已支持：
+> - .NET 8
+> - .NET 9
+> - .NET 10
+>
+> 请确保本地环境已安装对应版本后再运行示例。
+
 ## ▶ 运行完整音乐播放器示例
 
 ```bash
 git clone https://github.com/oanlit/NeHive.git
-cd samples/NeHive.Sample.Avalonia
+cd NeHive/samples/NeHive.Sample.Avalonia
 dotnet run
 ```
 

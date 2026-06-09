@@ -142,13 +142,24 @@ NeHive unifies three core capabilities, forming a complete ecosystem from the lo
 
 # 🚀 Quick Start (Recommended Entry)
 
-👉 **The best way to understand it is not by reading the docs, but by running it!**
+👉 **The best way to understand NeHive is not by reading the documentation, but by running it yourself!**
 
-## ▶ Run the Full Music Player Example
+> [!IMPORTANT]
+> The sample project requires **.NET 8 SDK or later**.
+>
+> Currently supported:
+>
+> * .NET 8
+> * .NET 9
+> * .NET 10
+>
+> Please make sure an appropriate version is installed on your machine before running the sample.
+
+## ▶ Run the Full Music Player Sample
 
 ```bash
 git clone https://github.com/oanlit/NeHive.git
-cd samples/NeHive.Sample.Avalonia
+cd NeHive/samples/NeHive.Sample.Avalonia
 dotnet run
 ```
 
