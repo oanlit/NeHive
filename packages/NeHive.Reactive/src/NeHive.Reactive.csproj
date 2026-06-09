@@ -1,42 +1,58 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <TargetFrameworks>net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
+
         <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+
         <RootNamespace>NeHive.Reactive</RootNamespace>
 
-        <PackageId>NeHive.Reactive</PackageId>
-        <Version>0.1.0</Version>
-        <Authors>oanlit</Authors>
-        <Description>A single-threaded reactive runtime based on scoped graphs and signal propagation.</Description>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageTags>runtime;model;scope;context;reactive;architecture</PackageTags>
-        
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    </PropertyGroup>
 
-        <PublishRepositoryUrl>true</PublishRepositoryUrl>
-        <EmbedUntrackedSources>true</EmbedUntrackedSources>
-        <IncludeSymbols>true</IncludeSymbols>
-        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PropertyGroup>
+        <PackageId>NeHive.Reactive</PackageId>
+        <Version>0.1.1</Version>
+
+        <Description>A single-threaded reactive runtime based on scoped graphs and signal propagation.</Description>
+        <PackageTags>runtime;model;scope;context;reactive;architecture</PackageTags>
+
+        <Authors>oanlit</Authors>
+
+        <PackageIcon>logo.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
 
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <RepositoryUrl>https://github.com/oanlit/NeHive</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
     <ItemGroup>
-        <ProjectReference Include="..\..\NeHive.Model\src\NeHive.Model.csproj"/>
-        
         <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-
+    </ItemGroup>
+    
+    <ItemGroup>
+        <ProjectReference Include="..\..\NeHive.Model\src\NeHive.Model.csproj"/>
+    </ItemGroup>
+    
+    <ItemGroup>
         <None Include="assets\logo.png"
               Pack="true"
               PackagePath="\"/>
         <None Include="README.md" Pack="true" PackagePath="README.md"/>
-        <None Include="README-zh.md" Pack="true" PackagePath="README-zh.md"/>
     </ItemGroup>
-
 </Project>

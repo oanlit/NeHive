@@ -1,4 +1,4 @@
-![Banner](docs/img/Banner.png)
+![Banner](./img/Banner.png)
 
 <p align="center">
   <a href="../README.md"><img src="https://img.shields.io/badge/Readme-English-blue" alt="English"></a>
@@ -325,18 +325,15 @@ ForEach<TrackInfo>(new(playlist)
 
 ```bash
 # 响应式核心（必装）
-dotnet add package NeHive.Reactive --prerelease
+dotnet add package NeHive.Reactive --version 0.1.1
 
 # Avalonia UI 集成（用于构建界面）
-dotnet add package NeHive.UI.Avalonia --prerelease
+dotnet add package NeHive.UI.Avalonia --version 0.0.1-alpha
 ```
 
 或在 Visual Studio 的**NuGet 包管理器**中搜索安装：
 - `NeHive.Reactive`
 - `NeHive.UI.Avalonia`
-
-> 注意：目前所有包均为 **预览版本**，安装时请勾选 **“包括预发布版”**。
-
 
 ---
 

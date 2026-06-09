@@ -168,12 +168,12 @@ public class ListStoreTest
         Assert.Equal(4, linqRuns);
 
         // === Add ===
-        store.Add("Lin");
+        store.Add("Tom");
 
-        Assert.Equal("Lin", slot5Snapshots[^1]);
+        Assert.Equal("Tom", slot5Snapshots[^1]);
         Assert.Equal(6, countSnapshots[^1]);
         Assert.Equal(
-            ["0:Z", "1:C", "2:B", "3:A", "4:M", "5:Lin"],
+            ["0:Z", "1:C", "2:B", "3:A", "4:M", "5:Tom"],
             linqSnapshots[^1]
         );
         Assert.Equal(5, linqRuns);
@@ -181,10 +181,10 @@ public class ListStoreTest
         // 什么也不干
         store.BatchModify(_ => { });
 
-        Assert.Equal("Lin", slot5Snapshots[^1]);
+        Assert.Equal("Tom", slot5Snapshots[^1]);
         Assert.Equal(6, countSnapshots[^1]);
         Assert.Equal(
-            ["0:Z", "1:C", "2:B", "3:A", "4:M", "5:Lin"],
+            ["0:Z", "1:C", "2:B", "3:A", "4:M", "5:Tom"],
             linqSnapshots[^1]
         );
         Assert.Equal(5, linqRuns);

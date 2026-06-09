@@ -1,9 +1,5 @@
 using Avalonia.Controls;
 using NeHive.UI.Avalonia;
-// using Avalonia.Media;
-// using Avalonia;
-// using Avalonia.Controls.Chrome;
-// using Avalonia.Input;
 
 namespace NeHive.Sample.Avalonia;
 

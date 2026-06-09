@@ -335,10 +335,10 @@ You can directly install the latest preview versions via NuGet:
 
 ```bash
 # Reactive Core (Required)
-dotnet add package NeHive.Reactive --prerelease
+dotnet add package NeHive.Reactive --version 0.1.1
 
 # Avalonia UI Integration (For building interfaces)
-dotnet add package NeHive.UI.Avalonia --prerelease
+dotnet add package NeHive.UI.Avalonia --version 0.0.1-alpha
 
 ```
 
@@ -346,8 +346,6 @@ Or search and install via the **NuGet Package Manager** in Visual Studio:
 
 * `NeHive.Reactive`
 * `NeHive.UI.Avalonia`
-
-> Note: All packages are currently in **Preview**. Please check **"Include prerelease"** when installing.
 
 ---
 
