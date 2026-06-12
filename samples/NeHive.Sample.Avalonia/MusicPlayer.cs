@@ -96,7 +96,7 @@ public static class MusicPlayerDemo
         // ---------- UI ----------
         var rootElement = uiScope.RootElement(new(strStyle: "m-6 w-full gap-5 vertical bg-gray-50 rounded-2xl p-6")
         {
-            HTextBlock("🎵 NeHive Music Player", strStyle: "text-xl font-bold fg-sky-800 mb-2"),
+            HTextBlock("🎵 NeHive Music Player", strStyle: "text-xl fw-bold fg-sky-800 mb-2"),
 
             // 播放控制区
             HStackPanel(new(strStyle: "p-4 horizontal items-center justify-between bg-white rounded-xl shadow-sm")
@@ -146,7 +146,7 @@ public static class MusicPlayerDemo
                                 {
                                     var isActive = index.RxValue == currentIndex.RxValue;
                                     return
-                                        $"px-3 py-2 text-left rounded-lg {(isActive ? "bg-sky-100 fg-sky-800 font-semibold" : "bg-transparent fg-gray-700 hover:bg-gray-100")}";
+                                        $"px-3 py-2 text-left rounded-lg {(isActive ? "bg-sky-100 fg-sky-800 fw-semibold" : "bg-transparent fg-gray-700 hover:bg-gray-100")}";
                                 }),
                                 onClick: _ => currentIndex.RxValue = index.Value
                             ) // HButton
@@ -166,7 +166,7 @@ public static class MusicPlayerDemo
                         onClick: _ => PlayLast())
                     {
                         HSvgImage("~/Assets/skip-back.svg",
-                            strStyle: "w-4 h-4 font-extralight fg-black bg-black/0"),
+                            strStyle: "w-4 h-4 fw-extralight fg-black bg-black/0"),
                     }), // HContentButton
                     HContentButton(new(strStyle:
                         """
@@ -181,14 +181,14 @@ public static class MusicPlayerDemo
                         {
                             IfFalse = () => HSvgImage("~/Assets/play.svg",
                                 strStyle: """
-                                          ml-1 w-6 h-6 font-normal
+                                          ml-1 w-6 h-6 fw-normal
                                           fg-gradient-r fg-from-blue-400 fg-to-red-800
                                           """
                             ),
                             // IfFalse
                             IfTrue = () => HSvgImage("~/Assets/stretch-vertical.svg",
                                 strStyle: """
-                                          ml-0.5 w-6 h-6 font-extralight
+                                          ml-0.5 w-6 h-6 fw-extralight
                                           fg-gradient-r fg-from-blue-400 fg-to-red-800
                                           """
                             ) // IfTrue
@@ -199,7 +199,7 @@ public static class MusicPlayerDemo
                         onClick: _ => PlayNext())
                     {
                         HSvgImage("~/Assets/skip-forward.svg",
-                            strStyle: "w-4 h-4 font-extralight fg-black bg-black/0")
+                            strStyle: "w-4 h-4 fw-extralight fg-black bg-black/0")
                     }) // HContentButton
                 }), // HStackPanel
 
@@ -223,7 +223,7 @@ public static class MusicPlayerDemo
                         Thumb = state => Show(new(new(() => state.IsHover.RxValue || state.IsDragging.RxValue))
                         {
                             IfTrue = () => HSvgImage("~/Assets/circle-star.svg",
-                                strStyle: "w-4 h-4 font-extralight fg-yellow-500 bg-yellow-200 rounded-full")
+                                strStyle: "w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full")
                         }) // HCustomSlider.Thumb
                     }), // HCustomSlider
                     HTextBlock(
@@ -241,11 +241,11 @@ public static class MusicPlayerDemo
                     Cases = new()
                     {
                         [v => v == 0] = () =>
-                            HSvgImage("~/Assets/volume.svg", strStyle: "my-auto w-4 h-4 font-extralight"),
+                            HSvgImage("~/Assets/volume.svg", strStyle: "my-auto w-4 h-4 fw-extralight"),
                         [v => v < 75] = () =>
-                            HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 font-extralight")
+                            HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 fw-extralight")
                     },
-                    Default = () => HSvgImage("~/Assets/volume-2.svg", strStyle: "my-auto w-4 h-4 font-extralight")
+                    Default = () => HSvgImage("~/Assets/volume-2.svg", strStyle: "my-auto w-4 h-4 fw-extralight")
                 }),
                 HSlider(value: new(() => volume.RxValue),
                     minimum: 0,
@@ -389,7 +389,7 @@ public static class MusicPlayerDemo
 
             HStackPanel(new(strStyle: "gap-1 vertical")
             {
-                HTextBlock(song?.Title ?? "未知标题", strStyle: "max-w-100 text-base font-semibold fg-gray-800"),
+                HTextBlock(song?.Title ?? "未知标题", strStyle: "max-w-100 text-base fw-semibold fg-gray-800"),
                 HTextBlock(song?.Artist ?? "未知歌手", strStyle: "max-w-75 text-sm fg-gray-500"),
                 HTextBlock(song?.Album ?? "未知专辑", strStyle: "max-w-50 text-xs fg-gray-500")
             }) // HStackPanel

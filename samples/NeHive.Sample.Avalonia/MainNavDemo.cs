@@ -24,7 +24,7 @@ public static class DemoComponent
         var rootElement = uiScope.RootElement(new()
         {
             HTextBlock($"Id: {id}",
-                strStyle: "text-lg font-bold fg-sky-200"
+                strStyle: "text-lg fw-bold fg-sky-200"
             ), // HTextBlock
 
             HTextBlock(countText,
@@ -188,8 +188,8 @@ public static class DemoComponent
                 columnDefinitions: new([100, HgLen.Star()]),
                 strStyle: new(() => $"m-2 gap-x-{gapX.RxValue} gap-y-3 bg-gray-100 rounded-xl p-4"))
             {
-                [(row: 0, column: 0)] = HTextBlock("Top Left", strStyle: "text-base font-bold fg-slate-700"),
-                [(row: 0, column: 1)] = HTextBlock("Top Right", strStyle: "text-base font-bold fg-slate-700"),
+                [(row: 0, column: 0)] = HTextBlock("Top Left", strStyle: "text-base fw-bold fg-slate-700"),
+                [(row: 0, column: 1)] = HTextBlock("Top Right", strStyle: "text-base fw-bold fg-slate-700"),
                 [(row: 1, column: 0, rowSpan: 1, colSpan: 2)] =
                     HButton("Increase Horizontal Gap",
                         strStyle: "mt-2 px-3 py-1 bg-indigo-400 fg-white rounded-lg",
@@ -213,7 +213,7 @@ public static class DemoComponent
             strStyle: "m-5 gap-4 vertical bg-gray-50 rounded-xl p-4")
         {
             HTextBlock("Absolute Layout Demo",
-                strStyle: "text-lg font-bold fg-slate-800"
+                strStyle: "text-lg fw-bold fg-slate-800"
             ), // HTextBlock
 
             HAbsolute(new(strStyle: "w-150 h-100 bg-gray-100")
@@ -230,7 +230,7 @@ public static class DemoComponent
                 [new(left: 150, top: 150)] =
                     HStackPanel(new(strStyle: "gap-2 vertical bg-white p-3 rounded-lg shadow")
                     {
-                        HTextBlock("Center Area", strStyle: "text-base font-bold"),
+                        HTextBlock("Center Area", strStyle: "text-base fw-bold"),
                         HTextBlock("Position (150,150)", strStyle: "text-xs fg-gray-500")
                     }), // HStackPanel
 
@@ -274,7 +274,7 @@ public static class DemoComponent
 
         var rootElement = uiScope.RootElement(new(strStyle: "w-full m-4 vertical items-center")
         {
-            HTextBlock("Scroll Viewer Demo", strStyle: "text-lg font-bold"),
+            HTextBlock("Scroll Viewer Demo", strStyle: "text-lg fw-bold"),
 
             HScrollViewer(out var scroll, new(
                 horizontalScrollBarVisibility: ScrollBarVisibility.Hidden,
@@ -291,8 +291,8 @@ public static class DemoComponent
                     "w-24 h-10 gap-4 px-3 py-1 horizontal justify-center items-center bg-sky-200 border-sky-400 rounded",
                     onClick: _ => ScrollToHome())
                 {
-                    HSvgImage("~/Assets/arrow-big-up-dash.svg", strStyle: "w-4 h-4 font-extralight fg-sky-600"),
-                    HTextBlock("Top", strStyle: "font-bold fg-sky-600 ")
+                    HSvgImage("~/Assets/arrow-big-up-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-sky-600"),
+                    HTextBlock("Top", strStyle: "fw-bold fg-sky-600 ")
                 }), // HContentButton
 
                 HContentButton(new(
@@ -300,8 +300,8 @@ public static class DemoComponent
                     "w-24 h-10 gap-2 px-3 py-1 horizontal justify-center items-center bg-green-200 border-green-400 rounded",
                     onClick: _ => ScrollToEnd())
                 {
-                    HSvgImage("~/Assets/arrow-big-down-dash.svg", strStyle: "w-4 h-4 font-extralight fg-green-600"),
-                    HTextBlock("Bottom", strStyle: "font-bold fg-green-600 ")
+                    HSvgImage("~/Assets/arrow-big-down-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-green-600"),
+                    HTextBlock("Bottom", strStyle: "fw-bold fg-green-600 ")
                 }) // HContentButton
             }) // HStackPanel
         }); // rootElement
@@ -335,7 +335,7 @@ public static class DemoComponent
             HTextBox(
                 bindText: textSignal,
                 watermark: "Type something...",
-                strStyle: "w-100 p-3 font-bold border border-blue-400 rounded-lg",
+                strStyle: "w-100 p-3 fw-bold border border-blue-400 rounded-lg",
                 onTextChanged: newText => log.RxValue = $"Input changed: {newText}"
             ), // HTextBox
             HTextBlock(new(() => $"Realtime Content: {textSignal.RxValue}"), strStyle: "mt-2 text-base"),
@@ -861,9 +861,9 @@ public static class DemoComponent
                     {
                         Cases = new()
                         {
-                            ["dark"] = () => HSvgImage("~/Assets/sun.svg", strStyle: "w-4 h-4 font-extralight")
+                            ["dark"] = () => HSvgImage("~/Assets/sun.svg", strStyle: "w-4 h-4 fw-extralight")
                         },
-                        Default = () => HSvgImage("~/Assets/moon.svg", strStyle: "w-4 h-4 font-extralight")
+                        Default = () => HSvgImage("~/Assets/moon.svg", strStyle: "w-4 h-4 fw-extralight")
                     }), // Switch
                     HTextBlock(new(() => $"Switch to {(theme.RxValue is "dark" ? "light" : "dark")} mode"),
                         strStyle:"ml-1")
@@ -892,7 +892,7 @@ public static class DemoComponent
                 {
                     HTextBlock("Theme Injection Demonstration",
                         strStyle: new(() => $"""
-                                             text-2xl font-bold 
+                                             text-2xl fw-bold 
                                              fg-{(theme.RxValue is "dark" ? "white" : "gray-900")}
                                              """)),
                     HTextBlock(new(() => $"Current Topic Mode: {theme.RxValue}"),
@@ -1012,7 +1012,7 @@ public static class DemoComponent
         {
             return HButton(title,
                 strStyle: $$"""
-                            px-3 py-2 text-sm font-bold fg-white
+                            px-3 py-2 text-sm fw-bold fg-white
                             {{colorClass}}
                             hover:opacity-80
                             border-w-1 rounded-6

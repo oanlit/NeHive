@@ -160,7 +160,7 @@ public static class StyleUtil
                 {
                     rest[i - 1] = boxShadows[i];
                 }
-
+        
                 border.BoxShadow = new(boxShadows[0], rest);
             }
         }
