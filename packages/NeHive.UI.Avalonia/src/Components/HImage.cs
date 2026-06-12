@@ -25,8 +25,7 @@ public class HImageStyle(
     Thickness? padding = null,
     HorizontalAlignment? horizontalAlignment = null,
     VerticalAlignment? verticalAlignment = null,
-    double? opacity = null,
-    AdvancedStyle? advanced = null
+    double? opacity = null
 )
 {
     public Thickness Margin { get; private set; } = margin ?? new Thickness(0);
@@ -48,7 +47,7 @@ public class HImageStyle(
 
     public double Opacity { get; private set; } = opacity ?? 1.0;
 
-    public AdvancedStyle? Advanced { get; private set; } = advanced;
+    // public TempStyle? Advanced { get; private set; } = advanced;
 
     /// <summary>
     /// 合并新属性（用于组合样式）
@@ -65,8 +64,7 @@ public class HImageStyle(
         Thickness? padding = null,
         HorizontalAlignment? horizontalAlignment = null,
         VerticalAlignment? verticalAlignment = null,
-        double? opacity = null,
-        AdvancedStyle? advanced = null
+        double? opacity = null
     )
     {
         if (margin is not null) Margin = margin.Value;
@@ -109,8 +107,6 @@ public class HImageStyle(
         VerticalAlignment = style.VerticalAlignment;
 
         Opacity = style.Opacity;
-
-        Advanced = style.Advanced;
         return this;
     }
 
@@ -146,8 +142,7 @@ public class HImageStyle(
                 padding: result.Padding,
                 horizontalAlignment: result.HorizontalAlignment,
                 verticalAlignment: result.VerticalAlignment,
-                opacity: result.Opacity,
-                advanced: result.Advanced
+                opacity: result.Opacity
             );
         });
     }

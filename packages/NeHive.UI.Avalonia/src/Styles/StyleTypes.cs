@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls.Documents;
 using Avalonia.Media;
 using Avalonia.Layout;
 using Avalonia.Input;
@@ -33,11 +34,20 @@ public class BaseStyle
 
     public double? Opacity;
     public bool? IsVisible;
+    
+    public IEffect? Effect;
+    public List<BoxShadow>? BoxShadows;
+    public Cursor? Cursor;
+    public FlowDirection? FlowDirection;
 
-    public AdvancedStyle? Advanced;
+    public RelativePoint? RenderTransformOrigin;
+    public ITransform? RenderTransform;
+    public Transitions? Transitions;
+
+    internal TempStyle? TempStyle;
 }
 
-public sealed class AdvancedStyle
+internal class TempStyle
 {
     public double? FgGradientDir;
     public Color? FgFromColor;
@@ -50,60 +60,45 @@ public sealed class AdvancedStyle
     public double? BorderGradientDir;
     public Color? BorderFromColor;
     public Color? BorderToColor;
-
-    public IEffect? Effect;
-    public List<BoxShadow>? BoxShadows;
-
-    public Cursor? Cursor;
-    public FlowDirection? FlowDirection;
+    
+    public TextDecoration? TextDecoration;
 
     public TransitionScope? TransitionScope;
     public double? Duration;
     public Easing? Easing;
-    public TransitionBase? Transition;
 
-    public RelativePoint? RelativePoint;
-
-    public ITransform? Transform;
     public TranslateTransform? TranslateTransform;
     public ScaleTransform? ScaleTransform;
     public RotateTransform? RotateTransform;
     public SkewTransform? SkewTransform;
-    public MatrixTransform? MatrixTransform;
-
-    public static AdvancedStyle Copy(ref AdvancedStyle style)
-    {
-        return new AdvancedStyle
-        {
-            FgGradientDir = style.FgGradientDir,
-            FgFromColor = style.FgFromColor,
-            FgToColor = style.FgToColor,
-
-            BgGradientDir = style.BgGradientDir,
-            BgFromColor = style.BgFromColor,
-            BgToColor = style.BgToColor,
-
-            BorderGradientDir = style.BorderGradientDir,
-            BorderFromColor = style.BorderFromColor,
-            BorderToColor = style.BorderToColor,
-
-            Effect = style.Effect,
-            Cursor = style.Cursor,
-            FlowDirection = style.FlowDirection,
-
-            TransitionScope = style.TransitionScope,
-            Duration = style.Duration,
-            RelativePoint = style.RelativePoint,
-            Transform = style.Transform,
-
-            TranslateTransform = style.TranslateTransform,
-            ScaleTransform = style.ScaleTransform,
-            RotateTransform = style.RotateTransform,
-            SkewTransform = style.SkewTransform,
-            MatrixTransform = style.MatrixTransform,
-            Transition = style.Transition
-        };
-    }
+    // public MatrixTransform? MatrixTransform;
+    //
+    // public static TempStyle Copy(ref TempStyle parserStyle)
+    // {
+    //     return new TempStyle
+    //     {
+    //         FgGradientDir = parserStyle.FgGradientDir,
+    //         FgFromColor = parserStyle.FgFromColor,
+    //         FgToColor = parserStyle.FgToColor,
+    //
+    //         BgGradientDir = parserStyle.BgGradientDir,
+    //         BgFromColor = parserStyle.BgFromColor,
+    //         BgToColor = parserStyle.BgToColor,
+    //
+    //         BorderGradientDir = parserStyle.BorderGradientDir,
+    //         BorderFromColor = parserStyle.BorderFromColor,
+    //         BorderToColor = parserStyle.BorderToColor,
+    //
+    //         TransitionScope = parserStyle.TransitionScope,
+    //         Duration = parserStyle.Duration,
+    //         
+    //         TranslateTransform = parserStyle.TranslateTransform,
+    //         ScaleTransform = parserStyle.ScaleTransform,
+    //         RotateTransform = parserStyle.RotateTransform,
+    //         SkewTransform = parserStyle.SkewTransform,
+    //         MatrixTransform = parserStyle.MatrixTransform
+    //     };
+    // }
 }
 
 public class StyleSet : BaseStyle
@@ -115,12 +110,25 @@ public class StyleSet : BaseStyle
 
     public Orientation? Orientation;
 
+    public double? LetterSpacing;
+    public double? LineHeight;
+    public double? LineSpacing;
+    
+    public int? MaxLines;
+    public TextTrimming? TextTrimming;
+    
     public TextAlignment? TextAlignment;
     public VerticalAlignment? VerticalTextAlignment;
+    
     public TextWrapping? TextWrapping;
+    public TextDecorationCollection? TextDecorations;
+    public InlineCollection? Inlines;
 
     public double? FontSize;
     public FontWeight? FontWeight;
+    public FontFamily? FontFamily;
+    public FontStretch? FontStretch;
+    public FontFeatureCollection? FontFeatures;
     public FontStyle? FontStyle;
     public IBrush? Foreground;
 }

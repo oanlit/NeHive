@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Layout;
@@ -87,16 +88,41 @@ public static class StyleParser
         ["items-end"] = (_, _, set) => set.VerticalAlignment = VerticalAlignment.Bottom,
         ["items-stretch"] = (_, _, set) => set.VerticalAlignment = VerticalAlignment.Stretch,
 
-        // 文本对齐
+        // 行与字间距
+        ["tracking-"] = ApplyLetterSpacing,
+        ["leading-"] = ApplyLineHeight,
+
+        // 文本布局与对齐
+        ["text-clip-char"] = (_, _, set) => set.TextTrimming = TextTrimming.CharacterEllipsis,
+        ["text-clip-start"] = (_, _, set) => set.TextTrimming = TextTrimming.LeadingCharacterEllipsis,
+        ["text-clip-prefix"] = (_, _, set) => set.TextTrimming = TextTrimming.PrefixCharacterEllipsis,
+        ["text-clip-path"] = (_, _, set) => set.TextTrimming = TextTrimming.PathSegmentEllipsis,
+        ["text-clip-end"] = (_, _, set) => set.TextTrimming = TextTrimming.WordEllipsis,
+        ["text-clip-none"] = (_, _, set) => set.TextTrimming = TextTrimming.None,
+        ["truncate"] = (_, _, set) => set.TextTrimming = TextTrimming.WordEllipsis,
+        ["line-clamp-"] = ApplyMaxLine,
+
         ["text-center"] = (_, _, set) => set.TextAlignment = TextAlignment.Center,
         ["text-left"] = (_, _, set) => set.TextAlignment = TextAlignment.Left,
         ["text-right"] = (_, _, set) => set.TextAlignment = TextAlignment.Right,
         ["text-top"] = (_, _, set) => set.VerticalTextAlignment = VerticalAlignment.Top,
         ["text-middle"] = (_, _, set) => set.VerticalTextAlignment = VerticalAlignment.Center,
         ["text-bottom"] = (_, _, set) => set.VerticalTextAlignment = VerticalAlignment.Bottom,
+
         ["wrap"] = (_, _, set) => set.TextWrapping = TextWrapping.Wrap,
         ["whitespace-nowrap"] = (_, _, set) => set.TextWrapping = TextWrapping.NoWrap,
         ["wrap-overflow"] = (_, _, set) => set.TextWrapping = TextWrapping.WrapWithOverflow,
+        ["underline"] = (_, _, set) => set.TextDecorations = TextDecorations.Underline,
+        ["overline"] = (_, _, set) => set.TextDecorations = TextDecorations.Overline,
+        ["baseline"] = (_, _, set) => set.TextDecorations = TextDecorations.Baseline,
+        ["line-through"] = (_, _, set) => set.TextDecorations = TextDecorations.Strikethrough,
+        ["decoration-none"] = (_, _, set) => set.TextDecorations = null,
+
+        ["decoration-w-"] = ApplyDecorationWidth,
+        ["decoration-"] = ApplyDecorationColor,
+        ["decoration-solid"] = (_, _, set) => set.TempStyle?.TextDecoration?.StrokeDashArray = null,
+        ["decoration-dashed"] = (_, _, set) => EnsureDecoration(set).StrokeDashArray = [4, 2],
+        ["decoration-dotted"] = (_, _, set) => EnsureDecoration(set).StrokeDashArray = [1, 2],
 
         // 文本样式
         ["text-"] = ApplyText,
@@ -123,27 +149,27 @@ public static class StyleParser
         ["not-italic"] = (_, _, set) => set.FontStyle = FontStyle.Normal,
 
         ["fg-"] = ApplyForeground,
-        ["fg-gradient-"] = (vals, _, set) => EnsureAdvanced(set).FgGradientDir = TryGetDir(vals),
-        ["fg-from-"] = (vals, _, set) => EnsureAdvanced(set).FgFromColor = ParseColor(vals),
-        ["fg-to-"] = (vals, _, set) => EnsureAdvanced(set).FgToColor = ParseColor(vals),
+        ["fg-gradient-"] = (vals, _, set) => EnsureTemp(set).FgGradientDir = TryGetDir(vals),
+        ["fg-from-"] = (vals, _, set) => EnsureTemp(set).FgFromColor = ParseColor(vals),
+        ["fg-to-"] = (vals, _, set) => EnsureTemp(set).FgToColor = ParseColor(vals),
 
         // 背景
         ["bg-"] = ApplyBackground,
-        ["bg-gradient-"] = (vals, _, set) => EnsureAdvanced(set).BgGradientDir = TryGetDir(vals),
-        ["bg-from-"] = (vals, _, set) => EnsureAdvanced(set).BgFromColor = ParseColor(vals),
-        ["bg-to-"] = (vals, _, set) => EnsureAdvanced(set).BgToColor = ParseColor(vals),
-        ["gradient-"] = (vals, _, set) => EnsureAdvanced(set).BgGradientDir = TryGetDir(vals),
-        ["from-"] = (vals, _, set) => EnsureAdvanced(set).BgFromColor = ParseColor(vals),
-        ["to-"] = (vals, _, set) => EnsureAdvanced(set).BgToColor = ParseColor(vals),
+        ["bg-gradient-"] = (vals, _, set) => EnsureTemp(set).BgGradientDir = TryGetDir(vals),
+        ["bg-from-"] = (vals, _, set) => EnsureTemp(set).BgFromColor = ParseColor(vals),
+        ["bg-to-"] = (vals, _, set) => EnsureTemp(set).BgToColor = ParseColor(vals),
+        ["gradient-"] = (vals, _, set) => EnsureTemp(set).BgGradientDir = TryGetDir(vals),
+        ["from-"] = (vals, _, set) => EnsureTemp(set).BgFromColor = ParseColor(vals),
+        ["to-"] = (vals, _, set) => EnsureTemp(set).BgToColor = ParseColor(vals),
         ["bg-center"] = (_, _, set) => set.BackgroundSizing = BackgroundSizing.CenterBorder,
         ["bg-inner"] = (_, _, set) => set.BackgroundSizing = BackgroundSizing.InnerBorderEdge,
         ["bg-outer"] = (_, _, set) => set.BackgroundSizing = BackgroundSizing.OuterBorderEdge,
 
         // 边框
         ["border-"] = ApplyBorderBrush,
-        ["border-gradient-"] = (vals, _, set) => EnsureAdvanced(set).BorderGradientDir = TryGetDir(vals),
-        ["border-from-"] = (vals, _, set) => EnsureAdvanced(set).BorderFromColor = ParseColor(vals),
-        ["border-to-"] = (vals, _, set) => EnsureAdvanced(set).BorderToColor = ParseColor(vals),
+        ["border-gradient-"] = (vals, _, set) => EnsureTemp(set).BorderGradientDir = TryGetDir(vals),
+        ["border-from-"] = (vals, _, set) => EnsureTemp(set).BorderFromColor = ParseColor(vals),
+        ["border-to-"] = (vals, _, set) => EnsureTemp(set).BorderToColor = ParseColor(vals),
         ["border-w-"] = ApplyBorderWidth, // 如 border-w-2
         ["border-t-"] = ApplyBorderTopWidth,
         ["border-r-"] = ApplyBorderRightWidth,
@@ -164,12 +190,12 @@ public static class StyleParser
         ["hidden"] = (_, _, set) => set.IsVisible = false,
 
         // 模糊
-        ["blur-sm"] = (_, _, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 4 },
-        ["blur"] = (_, _, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 8 },
-        ["blur-md"] = (_, _, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 8 },
-        ["blur-lg"] = (_, _, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 16 },
-        ["blur-xl"] = (_, _, set) => EnsureAdvanced(set).Effect = new BlurEffect { Radius = 32 },
-        ["blur-none"] = (_, _, set) => set.Advanced?.Effect = null,
+        ["blur-sm"] = (_, _, set) => set.Effect = new BlurEffect { Radius = 4 },
+        ["blur"] = (_, _, set) => set.Effect = new BlurEffect { Radius = 8 },
+        ["blur-md"] = (_, _, set) => set.Effect = new BlurEffect { Radius = 8 },
+        ["blur-lg"] = (_, _, set) => set.Effect = new BlurEffect { Radius = 16 },
+        ["blur-xl"] = (_, _, set) => set.Effect = new BlurEffect { Radius = 32 },
+        ["blur-none"] = (_, _, set) => set.Effect = null,
 
         // 阴影
         ["shadow-sm"] = (_, _, set) => ApplyShadow(set, 2, new Vector(0, 1)),
@@ -177,25 +203,50 @@ public static class StyleParser
         ["shadow-md"] = (_, _, set) => ApplyShadow(set, 6, new Vector(0, 3)),
         ["shadow-lg"] = (_, _, set) => ApplyShadow(set, 10, new Vector(0, 6)),
         ["shadow-xl"] = (_, _, set) => ApplyShadow(set, 18, new Vector(0, 10)),
-        ["shadow-none"] = (_, _, set) => set.Advanced?.BoxShadows = null,
+        ["shadow-none"] = (_, _, set) => set.BoxShadows = null,
 
         // 光标
-        ["cursor-pointer"] = (_, _, set) => EnsureAdvanced(set).Cursor = new Cursor(StandardCursorType.Hand),
-        ["cursor-default"] = (_, _, set) => EnsureAdvanced(set).Cursor = new Cursor(StandardCursorType.Arrow),
+        ["cursor-default"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Arrow),
+        ["cursor-text"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Ibeam),
+        ["cursor-wait"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Wait),
+        ["cursor-crosshair"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Cross),
+        ["cursor-up-arrow"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.UpArrow),
+        ["cursor-ew-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.SizeWestEast),
+        ["cursor-ns-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.SizeNorthSouth),
+        ["cursor-move"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.SizeAll),
+        ["cursor-not-allowed"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.No),
+        ["cursor-pointer"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Hand),
+        ["cursor-progress"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.AppStarting),
+        ["cursor-help"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Help),
+        ["cursor-n-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.TopSide),
+        ["cursor-s-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.BottomSide),
+        ["cursor-w-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.LeftSide),
+        ["cursor-e-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.RightSide),
+        ["cursor-nw-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.TopLeftCorner),
+        ["cursor-ne-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.TopRightCorner),
+        ["cursor-sw-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.BottomLeftCorner),
+        ["cursor-se-resize"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.BottomRightCorner),
+        ["cursor-drag-move"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.DragMove),
+        ["cursor-drag-copy"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.DragCopy),
+        ["cursor-drag-link"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.DragLink),
+        ["cursor-none"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.None),
+
+        ["ltr"] = (_, _, set) => set.FlowDirection = FlowDirection.LeftToRight,
+        ["rtl"] = (_, _, set) => set.FlowDirection = FlowDirection.RightToLeft,
 
         // 过渡
-        ["transition-none"] = (_, _, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.None,
-        ["transition-all"] = (_, _, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.All,
-        ["transition-opacity"] = (_, _, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.Opacity,
-        ["transition-transform"] = (_, _, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.Transform,
-        ["transition-colors"] = (_, _, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.Colors,
-        ["transition-shadow"] = (_, _, set) => EnsureAdvanced(set).TransitionScope = TransitionScope.Shadow,
+        ["transition-none"] = (_, _, set) => EnsureTemp(set).TransitionScope = TransitionScope.None,
+        ["transition-all"] = (_, _, set) => EnsureTemp(set).TransitionScope = TransitionScope.All,
+        ["transition-opacity"] = (_, _, set) => EnsureTemp(set).TransitionScope = TransitionScope.Opacity,
+        ["transition-transform"] = (_, _, set) => EnsureTemp(set).TransitionScope = TransitionScope.Transform,
+        ["transition-colors"] = (_, _, set) => EnsureTemp(set).TransitionScope = TransitionScope.Colors,
+        ["transition-shadow"] = (_, _, set) => EnsureTemp(set).TransitionScope = TransitionScope.Shadow,
         ["duration-"] = ApplyDuration,
-        ["linear"] = (_, _, set) => EnsureAdvanced(set).Easing = new LinearEasing(),
-        ["ease"] = (_, _, set) => EnsureAdvanced(set).Easing = new QuadraticEaseInOut(),
-        ["ease-in"] = (_, _, set) => EnsureAdvanced(set).Easing = new QuadraticEaseIn(),
-        ["ease-out"] = (_, _, set) => EnsureAdvanced(set).Easing = new QuadraticEaseOut(),
-        ["ease-in-out"] = (_, _, set) => EnsureAdvanced(set).Easing = new QuadraticEaseInOut(),
+        ["linear"] = (_, _, set) => EnsureTemp(set).Easing = new LinearEasing(),
+        ["ease"] = (_, _, set) => EnsureTemp(set).Easing = new QuadraticEaseInOut(),
+        ["ease-in"] = (_, _, set) => EnsureTemp(set).Easing = new QuadraticEaseIn(),
+        ["ease-out"] = (_, _, set) => EnsureTemp(set).Easing = new QuadraticEaseOut(),
+        ["ease-in-out"] = (_, _, set) => EnsureTemp(set).Easing = new QuadraticEaseInOut(),
 
         // 几何变换
         ["origin-top-left"] = (_, _, set) => SetRelativePoint(0, 0, set),
@@ -264,7 +315,7 @@ public static class StyleParser
             ParsePart(part, ref set);
         }
 
-        MergeAdvanced(ref set);
+        MergeTemp(ref set);
     }
 
     public static void Parse(string strStyle, ref StyleSet set)
@@ -291,7 +342,7 @@ public static class StyleParser
 
         Parse(strStyle, ref set);
 
-        MergeAdvanced(ref set);
+        MergeTemp(ref set);
 
         lock (StyleCache)
         {
@@ -337,9 +388,8 @@ public static class StyleParser
             variants[key] = [value];
         }
 
-        MergeAdvanced(ref baseStyle);
+        MergeTemp(ref baseStyle);
     }
-
 
     public static Accessor<FullStyle> ParseFull(Accessor<string> text, StyleSet? defaultStyle = null)
     {
@@ -356,39 +406,46 @@ public static class StyleParser
         });
     }
 
-    public static void MergeAdvanced(ref StyleSet styles)
+    internal static void MergeTemp(ref StyleSet styles)
     {
-        var advanced = styles.Advanced;
-        if (advanced is null) return;
+        var temp = styles.TempStyle;
+        if (temp is null) return;
 
-        var gradientDir = advanced.FgGradientDir;
-        var fromColor = advanced.FgFromColor;
-        var toColor = advanced.FgToColor;
+        var gradientDir = temp.FgGradientDir;
+        var fromColor = temp.FgFromColor;
+        var toColor = temp.FgToColor;
         var foreground = GetGradientBrush(gradientDir, fromColor, toColor);
         if (foreground is not null) styles.Foreground = foreground;
 
-        gradientDir = advanced.BgGradientDir;
-        fromColor = advanced.BgFromColor;
-        toColor = advanced.BgToColor;
+        gradientDir = temp.BgGradientDir;
+        fromColor = temp.BgFromColor;
+        toColor = temp.BgToColor;
         var background = GetGradientBrush(gradientDir, fromColor, toColor);
         if (background is not null) styles.Background = background;
 
-        gradientDir = advanced.BorderGradientDir;
-        fromColor = advanced.BorderFromColor;
-        toColor = advanced.BorderToColor;
+        gradientDir = temp.BorderGradientDir;
+        fromColor = temp.BorderFromColor;
+        toColor = temp.BorderToColor;
         var borderBrush = GetGradientBrush(gradientDir, fromColor, toColor);
         if (borderBrush is not null) styles.BorderBrush = borderBrush;
 
+        var textDecoration = temp.TextDecoration;
+        if (textDecoration is not null)
+        {
+            styles.TextDecorations ??= [];
+            styles.TextDecorations.Add(textDecoration);
+        }
+
         var builder = TransformOperations.CreateBuilder(4);
 
-        if (advanced.TranslateTransform is not null)
-            builder.AppendTranslate(advanced.TranslateTransform.X, advanced.TranslateTransform.Y);
-        if (advanced.ScaleTransform is not null)
-            builder.AppendScale(advanced.ScaleTransform.ScaleX, advanced.ScaleTransform.ScaleY);
-        if (advanced.RotateTransform is not null)
-            builder.AppendRotate(advanced.RotateTransform.Angle);
-        if (advanced.SkewTransform is not null)
-            builder.AppendSkew(advanced.SkewTransform.AngleX, advanced.SkewTransform.AngleY);
+        if (temp.TranslateTransform is not null)
+            builder.AppendTranslate(temp.TranslateTransform.X, temp.TranslateTransform.Y);
+        if (temp.ScaleTransform is not null)
+            builder.AppendScale(temp.ScaleTransform.ScaleX, temp.ScaleTransform.ScaleY);
+        if (temp.RotateTransform is not null)
+            builder.AppendRotate(temp.RotateTransform.Angle);
+        if (temp.SkewTransform is not null)
+            builder.AppendSkew(temp.SkewTransform.AngleX, temp.SkewTransform.AngleY);
 
         // if (advanced.MatrixTransform is not null) 
         //     builder.AppendMatrix(advanced.MatrixTransform);
@@ -396,26 +453,37 @@ public static class StyleParser
         var ops = builder.Build();
         if (ops.Operations.Count > 0)
         {
-            advanced.Transform = ops;
+            styles.RenderTransform = ops;
         }
 
-        var kind = advanced.TransitionScope;
-        if (kind is null) return;
+        var scope = temp.TransitionScope;
+        if (scope is null) return;
 
-        if (advanced.Transform is null)
+        if (styles.RenderTransform is null)
         {
             builder.AppendScale(1, 1);
-            advanced.Transform = builder.Build();
+            styles.RenderTransform = builder.Build();
         }
 
-        // var duration = advanced.Duration;
-        // if (duration is null) return;
-        //
-        // advanced.Transition ??= new TransformOperationsTransition();
-        // advanced.Transition.Duration = TimeSpan.FromMilliseconds(duration.Value);
-        //
-        // if (advanced.Easing is null) return;
-        // advanced.Transition.Easing = advanced.Easing;
+        var duration = temp.Duration ?? 300;
+
+        TransitionBase? transition = scope switch
+        {
+            TransitionScope.Transform => new TransformOperationsTransition
+                { Property = Visual.RenderTransformProperty },
+            TransitionScope.Opacity => new DoubleTransition { Property = Visual.OpacityProperty },
+            TransitionScope.Colors => new BrushTransition { Property = Border.BackgroundProperty },
+            _ => null
+        };
+        if (transition is null) return;
+        transition.Duration = TimeSpan.FromMilliseconds(duration);
+
+        if (temp.Easing is null) return;
+        transition.Easing = temp.Easing;
+        styles.Transitions =
+        [
+            transition
+        ];
     }
 
     private static void ApplyMargin(string[] v, bool isNegative, StyleSet set)
@@ -648,6 +716,58 @@ public static class StyleParser
         set.Padding = new Thickness(t.Left, t.Top, t.Right, val.Value);
     }
 
+    private static void ApplyLetterSpacing(string[] v, bool isNegative, StyleSet set)
+    {
+        if (isNegative) return;
+        if (v.Length != 1) return;
+        var value = v[0];
+        set.LetterSpacing = value switch
+        {
+            "tracking-tighter" => -0.05,
+            "tracking-tight" => -0.025,
+            "tracking-normal" => 0,
+            "tracking-wide" => 0.025,
+            "tracking-wider" => 0.05,
+            "tracking-widest" => 0.1,
+            _ => TryParseValue(value)
+        };
+    }
+
+    private static void ApplyLineHeight(string[] v, bool isNegative, StyleSet set)
+    {
+        if (isNegative) return;
+        if (v.Length != 1) return;
+        var value = v[0];
+        double? letterSpacing = value switch
+        {
+            "leading-none" => 1,
+            "leading-tight" => 1.25,
+            "leading-snug" => 1.375,
+            "leading-normal" => 1.5,
+            "leading-relaxed" => 1.625,
+            "leading-loose" => 2,
+            _ => null
+        };
+        if (letterSpacing is not null)
+        {
+            set.LineHeight = letterSpacing.Value;
+            return;
+        }
+
+        letterSpacing = TryParseValue(value);
+        if (letterSpacing is null) return;
+        set.LineHeight = letterSpacing.Value * UnitScale;
+    }
+
+    private static void ApplyMaxLine(string[] v, bool isNegative, StyleSet set)
+    {
+        if (isNegative) return;
+        if (v.Length != 1) return;
+        var value = TryParseValue(v[0]);
+        if (value is null) return;
+        set.MaxLines = (int)value;
+    }
+
     private static void ApplyText(string[] v, bool isNegative, StyleSet set)
     {
         if (isNegative) return;
@@ -656,6 +776,23 @@ public static class StyleParser
         if (val is null) return;
         val *= UnitScale;
         set.FontSize = val.Value;
+    }
+
+    private static void ApplyDecorationWidth(string[] widthStr, bool isNegative, StyleSet set)
+    {
+        if (isNegative) return;
+        if (widthStr.Length != 1) return;
+        var val = TryParseValue(widthStr[0]);
+        if (val is null) return;
+        EnsureDecoration(set).StrokeThickness = val.Value;
+    }
+
+    private static void ApplyDecorationColor(string[] color, bool isNegative, StyleSet set)
+    {
+        if (isNegative) return;
+        var c = ParseColor(color);
+        if (c is null) return;
+        EnsureDecoration(set).Stroke = new SolidColorBrush(c.Value);
     }
 
     private static void ApplyForeground(string[] color, bool isNegative, StyleSet set)
@@ -759,10 +896,10 @@ public static class StyleParser
 
     private static void ApplyShadow(StyleSet set, double blurRadius, Vector offset)
     {
-        var advanced = EnsureAdvanced(set);
-
-        advanced.BoxShadows ??= [];
-        advanced.BoxShadows.Add(new BoxShadow
+        // var advanced = EnsureAdvanced(set);
+        //
+        set.BoxShadows ??= [];
+        set.BoxShadows.Add(new BoxShadow
         {
             Blur = blurRadius,
             OffsetX = offset.X,
@@ -771,10 +908,17 @@ public static class StyleParser
         });
     }
 
-    private static AdvancedStyle EnsureAdvanced(StyleSet set)
+    private static TempStyle EnsureTemp(StyleSet set)
     {
-        set.Advanced ??= new AdvancedStyle();
-        return set.Advanced;
+        set.TempStyle ??= new TempStyle();
+        return set.TempStyle;
+    }
+
+    private static TextDecoration EnsureDecoration(StyleSet set)
+    {
+        set.TempStyle ??= new TempStyle();
+        set.TempStyle.TextDecoration ??= new TextDecoration();
+        return set.TempStyle.TextDecoration;
     }
 
     private static void ApplyDuration(string[] vals, bool isNegative, StyleSet set)
@@ -784,13 +928,13 @@ public static class StyleParser
         var val = TryParseValue(vals[0]);
         if (val is null) return;
 
-        EnsureAdvanced(set).Duration = val.Value;
+        EnsureTemp(set).Duration = val.Value;
     }
 
     private static void SetRelativePoint(double x, double y, StyleSet set)
     {
-        var advanced = EnsureAdvanced(set);
-        advanced.RelativePoint = new RelativePoint(x, y, RelativeUnit.Relative);
+        // var advanced = EnsureAdvanced(set);
+        set.RenderTransformOrigin = new RelativePoint(x, y, RelativeUnit.Relative);
     }
 
     private static void ApplyTranslate(string[] vals, bool isNegative, StyleSet set)
@@ -801,7 +945,7 @@ public static class StyleParser
         if (translate is null) return;
         translate *= UnitScale;
         if (isNegative) translate = -translate;
-        EnsureAdvanced(set).TranslateTransform = new TranslateTransform { X = translate.Value, Y = translate.Value };
+        EnsureTemp(set).TranslateTransform = new TranslateTransform { X = translate.Value, Y = translate.Value };
     }
 
     private static void ApplyTranslateX(string[] vals, bool isNegative, StyleSet set)
@@ -813,7 +957,7 @@ public static class StyleParser
 
         translate *= UnitScale;
         if (isNegative) translate = -translate;
-        var advanced = EnsureAdvanced(set);
+        var advanced = EnsureTemp(set);
         var translateTransform = advanced.TranslateTransform ?? new TranslateTransform();
         translateTransform.X = translate.Value;
         advanced.TranslateTransform = translateTransform;
@@ -828,7 +972,7 @@ public static class StyleParser
 
         translate *= UnitScale;
         if (isNegative) translate = -translate;
-        var advanced = EnsureAdvanced(set);
+        var advanced = EnsureTemp(set);
         var translateTransform = advanced.TranslateTransform ?? new TranslateTransform();
         translateTransform.Y = translate.Value;
         advanced.TranslateTransform = translateTransform;
@@ -843,7 +987,7 @@ public static class StyleParser
         if (scale is null) return;
 
         scale /= 100.0;
-        EnsureAdvanced(set).ScaleTransform = new ScaleTransform { ScaleX = scale.Value, ScaleY = scale.Value };
+        EnsureTemp(set).ScaleTransform = new ScaleTransform { ScaleX = scale.Value, ScaleY = scale.Value };
     }
 
     private static void ApplyScaleX(string[] vals, bool isNegative, StyleSet set)
@@ -855,7 +999,7 @@ public static class StyleParser
         if (scale is null) return;
 
         scale /= 100.0;
-        var advanced = EnsureAdvanced(set);
+        var advanced = EnsureTemp(set);
         var scaleTransform = advanced.ScaleTransform ?? new ScaleTransform();
         scaleTransform.ScaleX = scale.Value;
         advanced.ScaleTransform = scaleTransform;
@@ -870,7 +1014,7 @@ public static class StyleParser
         if (scale is null) return;
 
         scale /= 100.0;
-        var advanced = EnsureAdvanced(set);
+        var advanced = EnsureTemp(set);
         var scaleTransform = advanced.ScaleTransform ?? new ScaleTransform();
         scaleTransform.ScaleY = scale.Value;
         advanced.ScaleTransform = scaleTransform;
@@ -885,7 +1029,7 @@ public static class StyleParser
 
         var r = rotate.Value;
         if (isNegative) r = -r;
-        EnsureAdvanced(set).RotateTransform = new RotateTransform { Angle = r };
+        EnsureTemp(set).RotateTransform = new RotateTransform { Angle = r };
     }
 
     private static void ApplySkew(string[] vals, bool isNegative, StyleSet set)
@@ -897,7 +1041,7 @@ public static class StyleParser
 
         var sk = skew.Value;
         if (isNegative) sk = -sk;
-        EnsureAdvanced(set).SkewTransform = new SkewTransform { AngleX = sk, AngleY = sk };
+        EnsureTemp(set).SkewTransform = new SkewTransform { AngleX = sk, AngleY = sk };
     }
 
     private static void ApplySkewX(string[] vals, bool isNegative, StyleSet set)
@@ -907,7 +1051,7 @@ public static class StyleParser
         var skew = TryParseValue(val);
         if (skew is null) return;
 
-        var advanced = EnsureAdvanced(set);
+        var advanced = EnsureTemp(set);
         var scaleTransform = advanced.SkewTransform ?? new SkewTransform();
         var sk = skew.Value;
         if (isNegative) sk = -sk;
@@ -922,7 +1066,7 @@ public static class StyleParser
         var skew = TryParseValue(val);
         if (skew is null) return;
 
-        var advanced = EnsureAdvanced(set);
+        var advanced = EnsureTemp(set);
         var scaleTransform = advanced.SkewTransform ?? new SkewTransform();
         var sk = skew.Value;
         if (isNegative) sk = -sk;
@@ -954,7 +1098,7 @@ public static class StyleParser
         double? result = null;
         if (s.EndsWith("px") && double.TryParse(s[..^2], out var px)) result = px;
         else if (double.TryParse(s, out var val)) result = val * UnitScale;
-        if(result is not null) ParseLengthResultCache[s] = result.Value;
+        if (result is not null) ParseLengthResultCache[s] = result.Value;
         return result;
     }
 

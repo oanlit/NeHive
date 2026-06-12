@@ -1,7 +1,8 @@
 using Avalonia;
 using Avalonia.Layout;
 using Avalonia.Controls;
-using Avalonia.Animation;
+using Avalonia.Media;
+using Avalonia.Media.Transformation;
 
 namespace NeHive.UI.Avalonia.Styles;
 
@@ -34,6 +35,8 @@ public static class StyleUtil
 
     public static void Copy(ref StyleSet target, StyleSet source)
     {
+        if (ReferenceEquals(target, source)) return;
+
         target.Margin = source.Margin;
         target.ZIndex = source.ZIndex;
 
@@ -52,12 +55,22 @@ public static class StyleUtil
         target.HorizontalAlignment = source.HorizontalAlignment;
         target.VerticalAlignment = source.VerticalAlignment;
 
+        target.LetterSpacing = source.LetterSpacing;
+        target.LineHeight = source.LineHeight;
+        target.LineSpacing = source.LineSpacing;
+        target.MaxLines = source.MaxLines;
+        target.TextTrimming = source.TextTrimming;
         target.TextAlignment = source.TextAlignment;
         target.VerticalTextAlignment = source.VerticalTextAlignment;
         target.TextWrapping = source.TextWrapping;
+        target.TextDecorations = source.TextDecorations;
+        target.Inlines = source.Inlines;
 
         target.FontSize = source.FontSize;
+        target.FontFamily = source.FontFamily;
         target.FontWeight = source.FontWeight;
+        target.FontStretch = source.FontStretch;
+        target.FontFeatures = source.FontFeatures;
         target.FontStyle = source.FontStyle;
         target.Foreground = source.Foreground;
 
@@ -69,8 +82,22 @@ public static class StyleUtil
         target.Opacity = source.Opacity;
         target.IsVisible = source.IsVisible;
 
-        if (source.Advanced is null) target.Advanced = null;
-        // else target.Advanced = source.AdvancedStyle.Copy(ref source.Advanced);
+        target.Effect = source.Effect;
+        if (source.BoxShadows is not null) target.BoxShadows = [..source.BoxShadows];
+        target.Cursor = source.Cursor;
+        target.FlowDirection = source.FlowDirection;
+
+        target.RenderTransformOrigin = source.RenderTransformOrigin;
+
+        if (source.RenderTransform is not null)
+        {
+            var builder = TransformOperations.CreateBuilder(4);
+            builder.AppendMatrix(source.RenderTransform.Value);
+            target.RenderTransform = builder.Build();
+        }
+
+        if (source.Transitions is null) return;
+        target.Transitions = [..source.Transitions];
     }
 
     public static void ApplyStyle(BaseStyle style, Layoutable layout, Border border)
@@ -116,44 +143,34 @@ public static class StyleUtil
         if (style.BorderBrush is not null) border.BorderBrush = style.BorderBrush;
         if (style.BorderThickness.HasValue) border.BorderThickness = style.BorderThickness.Value;
         if (style.CornerRadius is not null) border.CornerRadius = style.CornerRadius.Value;
+        if (style.Opacity is not null) border.Opacity = style.Opacity.Value;
 
-        if (style.Opacity is not null)
-            border.Opacity = style.Opacity.Value;
-
-        if (style.Advanced is null) return;
-        var advanced = style.Advanced;
-
-        if (advanced.Effect is not null) border.Effect = advanced.Effect;
-        if (advanced.Cursor is not null) border.Cursor = advanced.Cursor;
-        if (advanced.FlowDirection is not null) border.FlowDirection = advanced.FlowDirection.Value;
-
-        border.RenderTransformOrigin = advanced.RelativePoint ?? RelativePoint.Center;
-
-        if (advanced.Transform is not null) border.RenderTransform = advanced.Transform;
-
-        var scope = advanced.TransitionScope;
-        if (scope is not null)
+        if (style.Effect is not null) border.Effect = style.Effect;
+        var boxShadows = style.BoxShadows;
+        if (boxShadows is not null)
         {
-            advanced.Transition = scope switch
+            if (boxShadows.Count == 1)
             {
-                TransitionScope.Transform => new TransformOperationsTransition
-                    { Property = Visual.RenderTransformProperty },
-                TransitionScope.Opacity => new DoubleTransition { Property = Visual.OpacityProperty },
-                TransitionScope.Colors => new BrushTransition { Property = Border.BackgroundProperty },
-                _ => null
-            };
+                border.BoxShadow = new(boxShadows[0]);
+            }
+            else if (boxShadows.Count > 1)
+            {
+                var rest = new BoxShadow[boxShadows.Count - 1];
+                for (var i = 1; i < boxShadows.Count; i++)
+                {
+                    rest[i - 1] = boxShadows[i];
+                }
+
+                border.BoxShadow = new(boxShadows[0], rest);
+            }
         }
 
-        if (advanced.Transition is null) return;
-        var duration = advanced.Duration;
-        advanced.Transition.Duration = TimeSpan.FromMilliseconds(duration ?? 300);
+        if (style.Cursor is not null) border.Cursor = style.Cursor;
+        if (style.FlowDirection is not null) border.FlowDirection = style.FlowDirection.Value;
 
-        if (advanced.Easing is not null) advanced.Transition.Easing = advanced.Easing;
-
-        border.Transitions ??=
-        [
-            advanced.Transition
-        ];
+        border.RenderTransformOrigin = style.RenderTransformOrigin ?? RelativePoint.Center;
+        border.RenderTransform = style.RenderTransform;
+        border.Transitions ??= style.Transitions;
     }
 
     extension(StyleSet style)
@@ -195,35 +212,13 @@ public static class StyleUtil
             if (other.Opacity is not null) style.Opacity = other.Opacity;
             if (other.IsVisible is not null) style.IsVisible = other.IsVisible;
 
-            if (other.Advanced is null) return;
+            if (other.Effect is not null) style.Effect = other.Effect;
+            if (other.Cursor is not null) style.Cursor = other.Cursor;
+            if (other.FlowDirection is not null) style.FlowDirection = other.FlowDirection;
 
-            if (style.Advanced is null)
-            {
-                style.Advanced = other.Advanced;
-                return;
-            }
-
-            var otherAdvanced = other.Advanced;
-
-            if (otherAdvanced.Effect is not null) style.Advanced.Effect = otherAdvanced.Effect;
-            if (otherAdvanced.Cursor is not null) style.Advanced.Cursor = otherAdvanced.Cursor;
-            if (otherAdvanced.FlowDirection is not null) style.Advanced.FlowDirection = otherAdvanced.FlowDirection;
-
-            if (otherAdvanced.RelativePoint is not null) style.Advanced.RelativePoint = otherAdvanced.RelativePoint;
-
-            if (otherAdvanced.TransitionScope is not null)
-                style.Advanced.TransitionScope = otherAdvanced.TransitionScope;
-            if (otherAdvanced.Duration is not null) style.Advanced.Duration = otherAdvanced.Duration;
-            if (otherAdvanced.Easing is not null) style.Advanced.Easing = otherAdvanced.Easing;
-            // if (otherAdvanced.Transition is not null) style.Advanced.Transition = otherAdvanced.Transition;
-
-            if (otherAdvanced.ScaleTransform is not null) style.Advanced.ScaleTransform = otherAdvanced.ScaleTransform;
-            if (otherAdvanced.RotateTransform is not null)
-                style.Advanced.RotateTransform = otherAdvanced.RotateTransform;
-            if (otherAdvanced.SkewTransform is not null) style.Advanced.SkewTransform = otherAdvanced.SkewTransform;
-            if (otherAdvanced.MatrixTransform is not null)
-                style.Advanced.MatrixTransform = otherAdvanced.MatrixTransform;
-            if (otherAdvanced.Transform is not null) style.Advanced.Transform = otherAdvanced.Transform;
+            if (other.RenderTransformOrigin is not null) style.RenderTransformOrigin = other.RenderTransformOrigin;
+            if (other.RenderTransform is not null) style.RenderTransform = other.RenderTransform;
+            if (other.Transitions is not null) style.Transitions = other.Transitions;
         }
 
         public void MergeMany(params StyleSet[] styles)
