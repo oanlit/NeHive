@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Media;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
@@ -51,7 +52,22 @@ public static partial class BaseComponent
             if (styleValue.MaxLines is not null) textBlock.MaxLines = styleValue.MaxLines.Value;
             if (styleValue.TextTrimming is not null) textBlock.TextTrimming = styleValue.TextTrimming;
 
-            if (styleValue.TextAlignment is not null) textBlock.TextAlignment = styleValue.TextAlignment.Value;
+            if (styleValue.TextAlignment is not null)
+            {
+                // textBlock.TextAlignment = styleValue.TextAlignment.Value;
+                switch (styleValue.TextAlignment.Value)
+                {
+                    case TextAlignment.Left:
+                        textBlock.HorizontalAlignment = HorizontalAlignment.Left;
+                        break;
+                    case TextAlignment.Center:
+                        textBlock.HorizontalAlignment = HorizontalAlignment.Center;
+                        break;
+                    case TextAlignment.Right:
+                        textBlock.HorizontalAlignment = HorizontalAlignment.Right;
+                        break;
+                }
+            }
             if (styleValue.VerticalTextAlignment is not null)
                 border.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
 

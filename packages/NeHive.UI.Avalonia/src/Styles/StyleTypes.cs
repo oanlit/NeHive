@@ -155,3 +155,10 @@ public struct FullStyle
 
     public Dictionary<string, List<string>> Variants;
 }
+
+public readonly struct StyleDefinitions
+{
+    public Dictionary<string, Action<string[], bool, StyleSet>> Handlers { get; init; }
+    public Dictionary<string, Color> Colors { get; init; }
+    public Dictionary<string, string[]> Fonts { get; init; }
+}

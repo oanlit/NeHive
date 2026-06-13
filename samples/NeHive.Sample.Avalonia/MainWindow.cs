@@ -14,6 +14,7 @@ public class MainWindow : Window
         Title = "NeHive UI Avalonia Demo";
         _mainNavDemo = DemoComponent.MainNavDemo();
         // _mainNavDemo = MusicPlayerDemo.MusicPlayer();
+        // _mainNavDemo = DemoComponent.TextStyleDemo();
         // _mainNavDemo = DemoComponent.GroupDemo();
         // _mainNavDemo = DemoComponent.ContextDemo();
         Content = _mainNavDemo.Content;

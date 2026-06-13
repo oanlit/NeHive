@@ -792,6 +792,221 @@ public static class DemoComponent
 
     #endregion
 
+    #region TextStyle Demo
+
+    public static IElement TextStyleDemo()
+    {
+        return HScrollViewer(new()
+        {
+            HStackPanel(new(strStyle: "p-6 gap-6 vertical")
+            {
+                HTextBlock("Text Style Demo",
+                    strStyle: "text-3xl fw-bold font-jetmono fg-sky-700"),
+
+                // 字号
+                DemoSection("Font Size",
+                [
+                    HTextBlock("text-xs", strStyle: "text-xs"),
+                    HTextBlock("text-sm", strStyle: "text-sm"),
+                    HTextBlock("text-base", strStyle: "text-base"),
+                    HTextBlock("text-lg", strStyle: "text-lg"),
+                    HTextBlock("text-xl", strStyle: "text-xl"),
+                    HTextBlock("text-2xl", strStyle: "text-2xl"),
+                    HTextBlock("text-3xl", strStyle: "text-3xl")
+                ]), // DemoSection
+
+                // 字重
+                DemoSection("Font Weight",
+                [
+                    HTextBlock("Thin", strStyle: "fw-thin"),
+                    HTextBlock("ExtraLight", strStyle: "fw-extralight"),
+                    HTextBlock("Light", strStyle: "fw-light"),
+                    HTextBlock("Normal", strStyle: "fw-normal"),
+                    HTextBlock("Medium", strStyle: "fw-medium"),
+                    HTextBlock("SemiBold", strStyle: "fw-semibold"),
+                    HTextBlock("Bold", strStyle: "fw-bold"),
+                    HTextBlock("ExtraBold", strStyle: "fw-extrabold"),
+                    HTextBlock("Black", strStyle: "fw-black")
+                ]), // DemoSection
+
+                // 字体
+                DemoSection("Font Family",
+                [
+                    HTextBlock("JetBrains Mono",
+                        strStyle: "font-jetmono text-lg"),
+
+                    HTextBlock("落霞与孤鹜齐飞 秋水共长天一色",
+                        strStyle: "font-lxgw text-lg")
+                ]), // DemoSection
+
+                // 字体风格
+                DemoSection("Font Style",
+                [
+                    HTextBlock("Italic", strStyle: "italic"),
+                    HTextBlock("Oblique", strStyle: "oblique"),
+                    HTextBlock("Normal", strStyle: "not-italic")
+                ]), // DemoSection
+
+                // 对齐
+                DemoSection("Alignment",
+                [
+                    HTextBlock("Left",
+                        strStyle: "w-80 p-2 text-left border border-gray-300"),
+
+                    HTextBlock("Center",
+                        strStyle: "w-80 p-2 text-center border border-gray-300"),
+
+                    HTextBlock("Right",
+                        strStyle: "p-2 w-80 text-right border border-gray-300")
+                ]), // DemoSection
+
+                // 装饰线
+                DemoSection("Decoration",
+                [
+                    HTextBlock("Underline", strStyle: "underline"),
+                    HTextBlock("Overline", strStyle: "overline"),
+                    HTextBlock("Baseline", strStyle: "baseline"),
+                    HTextBlock("Line Through", strStyle: "line-through"),
+                    HTextBlock("Red Decoration", strStyle: "underline decoration-red-500"),
+                    HTextBlock("Dashed Decoration", strStyle: "underline decoration-dashed"),
+                    HTextBlock("Dotted Decoration", strStyle: "underline decoration-dotted")
+                ]), // DemoSection
+
+                // 字间距
+                DemoSection("Letter Spacing",
+                [
+                    HTextBlock("Tracking Tighter", strStyle: "tracking-tighter"),
+                    HTextBlock("Tracking Tight", strStyle: "tracking-tight"),
+                    HTextBlock("Tracking Normal", strStyle: "tracking-normal"),
+                    HTextBlock("Tracking Wide", strStyle: "tracking-wide"),
+                    HTextBlock("Tracking Wider", strStyle: "tracking-wider"),
+                    HTextBlock("Tracking Widest", strStyle: "tracking-widest"),
+                    
+                    HTextBlock("Tracking -1", strStyle: "-tracking-1"),
+                    HTextBlock("Tracking -0.5", strStyle: "-tracking-0.5"),
+                    HTextBlock("Tracking 0.5", strStyle: "tracking-0.5"),
+                    HTextBlock("Tracking 1", strStyle: "tracking-1"),
+                    HTextBlock("Tracking 2", strStyle: "tracking-2"),
+                    HTextBlock("Tracking 4", strStyle: "tracking-4")
+                ]), // DemoSection
+
+                // 换行
+                DemoSection("Wrapping",
+                [
+                    HTextBlock(
+                        "Lorem ipsum dolor sit amet consectetur adipiscing elit",
+                        strStyle: "w-50 wrap border border-gray-300"),
+
+                    HTextBlock(
+                        "Lorem ipsum dolor sit amet consectetur adipiscing elit",
+                        strStyle: "w-50 whitespace-nowrap border border-gray-300")
+                ]), // DemoSection
+                
+                // 行高
+                DemoSection("Line Height",
+                [
+                    HTextBlock(
+                        """
+                        The quick brown fox jumps over the lazy dog.
+                        The quick brown fox jumps over the lazy dog.
+                        The quick brown fox jumps over the lazy dog.
+                        """,
+                        strStyle: "w-80 p-2 wrap leading-4 border border-gray-300"
+                    ),
+
+                    HTextBlock(
+                        """
+                        The quick brown fox jumps over the lazy dog.
+                        The quick brown fox jumps over the lazy dog.
+                        The quick brown fox jumps over the lazy dog.
+                        """,
+                        strStyle: "w-80 p-2 wrap leading-8 border border-gray-300"
+                    ),
+
+                    HTextBlock(
+                        """
+                        The quick brown fox jumps over the lazy dog.
+                        The quick brown fox jumps over the lazy dog.
+                        The quick brown fox jumps over the lazy dog.
+                        """,
+                        strStyle: "w-80 p-2 wrap leading-12 border border-gray-300"
+                    )
+                ]), // DemoSection
+
+                // 裁剪
+                DemoSection("Text Trimming",
+                [
+                    HTextBlock(
+                        "This is a very very very long text",
+                        strStyle: "w-40 truncate"),
+
+                    HTextBlock(
+                        "This is a very very very long text",
+                        strStyle: "w-40 text-clip-char"),
+
+                    HTextBlock(
+                        "This is a very very very long text",
+                        strStyle: "w-40 text-clip-start")
+                ]), // DemoSection
+
+                // 颜色
+                DemoSection("Foreground",
+                [
+                    HTextBlock("Sky 500",
+                        strStyle: "fg-sky-500"),
+
+                    HTextBlock("Rose 500",
+                        strStyle: "fg-rose-500"),
+
+                    HTextBlock("Emerald 500",
+                        strStyle: "fg-emerald-500")
+                ]), // DemoSection
+                
+                // 综合
+                DemoSection("Combined Typography",
+                [
+                    HTextBlock(
+                        "NeHive UI Typography",
+                        strStyle: "text-3xl tracking-2 fw-black italic fg-sky-700"
+                    ), // HTextBlock
+
+                    HTextBlock(
+                        "JetBrains Mono Programming Font",
+                        strStyle: "text-lg tracking-1 fw-semibold font-jetmono fg-emerald-600"
+                    ), // HTextBlock
+
+                    HTextBlock(
+                        "落霞与孤鹜齐飞，秋水共长天一色",
+                        strStyle: "text-xl tracking-1 leading-10 fw-medium font-lxgw fg-rose-600"
+                    ), // HTextBlock
+
+                    HTextBlock(
+                        "Decorated Typography",
+                        strStyle: "text-2xl fw-bold underline decoration-dashed decoration-w-2 decoration-violet-500"
+                    ) // HTextBlock
+                ]) // DemoSection
+            }) // HStackPanel
+        });
+
+        static IElement DemoSection(string title, IEnumerable<IElement> children)
+        {
+            var stackPanelProp = new HStackPanelProp(strStyle: "gap-2 vertical");
+            foreach (var child in children)
+            {
+                stackPanelProp.Add(child);
+            }
+            return HStackPanel(new(strStyle: "gap-2 vertical")
+            {
+                HTextBlock(title,
+                    strStyle: "text-xl fw-bold fg-sky-700"),
+
+                HStackPanel(stackPanelProp)
+            });
+        }
+    }
+
+    #endregion
+
     #region Group Demo
 
     public static IElement GroupDemo()
@@ -866,7 +1081,7 @@ public static class DemoComponent
                         Default = () => HSvgImage("~/Assets/moon.svg", strStyle: "w-4 h-4 fw-extralight")
                     }), // Switch
                     HTextBlock(new(() => $"Switch to {(theme.RxValue is "dark" ? "light" : "dark")} mode"),
-                        strStyle:"ml-1")
+                        strStyle: "ml-1")
                 }) // HContentButton
             }); // RootElement
         });
