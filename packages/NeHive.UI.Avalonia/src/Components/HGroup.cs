@@ -2,21 +2,15 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HGroupProp<T> where T : IGroupState
+public class HGroupProp<T>(Accessor<string>? strStyle = null) where T : IGroupState
 {
-    public readonly Accessor<FullStyle>? Style;
-    public required Func<T, IElement> Child { get; init; }
+    public readonly Accessor<FullStyle>? Style = StyleParser.ParseFull(strStyle);
 
-    public HGroupProp(Accessor<string>? strStyle = null)
-    {
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
+    public required Func<T, IElement> Child { get; init; }
 }
 
 public static partial class BaseComponent
@@ -44,7 +38,7 @@ public static partial class BaseComponent
                 var styleValue = epochScope.Track(style);
                 state.BaseStyle = styleValue.Normal;
                 state.Variants = styleValue.Variants;
-                state.CurrentStyle = StyleUtil.Copy(state.BaseStyle);
+                state.CurrentStyle = state.BaseStyle.Copy();
                 state.CurrentStyle.Background ??= new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
                 StyleUtil.ApplyStyle(state.CurrentStyle, border, border);
             });

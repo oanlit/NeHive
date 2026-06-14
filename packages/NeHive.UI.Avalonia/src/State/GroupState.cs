@@ -1,8 +1,7 @@
-using Avalonia.Media;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 
-namespace NeHive.UI.Avalonia;
+namespace NeHive.UI.Avalonia.State;
 
 public interface IGroupState;
 

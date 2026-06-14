@@ -2,37 +2,29 @@ using System.Collections;
 using Avalonia.Controls;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HToggleSwitchProp : IEnumerable<IElement>
+public class HToggleSwitchProp(
+    Accessor<bool?>? isChecked = null,
+    MutSignal<bool?>? bindIsChecked = null,
+    Accessor<bool>? isEnabled = null,
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null,
+    Action<bool?>? onCheckedChanged = null
+) : IEnumerable<IElement>
 {
     private readonly List<IElement> _children = [];
 
-    public readonly Accessor<FullStyle>? Style;
+    public readonly MutSignal<bool?>? BindIsChecked = bindIsChecked;
+    public readonly Accessor<bool?>? IsChecked =  isChecked;
+    public readonly Accessor<bool>? IsEnabled =  isEnabled;
+    public readonly Action<bool?>? OnCheckedChanged =  onCheckedChanged;
 
-    public readonly MutSignal<bool?>? BindIsChecked;
-    public readonly Accessor<bool?>? IsChecked;
-    public readonly Accessor<bool>? IsEnabled;
-    public readonly Action<bool?>? OnCheckedChanged;
-
-    public HToggleSwitchProp(
-        Accessor<bool?>? isChecked = null,
-        MutSignal<bool?>? bindIsChecked = null,
-        Accessor<bool>? isEnabled = null,
-        Accessor<string>? strStyle = null,
-        Action<bool?>? onCheckedChanged = null
-    )
-    {
-        BindIsChecked = bindIsChecked;
-        IsChecked = isChecked;
-        IsEnabled = isEnabled;
-        OnCheckedChanged = onCheckedChanged;
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
     // 添加子内容（显示在开关旁边的标签或控件）
     public void Add(IElement element) => _children.Add(element);
@@ -51,24 +43,23 @@ public static partial class BaseComponent
             Child = toggle
         };
 
-        // 应用样式
-        if (prop.Style != null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            uiScope.CreateEffect(scope =>
-            {
-                var style = scope.Track(prop.Style);
-                StyleUtil.ApplyStyle(style.Normal, toggle, border);
-            });
-        }
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, toggle, border, StyleUtil.ApplyStyle);
+        state.ApplyVariantsStyle(toggle, border, StyleUtil.ApplyStyle);
 
         // 启用状态
-        if (prop.IsEnabled != null)
+        if (prop.IsEnabled is not null)
             uiScope.CreateEffect(() => toggle.IsEnabled = prop.IsEnabled.RxValue);
 
         // 双向绑定 BindIsChecked
-        if (prop.BindIsChecked != null)
+        if (prop.BindIsChecked is not null)
         {
-            uiScope.CreateEffect(() => toggle.IsChecked = prop.BindIsChecked.RxValue);
+            uiScope.CreateEffect(epochScope => toggle.IsChecked = epochScope.Pull(prop.BindIsChecked));
             toggle.IsCheckedChanged += (_, _) =>
             {
                 var newValue = toggle.IsChecked == true;
@@ -77,19 +68,22 @@ public static partial class BaseComponent
                 prop.OnCheckedChanged?.Invoke(newValue);
             };
         }
-        else if (prop.IsChecked != null)
+        else if (prop.IsChecked is not null)
         {
-            uiScope.CreateEffect(() => toggle.IsChecked = prop.IsChecked.RxValue);
+            toggle.IsChecked = prop.IsChecked.Value;
+            if(prop.IsChecked.IsReactive)
+                uiScope.CreateEffect(epochScope => toggle.IsChecked = epochScope.Track(prop.IsChecked));
+            
             toggle.Click += (_, _) => prop.OnCheckedChanged?.Invoke(toggle.IsChecked);
         }
-        else if (prop.OnCheckedChanged != null)
+        else if (prop.OnCheckedChanged is not null)
         {
             toggle.IsCheckedChanged += (_, _) => prop.OnCheckedChanged?.Invoke(toggle.IsChecked == true);
         }
 
         // 设置内容（通常是 TextBlock 或 StackPanel）
         var firstChild = prop.FirstOrDefault();
-        if (firstChild != null)
+        if (firstChild is not null)
             toggle.Content = firstChild.Content;
 
         return new Element<ToggleSwitch>(uiScope, border, toggle);

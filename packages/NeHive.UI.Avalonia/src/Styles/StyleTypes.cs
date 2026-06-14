@@ -34,7 +34,8 @@ public class BaseStyle
 
     public double? Opacity;
     public bool? IsVisible;
-    
+
+    public bool? ClipToBounds;
     public IEffect? Effect;
     public List<BoxShadow>? BoxShadows;
     public Cursor? Cursor;
@@ -71,42 +72,12 @@ internal class TempStyle
     public ScaleTransform? ScaleTransform;
     public RotateTransform? RotateTransform;
     public SkewTransform? SkewTransform;
-    // public MatrixTransform? MatrixTransform;
-    //
-    // public static TempStyle Copy(ref TempStyle parserStyle)
-    // {
-    //     return new TempStyle
-    //     {
-    //         FgGradientDir = parserStyle.FgGradientDir,
-    //         FgFromColor = parserStyle.FgFromColor,
-    //         FgToColor = parserStyle.FgToColor,
-    //
-    //         BgGradientDir = parserStyle.BgGradientDir,
-    //         BgFromColor = parserStyle.BgFromColor,
-    //         BgToColor = parserStyle.BgToColor,
-    //
-    //         BorderGradientDir = parserStyle.BorderGradientDir,
-    //         BorderFromColor = parserStyle.BorderFromColor,
-    //         BorderToColor = parserStyle.BorderToColor,
-    //
-    //         TransitionScope = parserStyle.TransitionScope,
-    //         Duration = parserStyle.Duration,
-    //         
-    //         TranslateTransform = parserStyle.TranslateTransform,
-    //         ScaleTransform = parserStyle.ScaleTransform,
-    //         RotateTransform = parserStyle.RotateTransform,
-    //         SkewTransform = parserStyle.SkewTransform,
-    //         MatrixTransform = parserStyle.MatrixTransform
-    //     };
-    // }
 }
 
 public class StyleSet : BaseStyle
 {
     public double? RowSpacing;
     public double? ColumnSpacing;
-
-    public OverflowHandle? OverflowHandle;
 
     public Orientation? Orientation;
 
@@ -131,12 +102,6 @@ public class StyleSet : BaseStyle
     public FontFeatureCollection? FontFeatures;
     public FontStyle? FontStyle;
     public IBrush? Foreground;
-}
-
-public enum OverflowHandle
-{
-    Visible,
-    Hidden
 }
 
 public enum TransitionScope

@@ -3,35 +3,35 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
 public class HWrapPanelProp : IEnumerable<IElement>
 {
     private readonly List<IElement> _children = [];
-    public readonly Accessor<StyleSet>? Style;
+
     public readonly Accessor<double>? ItemWidth;
     public readonly Accessor<double>? ItemHeight;
+    public readonly Accessor<FullStyle> Style;
+    public readonly Dictionary<string, StyleSet>? Variants;
 
     public HWrapPanelProp(
         Accessor<double>? itemWidth = null,
         Accessor<double>? itemHeight = null,
-        Accessor<string>? strStyle = null
+        Accessor<string>? strStyle = null,
+        Accessor<StyleSet>? style = null,
+        Dictionary<string, StyleSet>? variants = null
     )
     {
         ItemWidth = itemWidth;
         ItemHeight = itemHeight;
 
-        if (strStyle is null) return;
+        var baseStyle = StyleUtil.FromDefault();
+        baseStyle.Orientation = Orientation.Horizontal;
 
-        var result = StyleUtil.FromDefault();
-        result.Orientation = Orientation.Horizontal;
-        Style = new Computed<StyleSet>(() =>
-        {
-            var str = strStyle.RxValue;
-            StyleParser.Parse(str, ref result);
-            return result;
-        });
+        Style = StyleParser.ParseFull(strStyle, baseStyle, style);
+        Variants = variants;
     }
 
     // 集合初始化器添加子元素
@@ -52,15 +52,14 @@ public static partial class BaseComponent
             Child = wrapPanel
         };
 
-        // 应用样式
-        if (prop.Style != null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            uiScope.CreateEffect(scope =>
-            {
-                var style = scope.Track(prop.Style);
-                ApplyStyle(style);
-            });
-        }
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, wrapPanel, border, ApplyStyle);
+        state.ApplyVariantsStyle(wrapPanel, border, ApplyStyle);
 
         if (prop.ItemWidth is not null)
         {
@@ -88,24 +87,23 @@ public static partial class BaseComponent
 
         return new Element<WrapPanel>(uiScope, border, wrapPanel);
 
-        void ApplyStyle(StyleSet style)
+        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(style, wrapPanel, border);
+            StyleUtil.ApplyStyle(styleValue, layout, bord);
 
-            var orientation = style.Orientation;
-            if(orientation is null) return;
+            var orientation = styleValue.Orientation;
+            if (orientation is null) return;
 
             if (orientation is Orientation.Horizontal)
             {
-                if (style.RowSpacing is not null) wrapPanel.ItemSpacing = style.RowSpacing.Value;
-                if (style.ColumnSpacing is not null) wrapPanel.LineSpacing = style.ColumnSpacing.Value;
+                if (styleValue.RowSpacing is not null) wrapPanel.ItemSpacing = styleValue.RowSpacing.Value;
+                if (styleValue.ColumnSpacing is not null) wrapPanel.LineSpacing = styleValue.ColumnSpacing.Value;
             }
             else
             {
-                if (style.ColumnSpacing is not null) wrapPanel.ItemSpacing = style.ColumnSpacing.Value;
-                if (style.RowSpacing is not null) wrapPanel.LineSpacing = style.RowSpacing.Value;
+                if (styleValue.ColumnSpacing is not null) wrapPanel.ItemSpacing = styleValue.ColumnSpacing.Value;
+                if (styleValue.RowSpacing is not null) wrapPanel.LineSpacing = styleValue.RowSpacing.Value;
             }
-
         }
     }
 }

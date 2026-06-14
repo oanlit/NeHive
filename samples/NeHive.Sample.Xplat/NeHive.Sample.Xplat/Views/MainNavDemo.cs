@@ -327,7 +327,7 @@ public static class DemoComponent
         {
             HTextBox(
                 bindText: textSignal,
-                watermark: "Type something...",
+                placeholderText: "Type something...",
                 strStyle: "w-100 p-3 font-bold border border-blue-400 rounded-lg",
                 onTextChanged: newText => log.RxValue = $"Input changed: {newText}"
             ), // HTextBox

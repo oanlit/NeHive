@@ -1,145 +1,33 @@
 using System.Collections;
 using Avalonia;
-using Avalonia.Media;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HScrollStyle(
-    Thickness? margin = null,
-    double? width = null,
-    double? height = null,
-    double? minWidth = null,
-    double? minHeight = null,
-    double? maxWidth = null,
-    double? maxHeight = null,
-    Orientation? orientation = null,
-    HorizontalAlignment? horizontalAlignment = null,
-    VerticalAlignment? verticalAlignment = null,
-    Thickness? padding = null,
-    bool? isVisible = null,
-    double? spacing = null,
-    IBrush? background = null,
-    IBrush? borderBrush = null,
-    Thickness? borderThickness = null,
-    double? opacity = null,
-    CornerRadius? cornerRadius = null
-)
-{
-    public Thickness Margin { get; private set; } = margin ?? new Thickness(0);
-    public double? Width { get; private set; } = width;
-    public double? Height { get; private set; } = height;
-    public double? MinWidth { get; private set; } = minWidth;
-    public double? MinHeight { get; private set; } = minHeight;
-    public double? MaxWidth { get; private set; } = maxWidth;
-    public double? MaxHeight { get; private set; } = maxHeight;
-    public Orientation Orientation { get; private set; } = orientation ?? Orientation.Vertical;
-
-    public HorizontalAlignment HorizontalAlignment { get; private set; } =
-        horizontalAlignment ?? HorizontalAlignment.Stretch;
-
-    public VerticalAlignment VerticalAlignment { get; private set; } =
-        verticalAlignment ?? VerticalAlignment.Stretch;
-
-    public Thickness Padding { get; private set; } = padding ?? new Thickness(0);
-
-    public bool? IsVisible { get; private set; } = isVisible;
-    public double Spacing { get; private set; } = spacing ?? 0;
-    public IBrush? Background { get; private set; } = background;
-    public IBrush? BorderBrush { get; private set; } = borderBrush;
-
-    public Thickness BorderThickness { get; private set; } = borderThickness ?? new Thickness(0);
-
-    public double? Opacity { get; private set; } = opacity;
-    public CornerRadius? CornerRadius { get; private set; } = cornerRadius;
-
-    public HScrollStyle Merge(HScrollStyle style)
-    {
-        Margin = style.Margin;
-        Width = style.Width;
-        Height = style.Height;
-        MinWidth = style.MinWidth;
-        MinHeight = style.MinHeight;
-        MaxWidth = style.MaxWidth;
-        MaxHeight = style.MaxHeight;
-        Orientation = style.Orientation;
-        HorizontalAlignment = style.HorizontalAlignment;
-        VerticalAlignment = style.VerticalAlignment;
-        Padding = style.Padding;
-        IsVisible = style.IsVisible;
-        Spacing = style.Spacing;
-        Background = style.Background ?? Background;
-        BorderBrush = style.BorderBrush;
-        BorderThickness = style.BorderThickness;
-        Opacity = style.Opacity;
-        CornerRadius = style.CornerRadius;
-        return this;
-    }
-
-    public static HScrollStyle Default => new();
-
-    public static Accessor<HScrollStyle> Parse(Accessor<string> text)
-    {
-        var result = new StyleSet();
-        return new Computed<HScrollStyle>(() =>
-        {
-            var str = text.RxValue;
-
-            StyleParser.Parse(str, ref result);
-            return new HScrollStyle(
-                result.Margin,
-                result.Width,
-                result.Height,
-                result.MinWidth,
-                result.MinHeight,
-                result.MaxWidth,
-                result.MaxHeight,
-                result.Orientation,
-                result.HorizontalAlignment,
-                result.VerticalAlignment,
-                result.Padding,
-                result.IsVisible,
-                result.ColumnSpacing,
-                result.Background,
-                result.BorderBrush
-            );
-        });
-    }
-}
-
-public class HScrollProp : ISingleChildrenProp
+public class HScrollProp(
+    Accessor<ScrollBarVisibility>? horizontalScrollBarVisibility = null,
+    Accessor<ScrollBarVisibility>? verticalScrollBarVisibility = null,
+    // Accessor<bool>? allowInertia = null, // 是否允许惯性滚动（触摸屏）
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null) : ISingleChildrenProp
 {
     private readonly List<IElement> _children = [];
 
-    public readonly Accessor<ScrollBarVisibility> HorizontalScrollBarVisibility;
-    public readonly Accessor<ScrollBarVisibility> VerticalScrollBarVisibility;
+    public readonly Accessor<ScrollBarVisibility> HorizontalScrollBarVisibility =
+        horizontalScrollBarVisibility ?? ScrollBarVisibility.Auto;
+
+    public readonly Accessor<ScrollBarVisibility> VerticalScrollBarVisibility =
+        verticalScrollBarVisibility ?? ScrollBarVisibility.Auto;
     // public readonly Accessor<bool>? AllowInertia;
 
-    public readonly Accessor<FullStyle>? Style;
-
-    /// <param name="horizontalScrollBarVisibility">水平滚动条可见策略</param>
-    /// <param name="verticalScrollBarVisibility">垂直滚动条可见策略</param>
-    /// <param name="strStyle">字符串样式，如 "m-2 p-2 bg-lightgray rounded-lg"</param>
-    public HScrollProp(
-        Accessor<ScrollBarVisibility>? horizontalScrollBarVisibility = null,
-        Accessor<ScrollBarVisibility>? verticalScrollBarVisibility = null,
-        // Accessor<bool>? allowInertia = null, // 是否允许惯性滚动（触摸屏）
-        Accessor<string>? strStyle = null)
-    {
-        HorizontalScrollBarVisibility = horizontalScrollBarVisibility ?? ScrollBarVisibility.Auto;
-        VerticalScrollBarVisibility = verticalScrollBarVisibility ?? ScrollBarVisibility.Auto;
-        // AllowInertia = allowInertia;
-
-        // 样式合并规则：strStyle -> style
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
     // 支持初始化器语法：{ 子元素 }
     public IEnumerator<IElement> GetEnumerator()
@@ -176,14 +64,14 @@ public static partial class BaseComponent
             Child = scroll
         };
 
-        if (prop.Style is not null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            uiScope.CreateEffect(scope =>
-            {
-                var style = scope.Track(prop.Style);
-                ApplyStyle(style.Normal);
-            });
-        }
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, stack, border, ApplyStyle);
+        state.ApplyVariantsStyle(stack, border, ApplyStyle);
 
         foreach (var child in prop)
             stack.Children.Add(child.Content);
@@ -198,43 +86,35 @@ public static partial class BaseComponent
 
         return new Element<StackPanel>(uiScope, border, stack);
 
-        void ApplyStyle(StyleSet style)
+        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(style, stack, border);
+            StyleUtil.ApplyStyle(styleValue, layout, bord);
 
-            if (style.Padding is not null)
+            if (styleValue.Padding is not null)
             {
                 border.Padding = new Thickness(0);
-                stack.Margin = style.Padding.Value;
+                stack.Margin = styleValue.Padding.Value;
             }
 
-            var orientation = style.Orientation ?? Orientation.Vertical;
+            var orientation = styleValue.Orientation ?? Orientation.Vertical;
             stack.Orientation = orientation;
 
             switch (orientation)
             {
                 case Orientation.Horizontal:
-                    if (style.ColumnSpacing is not null) stack.Spacing = style.ColumnSpacing.Value;
+                    if (styleValue.ColumnSpacing is not null) stack.Spacing = styleValue.ColumnSpacing.Value;
                     scroll.HorizontalScrollBarVisibility =
                         prop.HorizontalScrollBarVisibility.Value;
                     scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
                     break;
 
                 case Orientation.Vertical:
-                    if (style.RowSpacing is not null) stack.Spacing = style.RowSpacing.Value;
+                    if (styleValue.RowSpacing is not null) stack.Spacing = styleValue.RowSpacing.Value;
                     scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
                     scroll.VerticalScrollBarVisibility =
                         prop.VerticalScrollBarVisibility.Value;
                     break;
             }
-
-            var overflowHandle = style.OverflowHandle;
-            if (overflowHandle is  null) return;
-            
-            if (overflowHandle is OverflowHandle.Visible)
-                stack.ClipToBounds = false;
-            else if (overflowHandle is OverflowHandle.Hidden)
-                stack.ClipToBounds = true;
         }
     }
 

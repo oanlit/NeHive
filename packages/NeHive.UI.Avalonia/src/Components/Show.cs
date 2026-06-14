@@ -31,8 +31,6 @@ public static partial class ControlFlow
 
             var child = prop.IfTrue();
             panel.Children.Add(child.Content);
-            panel.Width = child.Content.Width;
-            panel.Height = child.Content.Height;
             epochScope.OnCleanup += child.Dispose;
         });
         return new Element(uiScope, panel);

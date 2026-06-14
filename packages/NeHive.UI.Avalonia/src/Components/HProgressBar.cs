@@ -1,27 +1,20 @@
 using Avalonia.Controls;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
-    /// <summary>
-    /// 创建 ProgressBar 控件
-    /// </summary>
-    /// <param name="value">当前值（支持响应式）</param>
-    /// <param name="minimum">最小值（默认0）</param>
-    /// <param name="maximum">最大值（默认100）</param>
-    /// <param name="isIndeterminate">是否为不确定进度（响应式）</param>
-    /// <param name="strStyle">样式字符串</param>
-    /// <param name="style">直接样式对象</param>
     public static IElement HProgressBar(
         Accessor<double>? value = null,
         Accessor<double>? minimum = null,
         Accessor<double>? maximum = null,
         Accessor<bool>? isIndeterminate = null,
         Accessor<string>? strStyle = null,
-        Accessor<FullStyle>? style = null)
+        Accessor<StyleSet>? style = null,
+        Dictionary<string, StyleSet>? variants = null)
     {
         value ??= 0;
         minimum ??= 0;
@@ -29,10 +22,7 @@ public static partial class BaseComponent
         isIndeterminate ??= false;
 
         // 样式合并
-        if (strStyle != null)
-        {
-            style = StyleParser.ParseFull(strStyle);
-        }
+        var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
 
         var uiScope = new UiScope();
         var progressBar = new ProgressBar();
@@ -40,22 +30,32 @@ public static partial class BaseComponent
         {
             Child = progressBar
         };
+        
+        var state = new CommonState(uiScope, styleAccessor.Value.Normal)
+        {
+            StrVariants = styleAccessor.Value.Variants,
+            Variants = variants
+        };
+
+        state.ApplyAccessorStyle(styleAccessor, progressBar, border, StyleUtil.ApplyStyle);
+        state.ApplyVariantsStyle(progressBar, border, StyleUtil.ApplyStyle);
 
         // 绑定属性
-        uiScope.CreateEffect(() => progressBar.Value = value.RxValue);
-        uiScope.CreateEffect(() => progressBar.Minimum = minimum.RxValue);
-        uiScope.CreateEffect(() => progressBar.Maximum = maximum.RxValue);
-        uiScope.CreateEffect(() => progressBar.IsIndeterminate = isIndeterminate.RxValue);
+        progressBar.Value = value.Value;
+        if(value.IsReactive)
+            uiScope.CreateEffect(epochScope => progressBar.Value = epochScope.Track(value));
 
-        // 应用样式
-        if (style is not null)
-        {
-            uiScope.CreateEffect(epochScope =>
-            {
-                var styleValue = epochScope.Track(style);
-                StyleUtil.ApplyStyle(styleValue.Normal, progressBar, border);
-            });
-        }
+        progressBar.Minimum = minimum.Value;
+        if(minimum.IsReactive)
+            uiScope.CreateEffect(epochScope => progressBar.Minimum = epochScope.Track(minimum));
+        
+        progressBar.Maximum = maximum.Value;
+        if(maximum.IsReactive)
+            uiScope.CreateEffect(epochScope => progressBar.Maximum = epochScope.Track(maximum));
+
+        progressBar.IsIndeterminate = isIndeterminate.Value;
+        if(isIndeterminate.IsReactive)
+            uiScope.CreateEffect(epochScope => progressBar.IsIndeterminate = epochScope.Track(isIndeterminate));
 
         return new Element(uiScope, border);
     }

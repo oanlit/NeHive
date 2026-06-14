@@ -33,13 +33,6 @@ public class Element : IElement
     {
     }
 
-    internal Element(Control content)
-    {
-        Scope = NeHiveContext.CurrentScope;
-        Content = content;
-        OnDisposeContent(content);
-    }
-
     public static Element Empty => new(new UiScope(), new Control());
 
     public void Dispose()

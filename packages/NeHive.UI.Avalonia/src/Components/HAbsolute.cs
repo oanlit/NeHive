@@ -2,6 +2,7 @@ using System.Collections;
 using Avalonia.Controls;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -18,21 +19,17 @@ public class AbsPosition(
     public readonly Accessor<double>? Bottom = bottom;
 }
 
-public class HAbsoluteProp : IEnumerable<KeyValuePair<AbsPosition, IElement>>
+public class HAbsoluteProp(
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null
+)
+    : IEnumerable<KeyValuePair<AbsPosition, IElement>>
 {
     private readonly Dictionary<AbsPosition, IElement> _children = new();
 
-    public readonly Accessor<FullStyle>? Style;
-
-    public HAbsoluteProp(
-        Accessor<string>? strStyle = null
-    )
-    {
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
     // 添加子元素的便捷方法
     public IElement this[AbsPosition key]
@@ -57,24 +54,14 @@ public static partial class BaseComponent
             Child = canvas
         };
 
-        if (prop.Style is not null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            var style = prop.Style.Value;
-            StyleUtil.ApplyStyle(style.Normal, canvas, border);
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
 
-            if (prop.Style.IsReactive)
-            {
-                uiScope.CreateEffect(epochScope =>
-                {
-                    var style2 = epochScope.Track(prop.Style);
-                    StyleUtil.ApplyStyle(style2.Normal, canvas, border);
-                });
-            }
-        }
-        else
-        {
-            StyleUtil.ApplyStyle(StyleUtil.FromDefault(), canvas, border);
-        }
+        state.ApplyAccessorStyle(prop.Style, canvas, border, StyleUtil.ApplyStyle);
+        state.ApplyVariantsStyle(canvas, border, StyleUtil.ApplyStyle);
 
         foreach (var (pos, element) in prop)
         {

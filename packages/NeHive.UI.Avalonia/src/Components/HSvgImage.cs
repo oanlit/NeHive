@@ -1,9 +1,11 @@
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Media;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.Utils;
 using Path = Avalonia.Controls.Shapes.Path;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -13,13 +15,11 @@ public static partial class BaseComponent
         Accessor<string> uri,
         Accessor<Stretch>? stretch = null,
         Accessor<string>? strStyle = null,
-        Accessor<FullStyle>? style = null
+        Accessor<StyleSet>? style = null,
+        Dictionary<string, StyleSet>? variants = null
     )
     {
-        if (strStyle != null)
-        {
-            style = StyleParser.ParseFull(strStyle);
-        }
+        var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
 
         var uiScope = new UiScope();
 
@@ -41,68 +41,46 @@ public static partial class BaseComponent
             Child = panel
         };
 
+        var state = new CommonState(uiScope, styleAccessor.Value.Normal)
+        {
+            StrVariants = styleAccessor.Value.Variants,
+            Variants = variants
+        };
+
+        state.ApplyAccessorStyle(styleAccessor, image, border, ApplyStyle);
+        state.ApplyVariantsStyle(image, border, ApplyStyle);
+
         // 绑定 Data
-        uiScope.CreateEffect(() =>
+        image.Data = SvgUtil.ParseGeometry(SvgUtil.LoadSvgString(uri.Value));
+        if (uri.IsReactive)
         {
-            var svg = SvgUtil.LoadSvgString(uri.RxValue);
-            var data = SvgUtil.ParseGeometry(svg);
-            image.Data = data;
-        });
-
-        HImageState state;
-
-        if (style is null)
-        {
-            state = new HImageState(new StyleSet());
-            ApplyStyle(state.BaseStyle);
-        }
-        // 绑定样式
-        else
-        {
-            state = new HImageState(style.Value.Normal);
-            ApplyStyle(style.Value.Normal);
-            uiScope.CreateEffect(epochScope =>
+            uiScope.CreateEffect(() =>
             {
-                var styleValue = epochScope.Track(style);
-                state.BaseStyle = styleValue.Normal;
-                state.Variants = styleValue.Variants;
-                ApplyStyle(styleValue.Normal);
-                state.CurrentStyle = StyleUtil.Copy(state.BaseStyle);
+                var svg = SvgUtil.LoadSvgString(uri.RxValue);
+                var data = SvgUtil.ParseGeometry(svg);
+                image.Data = data;
             });
         }
 
         if (stretch is not null)
         {
-            uiScope.CreateEffect(epochScope =>
+            image.Stretch =  stretch.Value;
+            if(stretch.IsReactive)
             {
-                var stretchValue = epochScope.Track(stretch);
-                image.Stretch = stretchValue;
-            });
+                uiScope.CreateEffect(epochScope =>
+                {
+                    var stretchValue = epochScope.Track(stretch);
+                    image.Stretch = stretchValue;
+                });
+            }
         }
 
-        // 事件挂载
-        uiScope.OnMount += () =>
-        {
-            panel.PointerExited += (_, _) =>
-            {
-                state.IsHover = false;
-                state.ResetSetStyle();
-                ApplyStyle(state.CurrentStyle);
-            };
-
-            panel.PointerEntered += (_, _) =>
-            {
-                state.IsHover = true;
-                state.SetHoverStyle();
-                ApplyStyle(state.CurrentStyle);
-            };
-        };
 
         return new Element(uiScope, border);
 
-        void ApplyStyle(StyleSet styleValue)
+        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(styleValue, image, border);
+            StyleUtil.ApplyStyle(styleValue, layout, bord);
             var fg = styleValue.Foreground;
             if (fg is not null) image.Stroke = fg;
             var fontWeight = styleValue.FontWeight;

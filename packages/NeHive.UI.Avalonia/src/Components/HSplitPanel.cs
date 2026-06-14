@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -12,30 +13,26 @@ namespace NeHive.UI.Avalonia.Components;
 public class HSplitPanelProp : IEnumerable<IElement>
 {
     private readonly List<IElement> _children = [];
-
-    public readonly Accessor<StyleSet>? Style;
-
+    
     public Accessor<double>? SplitFraction { get; }
     public Accessor<double>? SplitPosition { get; }
+    public readonly Accessor<FullStyle> Style;
+    public readonly Dictionary<string, StyleSet>? Variants;
 
     public HSplitPanelProp(
         Accessor<double>? splitFraction = null, // 第一个面板占比 (0-1)
         Accessor<double>? splitPosition = null, // 绝对像素位置（优先级高于 splitFraction）
-        Accessor<string>? strStyle = null
+        Accessor<string>? strStyle = null,
+        Accessor<StyleSet>? style = null,
+        Dictionary<string, StyleSet>? variants = null
     )
     {
         SplitFraction = splitFraction;
         SplitPosition = splitPosition;
-        if (strStyle is null) return;
-
-        var result = StyleUtil.FromDefault();
-        result.Orientation = Orientation.Horizontal;
-        Style = new Computed<StyleSet>(() =>
-        {
-            var str = strStyle.RxValue;
-            StyleParser.Parse(str, ref result);
-            return result;
-        });
+        var baseStyle = StyleUtil.FromDefault();
+        baseStyle.Orientation = Orientation.Horizontal;
+        Style = StyleParser.ParseFull(strStyle, baseStyle, style);
+        Variants = variants;
     }
 
     // 索引器：按顺序添加面板内容
@@ -72,30 +69,26 @@ public static partial class BaseComponent
         };
 
         // 应用样式
-        if (prop.Style is not null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            uiScope.CreateEffect(scope =>
-            {
-                var style = scope.Track(prop.Style);
-                ApplyStyle(style);
-            });
-        }
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
+        state.ApplyVariantsStyle(grid, border, ApplyStyle);
 
         var children = prop.ToList();
         if (children.Count < 2)
             throw new InvalidOperationException("The SplitPanel requires at least two child elements.");
 
-        Accessor<bool> accessorIsHorizontal;
-        if (prop.Style is null)
-        {
-            accessorIsHorizontal = true;
-        }
-        else
+        Accessor<bool> accessorIsHorizontal = prop.Style.Value.Normal.Orientation is not Orientation.Vertical;
+        if (prop.Style.IsReactive)
         {
             accessorIsHorizontal = uiScope.CreateComputed(() =>
             {
                 var style = prop.Style.RxValue;
-                return style.Orientation is not Orientation.Vertical;
+                return style.Normal.Orientation is not Orientation.Vertical;
             });
         }
 
@@ -195,29 +188,29 @@ public static partial class BaseComponent
 
         return new Element<Grid>(uiScope, border, grid);
         
-        void ApplyStyle(StyleSet style)
+        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(style, grid, border);
-            if (style.Width is not null)
-                grid.Width = style.Width.Value;
+            StyleUtil.ApplyStyle(styleValue, layout, bord);
+            if (styleValue.Width is not null)
+                grid.Width = styleValue.Width.Value;
 
-            if (style.Height is not null)
-                grid.Height = style.Height.Value;
+            if (styleValue.Height is not null)
+                grid.Height = styleValue.Height.Value;
 
-            if (style.MinWidth is not null)
-                grid.MinWidth = style.MinWidth.Value;
+            if (styleValue.MinWidth is not null)
+                grid.MinWidth = styleValue.MinWidth.Value;
 
-            if (style.MaxWidth is not null)
-                grid.MaxWidth = style.MaxWidth.Value;
+            if (styleValue.MaxWidth is not null)
+                grid.MaxWidth = styleValue.MaxWidth.Value;
 
-            if (style.MinHeight is not null)
-                grid.MinHeight = style.MinHeight.Value;
+            if (styleValue.MinHeight is not null)
+                grid.MinHeight = styleValue.MinHeight.Value;
 
-            if (style.MaxHeight is not null)
-                grid.MaxHeight = style.MaxHeight.Value;
+            if (styleValue.MaxHeight is not null)
+                grid.MaxHeight = styleValue.MaxHeight.Value;
             
-            if (style.ColumnSpacing is not null) grid.ColumnSpacing = style.ColumnSpacing.Value;
-            if (style.RowSpacing is not null) grid.RowSpacing = style.RowSpacing.Value;
+            if (styleValue.ColumnSpacing is not null) grid.ColumnSpacing = styleValue.ColumnSpacing.Value;
+            if (styleValue.RowSpacing is not null) grid.RowSpacing = styleValue.RowSpacing.Value;
         }
     }
 }

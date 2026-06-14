@@ -18,8 +18,9 @@ public static class StyleParser
 
     public static void Init(Action<StyleDefinitions> modifier)
     {
-        if (_finalAtomHandlers is not null) throw new InvalidOperationException(
-            "Style engine has already been initialized.");
+        if (_finalAtomHandlers is not null)
+            throw new InvalidOperationException(
+                "Style engine has already been initialized.");
         var styleDefinitions = new StyleDefinitions
         {
             Handlers = AtomHandler.DefaultHandlers,
@@ -149,18 +150,60 @@ public static class StyleParser
         MergeTemp(ref baseStyle);
     }
 
-    public static Accessor<FullStyle> ParseFull(Accessor<string> text, StyleSet? defaultStyle = null)
+    public static Accessor<FullStyle> ParseFull(
+        Accessor<string>? strStyle = null,
+        StyleSet? defaultStyle = null,
+        Accessor<StyleSet>? style = null)
     {
         var fullStyle = new FullStyle();
-
-        return new Computed<FullStyle>(() =>
+        if (strStyle?.IsReactive is not true)
         {
-            var str = text.RxValue;
-            fullStyle.Normal = defaultStyle ?? StyleUtil.FromDefault();
+            fullStyle.Normal = defaultStyle?.Copy() ?? StyleUtil.FromDefault();
+            fullStyle.Variants = [];
+            if (strStyle is not null) ParseFullStyle(strStyle.Value, ref fullStyle);
+            if (style is null) return fullStyle;
+            if (style.IsReactive)
+            {
+                return new Computed<FullStyle>(() =>
+                {
+                    var rxStyle = style.RxValue;
+                    fullStyle.Normal.Merge(rxStyle);
+                    return fullStyle;
+                });
+            }
+
+            fullStyle.Normal.Merge(style.Value);
+            return fullStyle;
+        }
+
+        if (style?.IsReactive is false)
+        {
+            return new Computed<FullStyle>(() =>
+            {
+                var str = strStyle.RxValue;
+                fullStyle.Normal = defaultStyle?.Copy() ?? StyleUtil.FromDefault();
+                fullStyle.Variants = [];
+                ParseFullStyle(str, ref fullStyle);
+                fullStyle.Normal.Merge(style.Value);
+                return fullStyle;
+            });
+        }
+
+        var computedStrStyle = new Computed<FullStyle>(() =>
+        {
+            var str = strStyle.RxValue;
+            fullStyle.Normal = defaultStyle?.Copy() ?? StyleUtil.FromDefault();
             fullStyle.Variants = [];
             ParseFullStyle(str, ref fullStyle);
-
             return fullStyle;
+        });
+        if (style is null) return computedStrStyle;
+        return new Computed<FullStyle>(() =>
+        {
+            var rxStrStyle = computedStrStyle.RxValue;
+            var rxStyle = style.RxValue;
+            rxStrStyle.Normal.Merge(rxStyle);
+            return rxStrStyle;
         });
     }
 
@@ -234,10 +277,9 @@ public static class StyleParser
             _ => null
         };
         if (transition is null) return;
+        
         transition.Duration = TimeSpan.FromMilliseconds(duration);
-
-        if (temp.Easing is null) return;
-        transition.Easing = temp.Easing;
+        if (temp.Easing is not null) transition.Easing = temp.Easing;
         styles.Transitions =
         [
             transition

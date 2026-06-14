@@ -2,52 +2,42 @@ using System.Collections;
 using Avalonia.Controls;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
 /// <summary>
 /// CheckBox 配置类（构造参数仅样式/行为属性）
 /// </summary>
-public class HCheckBoxProp : IEnumerable<IElement>
+public class HCheckBoxProp(
+    Accessor<bool?>? isChecked = null,
+    MutSignal<bool?>? bindIsChecked = null,
+    Accessor<bool>? isEnabled = null,
+    Accessor<bool>? isThreeState = null,
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null,
+    Action<bool?>? onClick = null
+) : IEnumerable<IElement>
 {
     private readonly List<IElement> _children = [];
 
     // 合并后的样式
-    public readonly Accessor<FullStyle>? Style;
-
-    public HCheckBoxProp(
-        Accessor<bool?>? isChecked = null,
-        MutSignal<bool?>? bindIsChecked = null,
-        Accessor<bool>? isEnabled = null,
-        Accessor<bool>? isThreeState = null,
-        Accessor<string>? strStyle = null,
-        Action<bool?>? onClick = null
-    )
-    {
-        BindIsChecked = bindIsChecked;
-        IsChecked = isChecked;
-        IsEnabled = isEnabled;
-        IsThreeState = isThreeState;
-        Click = onClick;
-
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
     // 双向绑定的选中状态（支持三态 bool?）
-    public readonly MutSignal<bool?>? BindIsChecked;
-    public readonly Accessor<bool?>? IsChecked;
+    public readonly MutSignal<bool?>? BindIsChecked = bindIsChecked;
+    public readonly Accessor<bool?>? IsChecked = isChecked;
 
     // 是否启用
-    public readonly Accessor<bool>? IsEnabled;
+    public readonly Accessor<bool>? IsEnabled = isEnabled;
 
     // 是否支持三态（Indeterminate）
-    public readonly Accessor<bool>? IsThreeState;
+    public readonly Accessor<bool>? IsThreeState = isThreeState;
 
     // 点击回调（可选，代替命令）
-    public readonly Action<bool?>? Click;
+    public readonly Action<bool?>? Click = onClick;
 
     // 添加子内容（复选框旁边的文本或任意控件）
     public void Add(IElement element) => _children.Add(element);
@@ -68,19 +58,26 @@ public static partial class BaseComponent
         };
 
         // 应用样式
-        if (prop.Style is not null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            var style = prop.Style.Value;
-            StyleUtil.ApplyStyle(style.Normal, checkBox, border);
-            if (prop.Style.IsReactive)
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+        StyleUtil.ApplyStyle(state.CurrentStyle, checkBox, border);
+        if (prop.Style.IsReactive)
+        {
+            uiScope.CreateEffect(epochScope =>
             {
-                uiScope.CreateEffect(scope =>
-                {
-                    var style2 = scope.Track(prop.Style);
-                    StyleUtil.ApplyStyle(style2.Normal, checkBox, border);
-                });
-            }
+                var styleValue = epochScope.Track(prop.Style);
+                state.BaseStyle = styleValue.Normal;
+                state.StrVariants = styleValue.Variants;
+                state.CurrentStyle = state.BaseStyle.Copy();
+                StyleUtil.ApplyStyle(state.CurrentStyle, checkBox, border);
+            });
         }
+        
+        state.ApplyAccessorStyle(prop.Style, checkBox, border, StyleUtil.ApplyStyle);
+        state.ApplyVariantsStyle(checkBox, border, StyleUtil.ApplyStyle);
 
         // 绑定启用状态
         if (prop.IsEnabled != null)

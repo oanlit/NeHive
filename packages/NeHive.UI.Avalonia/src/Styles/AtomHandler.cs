@@ -47,8 +47,8 @@ public class AtomHandler
         ["gap-y-"] = ApplyGapY,
         ["gap-"] = ApplyGap,
 
-        ["overflow-visible"] = (_, _, set) => set.OverflowHandle = OverflowHandle.Visible,
-        ["overflow-hidden"] = (_, _, set) => set.OverflowHandle = OverflowHandle.Hidden,
+        ["overflow-visible"] = (_, _, set) => set.ClipToBounds = false,
+        ["overflow-hidden"] = (_, _, set) => set.ClipToBounds = true,
 
         ["flex-row"] = (_, _, set) => set.Orientation = Orientation.Horizontal,
         ["flex-col"] = (_, _, set) => set.Orientation = Orientation.Vertical,

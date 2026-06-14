@@ -1,8 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -11,39 +13,41 @@ public static partial class BaseComponent
     public static IElement HTextBlock(
         Accessor<string>? text,
         Accessor<string>? strStyle = null,
-        Accessor<FullStyle>? style = null)
+        Accessor<StyleSet>? style = null,
+        Dictionary<string, StyleSet>? variants = null)
     {
         text ??= "";
-        if (strStyle != null)
-        {
-            style = StyleParser.ParseFull(strStyle);
-        }
+        var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
 
         var uiScope = new UiScope();
-        var textBlock = new TextBlock();
-        textBlock.TextDecorations = null;
+        var textBlock = new TextBlock
+        {
+            TextDecorations = null
+        };
+
         var border = new Border
         {
             Child = textBlock
         };
-
-        uiScope.CreateEffect(() => textBlock.Text = text.RxValue);
-
-        if (style is not null)
+        
+        var state = new CommonState(uiScope, styleAccessor.Value.Normal)
         {
-            uiScope.CreateEffect(epochScope =>
-            {
-                var styleValue = epochScope.Track(style);
-                ApplyStyle(styleValue.Normal);
-            });
-        }
+            StrVariants = styleAccessor.Value.Variants,
+            Variants = variants
+        };
 
+        state.ApplyAccessorStyle(styleAccessor, textBlock, border, ApplyStyle);
+        state.ApplyVariantsStyle(textBlock, border, ApplyStyle);
+
+        textBlock.Text = text.Value;
+        if(text.IsReactive)
+            uiScope.CreateEffect(epochScope => textBlock.Text = epochScope.Track(text));
 
         return new Element(uiScope, border);
 
-        void ApplyStyle(StyleSet styleValue)
+        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(styleValue, textBlock, border);
+            StyleUtil.ApplyStyle(styleValue, layout, bord);
 
             if (styleValue.LetterSpacing is not null) textBlock.LetterSpacing = styleValue.LetterSpacing.Value;
             if (styleValue.LineHeight is not null) textBlock.LineHeight = styleValue.LineHeight.Value;
@@ -68,6 +72,7 @@ public static partial class BaseComponent
                         break;
                 }
             }
+
             if (styleValue.VerticalTextAlignment is not null)
                 border.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
 

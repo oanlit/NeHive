@@ -72,15 +72,6 @@ public static partial class BaseComponent
                     break;
             }
 
-            var overflowHandle = style.OverflowHandle;
-            if (overflowHandle is not null)
-            {
-                if (overflowHandle is OverflowHandle.Visible)
-                    stack.ClipToBounds = false;
-                else if (overflowHandle is OverflowHandle.Hidden)
-                    stack.ClipToBounds = true;
-            }
-
             if (style.Orientation is not null) stack.Orientation = style.Orientation.Value;
         }
     }

@@ -1,27 +1,24 @@
 using System.Collections;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HDockPanelProp : IEnumerable<(Dock Dock, IElement Element)>
+public class HDockPanelProp(
+    Accessor<bool>? lastChildFill = null,
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null
+) : IEnumerable<(Dock Dock, IElement Element)>
 {
     private readonly List<(Dock Dock, IElement Element)> _children = [];
-    public readonly Accessor<bool> LastChildFill;
-    public readonly Accessor<FullStyle>? Style;
+    public readonly Accessor<bool> LastChildFill = lastChildFill ?? true;
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
-    public HDockPanelProp(
-        Accessor<bool>? lastChildFill = null,
-        Accessor<string>? strStyle = null
-    )
-    {
-        LastChildFill = lastChildFill ?? true;
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
 
     // 集合初始化器支持：添加子元素并指定停靠方向
     public IElement this[Dock key]
@@ -50,14 +47,14 @@ public static partial class BaseComponent
         };
 
         // 应用样式
-        if (prop.Style != null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            uiScope.CreateEffect(scope =>
-            {
-                var style = scope.Track(prop.Style);
-                ApplyStyle(style.Normal);
-            });
-        }
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, dockPanel, border, ApplyStyle);
+        state.ApplyVariantsStyle(dockPanel, border, ApplyStyle);
 
         // 添加子元素并设置 Dock 附加属性
         // var lastItem = prop.LastOrDefault();
@@ -67,15 +64,15 @@ public static partial class BaseComponent
             DockPanel.SetDock(control, dock);
             dockPanel.Children.Add(control);
         }
-        
+
 
         uiScope.CreateEffect(() => dockPanel.LastChildFill = prop.LastChildFill.RxValue);
 
         return new Element<DockPanel>(uiScope, border, dockPanel);
 
-        void ApplyStyle(StyleSet style)
+        void ApplyStyle(StyleSet style, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(style, dockPanel, border);
+            StyleUtil.ApplyStyle(style, layout, bord);
             if (style.Width is not null)
                 dockPanel.Width = style.Width.Value;
 

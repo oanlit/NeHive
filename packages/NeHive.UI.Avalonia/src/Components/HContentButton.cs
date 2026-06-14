@@ -1,29 +1,27 @@
+using System.Collections;
+
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Interactivity;
+
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
-using System.Collections;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HContentButtonProp : ISingleChildrenProp
+public class HContentButtonProp(
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null,
+    Action<RoutedEventArgs>? onClick = null)
+    : ISingleChildrenProp
 {
     private readonly List<IElement> _children = [];
-    public readonly Accessor<FullStyle>? Style;
-    public readonly Action<RoutedEventArgs>? OnClick;
-    
-    public HContentButtonProp(
-        Accessor<string>? strStyle = null,
-        Action<RoutedEventArgs>? onClick = null)
-    {
-        OnClick = onClick;
-        if (strStyle is not null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
-    
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Action<RoutedEventArgs>? OnClick = onClick;
+
     public IEnumerator<IElement> GetEnumerator()
         => _children.GetEnumerator();
 
@@ -51,73 +49,30 @@ public static partial class BaseComponent
             Child = stack
         };
 
-        HButtonState state;
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
+        {
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
 
-        var style = prop.Style;
-        if (style is null)
-        {
-            state = new HButtonState(HButtonStyle.DefaultStyleSet);
-            ApplyStyle(state.CurrentStyle); // 应用默认样式
-        }
-        else
-        {
-            state = new HButtonState(style.Value.Normal);
-            ApplyStyle(state.CurrentStyle);
-            uiScope.CreateEffect(epochScope =>
-            {
-                var styleValue = epochScope.Track(style);
-                state.BaseStyle = styleValue.Normal;
-                state.Variants = styleValue.Variants;
-                state.CurrentStyle = StyleUtil.Copy(state.BaseStyle);
-                ApplyStyle(state.CurrentStyle);
-            });
-        }
+        state.ApplyAccessorStyle(prop.Style, stack, border, ApplyStyle);
+        state.ApplyVariantsStyle(stack, border, ApplyStyle);
 
         var expose = new HButtonExpose();
         // 事件挂载
         uiScope.OnMount += () =>
         {
-            border.PointerPressed += (_, e) =>
-            {
-                if (!e.GetCurrentPoint(border).Properties.IsLeftButtonPressed)
-                    return;
-
-                state.IsClicked = true;
-                state.SetClickStyle();
-                ApplyStyle(state.CurrentStyle);
-                e.Handled = true;
-            };
-
             border.PointerReleased += (_, e) =>
             {
-                if (state.IsClicked && border.IsPointerOver)
+                if (border.IsPointerOver)
                 {
                     RaiseClick();
                 }
 
-                state.IsClicked = false;
-                state.ResetSetStyle();
-                state.SetCurrentStyle();
-                ApplyStyle(state.CurrentStyle);
                 e.Handled = true;
             };
-
-            border.PointerExited += (_, _) =>
-            {
-                state.IsHover = false;
-                state.IsClicked = false; // 移出区域时取消按下状态
-                state.ResetSetStyle();
-                ApplyStyle(state.CurrentStyle);
-            };
-
-            border.PointerEntered += (_, _) =>
-            {
-                state.IsHover = true;
-                state.SetHoverStyle();
-                ApplyStyle(state.CurrentStyle);
-            };
         };
-        
+
         foreach (var child in prop)
             stack.Children.Add(child.Content);
 
@@ -131,10 +86,10 @@ public static partial class BaseComponent
             expose.Click.Invoke(args);
         }
 
-        void ApplyStyle(StyleSet styleValue)
+        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(styleValue, stack, border);
-            
+            StyleUtil.ApplyStyle(styleValue, layout, bord);
+
             var orientation = styleValue.Orientation ?? Orientation.Vertical;
             stack.Orientation = orientation;
 
@@ -146,15 +101,6 @@ public static partial class BaseComponent
                 case Orientation.Horizontal:
                     if (styleValue.ColumnSpacing is not null) stack.Spacing = styleValue.ColumnSpacing.Value;
                     break;
-            }
-
-            var overflowHandle = styleValue.OverflowHandle;
-            if (overflowHandle is not null)
-            {
-                if (overflowHandle is OverflowHandle.Visible)
-                    stack.ClipToBounds = false;
-                else if (overflowHandle is OverflowHandle.Hidden)
-                    stack.ClipToBounds = true;
             }
 
             if (styleValue.Orientation is not null) stack.Orientation = styleValue.Orientation.Value;

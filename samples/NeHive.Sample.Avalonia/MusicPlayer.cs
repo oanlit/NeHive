@@ -246,7 +246,7 @@ public static class MusicPlayerDemo
                             HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 fw-extralight")
                     },
                     Default = () => HSvgImage("~/Assets/volume-2.svg", strStyle: "my-auto w-4 h-4 fw-extralight")
-                }),
+                }), // Match<int>
                 HSlider(value: new(() => volume.RxValue),
                     minimum: 0,
                     maximum: 100,

@@ -2,9 +2,11 @@ using System.Text;
 using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia;
+// using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Controls.Primitives;
+// using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.Components;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
 using static NeHive.UI.Avalonia.Components.ControlFlow;
@@ -20,17 +22,17 @@ public static class DemoComponent
         Console.WriteLine($"Counter {id} is creating");
         var count = new MutSignal<int>(0);
         var countText = () => $"Count: {count.RxValue}";
-
+    
         var rootElement = uiScope.RootElement(new()
         {
             HTextBlock($"Id: {id}",
                 strStyle: "text-lg fw-bold fg-sky-200"
             ), // HTextBlock
-
+    
             HTextBlock(countText,
                 strStyle: "text-2xl fg-lime-300"
             ), // HTextBlock
-
+    
             HButton("Add",
                 strStyle: """
                           mt-1 ml-2 px-2 py-1 fg-white
@@ -39,7 +41,7 @@ public static class DemoComponent
                           """,
                 onClick: _ => count.RxValue++
             ), // HButton
-
+    
             HButton("Sub",
                 strStyle: """
                           mt-1 ml-2 px-2 py-1 fg-white 
@@ -49,11 +51,110 @@ public static class DemoComponent
                 onClick: _ => count.RxValue--
             ) // HButton
         }); // rootElement
-
+    
         uiScope.OnCleanup += () => Console.WriteLine($"Counter {id} disposed");
         return rootElement;
     }
-
+    
+    // private static IElement CounterComp(int id, UiScope uiScope)
+    // {
+    //     Console.WriteLine($"Counter {id} is creating");
+    //     var count = new MutSignal<int>(0);
+    //     var countText = () => $"Count: {count.RxValue}";
+    //
+    //     // ---------- 按钮样式定义 ----------
+    //     // 正常态
+    //     var addNormal = new StyleSet
+    //     {
+    //         Foreground = Brush.Parse("#ffffff"), // fg-white
+    //         Background = Brush.Parse("#86efac"), // bg-green-300
+    //         Margin = new Thickness(8, 4, 0, 0), // ml-2(左8) mt-1(上4)
+    //         Padding = new Thickness(8, 4), // px-2 py-1
+    //         BorderBrush = Brush.Parse("#4ade80"), // border-green-400
+    //         BorderThickness = new Thickness(1), // border-w-1
+    //         CornerRadius = new CornerRadius(8) // rounded-lg
+    //     };
+    //
+    //     var subNormal = new StyleSet
+    //     {
+    //         Foreground = Brush.Parse("#ffffff"), // fg-white
+    //         Background = Brush.Parse("#f9a8d4"), // bg-pink-300
+    //         Margin = new Thickness(8, 4, 0, 0), // ml-2 mt-1
+    //         Padding = new Thickness(8, 4), // px-2 py-1
+    //         BorderBrush = Brush.Parse("#f472b6"), // border-pink-400
+    //         BorderThickness = new Thickness(1), // border-w-1
+    //         CornerRadius = new CornerRadius(8) // rounded-lg
+    //     };
+    //
+    //     // 悬停态
+    //     var addHover = new StyleSet
+    //     {
+    //         Background = Brush.Parse("#4ade80") // hover:bg-green-400
+    //     };
+    //     var subHover = new StyleSet
+    //     {
+    //         Background = Brush.Parse("#f472b6") // hover:bg-pink-400
+    //     };
+    //
+    //     // 点击态
+    //     var addClick = new StyleSet
+    //     {
+    //         Background = Brush.Parse("#22c55e") // click:bg-green-500
+    //     };
+    //     var subClick = new StyleSet
+    //     {
+    //         Background = Brush.Parse("#ec4899") // click:bg-pink-500
+    //     };
+    //
+    //     // ---------- 文本样式（简单示意） ----------
+    //     var idTextStyle = new StyleSet
+    //     {
+    //         FontSize = 18, // text-lg (1.125rem ≈ 18px)
+    //         FontWeight = FontWeight.Bold, // fw-bold
+    //         Foreground = Brush.Parse("#bae6fd") // fg-sky-200
+    //     };
+    //
+    //     var countTextStyle = new StyleSet
+    //     {
+    //         FontSize = 24, // text-2xl (1.5rem ≈ 24px)
+    //         Foreground = Brush.Parse("#bef264") // fg-lime-300
+    //     };
+    //
+    //     var rootElement = uiScope.RootElement(new()
+    //     {
+    //         HTextBlock($"Id: {id}",
+    //             style: idTextStyle
+    //         ),
+    //
+    //         HTextBlock(countText,
+    //             style: countTextStyle
+    //         ),
+    //
+    //         HButton("Add",
+    //             style: addNormal,
+    //             variants: new Dictionary<string, StyleSet>
+    //             {
+    //                 ["hover"] = addHover,
+    //                 ["click"] = addClick
+    //             },
+    //             onClick: _ => count.RxValue++
+    //         ),
+    //
+    //         HButton("Sub",
+    //             style: subNormal,
+    //             variants: new Dictionary<string, StyleSet>
+    //             {
+    //                 ["hover"] = subHover,
+    //                 ["click"] = subClick
+    //             },
+    //             onClick: _ => count.RxValue--
+    //         )
+    //     });
+    //
+    //     uiScope.OnCleanup += () => Console.WriteLine($"Counter {id} disposed");
+    //     return rootElement;
+    // }
+    //
     public static IElement Counter(int prop)
         => Element.WithScope(CounterComp, prop);
 
@@ -334,7 +435,7 @@ public static class DemoComponent
         {
             HTextBox(
                 bindText: textSignal,
-                watermark: "Type something...",
+                placeholderText: "Type something...",
                 strStyle: "w-100 p-3 fw-bold border border-blue-400 rounded-lg",
                 onTextChanged: newText => log.RxValue = $"Input changed: {newText}"
             ), // HTextBox
@@ -481,10 +582,10 @@ public static class DemoComponent
         {
             HSplitView(new(
                 isPaneOpen: isPaneOpen,
-                strStyle: "w-800 h-500",
                 displayMode: SplitViewDisplayMode.CompactInline,
                 openPaneLength: 200,
-                compactPaneLength: 48)
+                compactPaneLength: 48,
+                strStyle: "w-200 h-100")
             {
                 Pane = HStackPanel(new HStackPanelProp(strStyle: "gap-2 p-4 bg-gray-200")
                 {
@@ -740,7 +841,7 @@ public static class DemoComponent
         {
             HUniformGrid(new(
                 rows: 2, columns: columnsSig,
-                strStyle: "m-2 w-full p-2 gap-3 bg-gray-100 rounded-lg")
+                strStyle: "m-2 p-2 gap-3 bg-gray-100 hover:bg-gray-200 rounded-lg")
             {
                 HTextBlock("1"),
                 HTextBlock("2"),
@@ -796,7 +897,7 @@ public static class DemoComponent
 
     public static IElement TextStyleDemo()
     {
-        return HScrollViewer(new()
+        return HScrollViewer(new(strStyle: "w-full")
         {
             HStackPanel(new(strStyle: "p-6 gap-6 vertical")
             {
@@ -881,7 +982,7 @@ public static class DemoComponent
                     HTextBlock("Tracking Wide", strStyle: "tracking-wide"),
                     HTextBlock("Tracking Wider", strStyle: "tracking-wider"),
                     HTextBlock("Tracking Widest", strStyle: "tracking-widest"),
-                    
+
                     HTextBlock("Tracking -1", strStyle: "-tracking-1"),
                     HTextBlock("Tracking -0.5", strStyle: "-tracking-0.5"),
                     HTextBlock("Tracking 0.5", strStyle: "tracking-0.5"),
@@ -901,7 +1002,7 @@ public static class DemoComponent
                         "Lorem ipsum dolor sit amet consectetur adipiscing elit",
                         strStyle: "w-50 whitespace-nowrap border border-gray-300")
                 ]), // DemoSection
-                
+
                 // 行高
                 DemoSection("Line Height",
                 [
@@ -961,7 +1062,7 @@ public static class DemoComponent
                     HTextBlock("Emerald 500",
                         strStyle: "fg-emerald-500")
                 ]), // DemoSection
-                
+
                 // 综合
                 DemoSection("Combined Typography",
                 [
@@ -995,6 +1096,7 @@ public static class DemoComponent
             {
                 stackPanelProp.Add(child);
             }
+
             return HStackPanel(new(strStyle: "gap-2 vertical")
             {
                 HTextBlock(title,
@@ -1068,7 +1170,7 @@ public static class DemoComponent
                         $"""
                          px-4 py-2 horizontal 
                          {(theme.RxValue is "dark" ? "fg-gray-200 bg-gray-700" : "fg-gray-800 bg-gray-200")} 
-                         transition-colors rounded-lg
+                         transition-colors duration-300 rounded-lg
                          """),
                     onClick: _ => toggleTheme())
                 {
@@ -1100,7 +1202,7 @@ public static class DemoComponent
                 $"""
                  mt-6 mx-auto max-w-md overflow-hidden 
                  {(theme.RxValue is "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200")} 
-                 border rounded-xl shadow-md transition-colors
+                 border rounded-xl shadow-md transition-colors duration-300
                  """))
             {
                 HStackPanel(new(strStyle: "p-6")

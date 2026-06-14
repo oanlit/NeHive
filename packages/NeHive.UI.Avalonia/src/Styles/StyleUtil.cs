@@ -17,7 +17,7 @@ public static class StyleUtil
         HorizontalAlignment = HorizontalAlignment.Left,
         VerticalAlignment = VerticalAlignment.Top,
 
-        FontWeight = global::Avalonia.Media.FontWeight.Normal,
+        FontWeight = FontWeight.Normal,
         BorderThickness = new Thickness(0),
 
         CornerRadius = new CornerRadius(0),
@@ -25,80 +25,6 @@ public static class StyleUtil
         Opacity = 1.0,
         IsVisible = true
     };
-
-    public static StyleSet Copy(StyleSet other)
-    {
-        var result = new StyleSet();
-        Copy(ref result, other);
-        return result;
-    }
-
-    public static void Copy(ref StyleSet target, StyleSet source)
-    {
-        if (ReferenceEquals(target, source)) return;
-
-        target.Margin = source.Margin;
-        target.ZIndex = source.ZIndex;
-
-        target.Width = source.Width;
-        target.Height = source.Height;
-        target.MinWidth = source.MinWidth;
-        target.MaxWidth = source.MaxWidth;
-        target.MinHeight = source.MinHeight;
-        target.MaxHeight = source.MaxHeight;
-
-        target.Padding = source.Padding;
-        target.RowSpacing = source.RowSpacing;
-        target.ColumnSpacing = source.ColumnSpacing;
-
-        target.Orientation = source.Orientation;
-        target.HorizontalAlignment = source.HorizontalAlignment;
-        target.VerticalAlignment = source.VerticalAlignment;
-
-        target.LetterSpacing = source.LetterSpacing;
-        target.LineHeight = source.LineHeight;
-        target.LineSpacing = source.LineSpacing;
-        target.MaxLines = source.MaxLines;
-        target.TextTrimming = source.TextTrimming;
-        target.TextAlignment = source.TextAlignment;
-        target.VerticalTextAlignment = source.VerticalTextAlignment;
-        target.TextWrapping = source.TextWrapping;
-        target.TextDecorations = source.TextDecorations;
-        target.Inlines = source.Inlines;
-
-        target.FontSize = source.FontSize;
-        target.FontFamily = source.FontFamily;
-        target.FontWeight = source.FontWeight;
-        target.FontStretch = source.FontStretch;
-        target.FontFeatures = source.FontFeatures;
-        target.FontStyle = source.FontStyle;
-        target.Foreground = source.Foreground;
-
-        target.Background = source.Background;
-        target.BorderBrush = source.BorderBrush;
-        target.BorderThickness = source.BorderThickness;
-        target.CornerRadius = source.CornerRadius;
-
-        target.Opacity = source.Opacity;
-        target.IsVisible = source.IsVisible;
-
-        target.Effect = source.Effect;
-        if (source.BoxShadows is not null) target.BoxShadows = [..source.BoxShadows];
-        target.Cursor = source.Cursor;
-        target.FlowDirection = source.FlowDirection;
-
-        target.RenderTransformOrigin = source.RenderTransformOrigin;
-
-        if (source.RenderTransform is not null)
-        {
-            var builder = TransformOperations.CreateBuilder(4);
-            builder.AppendMatrix(source.RenderTransform.Value);
-            target.RenderTransform = builder.Build();
-        }
-
-        if (source.Transitions is null) return;
-        target.Transitions = [..source.Transitions];
-    }
 
     public static void ApplyStyle(BaseStyle style, Layoutable layout, Border border)
     {
@@ -145,6 +71,7 @@ public static class StyleUtil
         if (style.CornerRadius is not null) border.CornerRadius = style.CornerRadius.Value;
         if (style.Opacity is not null) border.Opacity = style.Opacity.Value;
 
+        if(style.ClipToBounds is not null) border.ClipToBounds = style.ClipToBounds.Value;
         if (style.Effect is not null) border.Effect = style.Effect;
         var boxShadows = style.BoxShadows;
         if (boxShadows is not null)
@@ -160,7 +87,7 @@ public static class StyleUtil
                 {
                     rest[i - 1] = boxShadows[i];
                 }
-        
+
                 border.BoxShadow = new(boxShadows[0], rest);
             }
         }
@@ -173,59 +100,182 @@ public static class StyleUtil
         border.Transitions ??= style.Transitions;
     }
 
-    extension(StyleSet style)
+    extension(BaseStyle target)
     {
-        public void Merge(StyleSet other)
+        internal void InnerCopy(BaseStyle result)
         {
-            if (other.Margin is not null) style.Margin = other.Margin;
-            if (other.ZIndex is not null) style.ZIndex = other.ZIndex;
+            if (target.BoxShadows is not null) result.BoxShadows = [..target.BoxShadows];
+            if (target.RenderTransform is not null)
+            {
+                var builder = TransformOperations.CreateBuilder(4);
+                builder.AppendMatrix(target.RenderTransform.Value);
+                result.RenderTransform = builder.Build();
+            }
 
-            if (other.Width is not null) style.Width = other.Width;
-            if (other.Height is not null) style.Height = other.Height;
-            if (other.MinWidth is not null) style.MinWidth = other.MinWidth;
-            if (other.MaxWidth is not null) style.MaxWidth = other.MaxWidth;
-            if (other.MinHeight is not null) style.MinHeight = other.MinHeight;
-            if (other.MaxHeight is not null) style.MaxHeight = other.MaxHeight;
+            if (target.Transitions is not null) result.Transitions = [..target.Transitions];
+        }
 
-            if (other.Padding is not null) style.Padding = other.Padding;
-            if (other.RowSpacing is not null) style.RowSpacing = other.RowSpacing;
-            if (other.ColumnSpacing is not null) style.ColumnSpacing = other.ColumnSpacing;
+        public BaseStyle Copy()
+        {
+            var result = new BaseStyle();
+            result.Merge(target, true);
+            target.InnerCopy(result);
+            return result;
+        }
 
-            if (other.Orientation is not null) style.Orientation = other.Orientation;
-            if (other.HorizontalAlignment is not null) style.HorizontalAlignment = other.HorizontalAlignment;
-            if (other.VerticalAlignment is not null) style.VerticalAlignment = other.VerticalAlignment;
+        public void Merge(BaseStyle source, bool mergeNull = false)
+        {
+            if (mergeNull)
+            {
+                target.Margin = source.Margin;
+                target.ZIndex = source.ZIndex;
 
-            if (other.TextAlignment is not null) style.TextAlignment = other.TextAlignment;
-            if (other.VerticalTextAlignment is not null) style.VerticalTextAlignment = other.VerticalTextAlignment;
-            if (other.TextWrapping is not null) style.TextWrapping = other.TextWrapping;
+                target.Width = source.Width;
+                target.Height = source.Height;
+                target.MinWidth = source.MinWidth;
+                target.MaxWidth = source.MaxWidth;
+                target.MinHeight = source.MinHeight;
+                target.MaxHeight = source.MaxHeight;
 
-            if (other.FontSize is not null) style.FontSize = other.FontSize;
-            if (other.FontWeight is not null) style.FontWeight = other.FontWeight;
-            if (other.FontStyle is not null) style.FontStyle = other.FontStyle;
-            if (other.Foreground is not null) style.Foreground = other.Foreground;
+                target.Padding = source.Padding;
 
-            if (other.Background is not null) style.Background = other.Background;
-            if (other.BorderBrush is not null) style.BorderBrush = other.BorderBrush;
-            if (other.BorderThickness is not null) style.BorderThickness = other.BorderThickness;
-            if (other.CornerRadius is not null) style.CornerRadius = other.CornerRadius;
+                target.HorizontalAlignment = source.HorizontalAlignment;
+                target.VerticalAlignment = source.VerticalAlignment;
 
-            if (other.Opacity is not null) style.Opacity = other.Opacity;
-            if (other.IsVisible is not null) style.IsVisible = other.IsVisible;
+                target.Background = source.Background;
+                target.BorderBrush = source.BorderBrush;
+                target.BorderThickness = source.BorderThickness;
+                target.CornerRadius = source.CornerRadius;
 
-            if (other.Effect is not null) style.Effect = other.Effect;
-            if (other.Cursor is not null) style.Cursor = other.Cursor;
-            if (other.FlowDirection is not null) style.FlowDirection = other.FlowDirection;
+                target.Opacity = source.Opacity;
+                target.IsVisible = source.IsVisible;
 
-            if (other.RenderTransformOrigin is not null) style.RenderTransformOrigin = other.RenderTransformOrigin;
-            if (other.RenderTransform is not null) style.RenderTransform = other.RenderTransform;
-            if (other.Transitions is not null) style.Transitions = other.Transitions;
+                target.ClipToBounds = source.ClipToBounds;
+                target.Effect = source.Effect;
+                target.BoxShadows = source.BoxShadows;
+                target.Cursor = source.Cursor;
+                target.FlowDirection = source.FlowDirection;
+
+                target.RenderTransformOrigin = source.RenderTransformOrigin;
+                target.RenderTransform = source.RenderTransform;
+                target.Transitions = source.Transitions;
+                return;
+            }
+
+            if (source.Margin is not null) target.Margin = source.Margin;
+            if (source.ZIndex is not null) target.ZIndex = source.ZIndex;
+
+            if (source.Width is not null) target.Width = source.Width;
+            if (source.Height is not null) target.Height = source.Height;
+            if (source.MinWidth is not null) target.MinWidth = source.MinWidth;
+            if (source.MaxWidth is not null) target.MaxWidth = source.MaxWidth;
+            if (source.MinHeight is not null) target.MinHeight = source.MinHeight;
+            if (source.MaxHeight is not null) target.MaxHeight = source.MaxHeight;
+
+            if (source.Padding is not null) target.Padding = source.Padding;
+
+            if (source.HorizontalAlignment is not null) target.HorizontalAlignment = source.HorizontalAlignment;
+            if (source.VerticalAlignment is not null) target.VerticalAlignment = source.VerticalAlignment;
+
+            if (source.Background is not null) target.Background = source.Background;
+            if (source.BorderBrush is not null) target.BorderBrush = source.BorderBrush;
+            if (source.BorderThickness is not null) target.BorderThickness = source.BorderThickness;
+            if (source.CornerRadius is not null) target.CornerRadius = source.CornerRadius;
+
+            if (source.Opacity is not null) target.Opacity = source.Opacity;
+            if (source.IsVisible is not null) target.IsVisible = source.IsVisible;
+
+            if (source.ClipToBounds is not null) target.ClipToBounds = source.ClipToBounds;
+            if (source.Effect is not null) target.Effect = source.Effect;
+            if (source.BoxShadows is not null) target.BoxShadows = source.BoxShadows;
+            if (source.Cursor is not null) target.Cursor = source.Cursor;
+            if (source.FlowDirection is not null) target.FlowDirection = source.FlowDirection;
+
+            if (source.RenderTransformOrigin is not null) target.RenderTransformOrigin = source.RenderTransformOrigin;
+            if (source.RenderTransform is not null) target.RenderTransform = source.RenderTransform;
+            if (source.Transitions is not null) target.Transitions = source.Transitions;
+        }
+
+        public void MergeMany(params BaseStyle[] styles)
+        {
+            foreach (var s in styles)
+            {
+                target.Merge(s);
+            }
+        }
+    }
+
+    extension(StyleSet target)
+    {
+        public StyleSet Copy()
+        {
+            var result = new StyleSet();
+            result.Merge(target, true);
+            target.InnerCopy(result);
+            return result;
+        }
+
+        public void Merge(StyleSet source, bool mergeNull = false)
+        {
+            target.Merge((BaseStyle)source, mergeNull);
+            if (mergeNull)
+            {
+                target.RowSpacing = source.RowSpacing;
+                target.ColumnSpacing = source.ColumnSpacing;
+
+                target.Orientation = source.Orientation;
+
+                target.LetterSpacing = source.LetterSpacing;
+                target.LineHeight = source.LineHeight;
+                target.LineSpacing = source.LineSpacing;
+                target.MaxLines = source.MaxLines;
+                target.TextTrimming = source.TextTrimming;
+                target.TextAlignment = source.TextAlignment;
+                target.VerticalTextAlignment = source.VerticalTextAlignment;
+                target.TextWrapping = source.TextWrapping;
+                target.TextDecorations = source.TextDecorations;
+                target.Inlines = source.Inlines;
+
+                target.FontSize = source.FontSize;
+                target.FontFamily = source.FontFamily;
+                target.FontWeight = source.FontWeight;
+                target.FontStretch = source.FontStretch;
+                target.FontFeatures = source.FontFeatures;
+                target.FontStyle = source.FontStyle;
+                target.Foreground = source.Foreground;
+                return;
+            }
+
+            if (source.RowSpacing is not null) target.RowSpacing = source.RowSpacing;
+            if (source.ColumnSpacing is not null) target.ColumnSpacing = source.ColumnSpacing;
+
+            if (source.Orientation is not null) target.Orientation = source.Orientation;
+
+            if (source.LetterSpacing is not null) target.LetterSpacing = source.LetterSpacing;
+            if (source.LineHeight is not null) target.LineHeight = source.LineHeight;
+            if (source.LineHeight is not null) target.LineHeight = source.LineSpacing;
+            if (source.MaxLines is not null) target.MaxLines = source.MaxLines;
+            if (source.TextTrimming is not null) target.TextTrimming = source.TextTrimming;
+            if (source.TextAlignment is not null) target.TextAlignment = source.TextAlignment;
+            if (source.VerticalTextAlignment is not null) target.VerticalTextAlignment = source.VerticalTextAlignment;
+            if (source.TextWrapping is not null) target.TextWrapping = source.TextWrapping;
+            if (source.TextDecorations is not null) target.TextDecorations = source.TextDecorations;
+            if (source.Inlines is not null) target.Inlines = source.Inlines;
+
+            if (source.FontSize is not null) target.FontSize = source.FontSize;
+            if (source.FontFamily is not null) target.FontFamily = source.FontFamily;
+            if (source.FontWeight is not null) target.FontWeight = source.FontWeight;
+            if (source.FontStretch is not null) target.FontStretch = source.FontStretch;
+            if (source.FontFeatures is not null) target.FontFeatures = source.FontFeatures;
+            if (source.FontStyle is not null) target.FontStyle = source.FontStyle;
+            if (source.Foreground is not null) target.Foreground = source.Foreground;
         }
 
         public void MergeMany(params StyleSet[] styles)
         {
             foreach (var s in styles)
             {
-                style.Merge(s);
+                target.Merge(s);
             }
         }
     }

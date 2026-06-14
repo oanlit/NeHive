@@ -1,5 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Layout;
+
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -12,24 +16,17 @@ public class HSplitViewProp(
     Accessor<double>? openPaneLength = null,
     Accessor<double>? compactPaneLength = null,
     Accessor<string>? strStyle = null,
-    Accessor<HPanelStyle>? style = null
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null
 )
 {
-    // 样式合并
-    public readonly Accessor<HPanelStyle>? ComputedStyle = (style, strStyle) switch
-    {
-        (not null, not null) => new Computed<HPanelStyle>(() =>
-            HPanelStyle.Parse(strStyle).RxValue.Merge(style.RxValue)),
-        (not null, _) => style,
-        (_, not null) => HPanelStyle.Parse(strStyle),
-        _ => null
-    };
-
-    // SplitView 特有属性
     public readonly Accessor<bool>? IsPaneOpen = isPaneOpen;
     public readonly Accessor<SplitViewDisplayMode>? DisplayMode = displayMode;
     public readonly Accessor<double>? OpenPaneLength = openPaneLength;
     public readonly Accessor<double>? CompactPaneLength = compactPaneLength;
+    
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
     // 两个固定区域
     public IElement? Pane { get; init; }
@@ -45,52 +42,56 @@ public static partial class BaseComponent
     {
         var uiScope = new UiScope();
         var splitView = new SplitView();
-
-        // 应用样式
-        if (prop.ComputedStyle != null)
+        var border = new Border
         {
-            uiScope.CreateEffect(scope =>
-            {
-                var style = scope.Track(prop.ComputedStyle);
-                ApplySplitViewStyle(splitView, style);
-            });
-        }
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Child = splitView
+        };
+
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
+        {
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, splitView, border, StyleUtil.ApplyStyle);
+        state.ApplyVariantsStyle(splitView, border, StyleUtil.ApplyStyle);
 
         // 绑定属性
-        if (prop.IsPaneOpen != null)
-            uiScope.CreateEffect(() => splitView.IsPaneOpen = prop.IsPaneOpen.RxValue);
-        if (prop.DisplayMode != null)
-            uiScope.CreateEffect(() => splitView.DisplayMode = prop.DisplayMode.RxValue);
-        if (prop.OpenPaneLength != null)
-            uiScope.CreateEffect(() => splitView.OpenPaneLength = prop.OpenPaneLength.RxValue);
-        if (prop.CompactPaneLength != null)
-            uiScope.CreateEffect(() => splitView.CompactPaneLength = prop.CompactPaneLength.RxValue);
+        if (prop.IsPaneOpen is not null)
+        {
+            splitView.IsPaneOpen = prop.IsPaneOpen.Value;
+            if(prop.IsPaneOpen.IsReactive)
+                uiScope.CreateEffect(epochScope => splitView.IsPaneOpen = epochScope.Track(prop.IsPaneOpen));
+        }
+        
+        if (prop.DisplayMode is not null)
+        {
+            splitView.DisplayMode = prop.DisplayMode.Value;
+            if(prop.DisplayMode.IsReactive)
+                uiScope.CreateEffect(epochScope => splitView.DisplayMode = epochScope.Track(prop.DisplayMode));
+        }
+        
+        if (prop.OpenPaneLength is not null)
+        {
+            splitView.OpenPaneLength = prop.OpenPaneLength.Value;
+            if(prop.OpenPaneLength.IsReactive)
+                uiScope.CreateEffect(epochScope => splitView.OpenPaneLength = epochScope.Track(prop.OpenPaneLength));
+        }
+        
+        if (prop.CompactPaneLength is not null)
+        {
+            splitView.CompactPaneLength = prop.CompactPaneLength.Value;
+            if(prop.CompactPaneLength.IsReactive)
+                uiScope.CreateEffect(epochScope => splitView.CompactPaneLength = epochScope.Track(prop.CompactPaneLength));
+        }
 
         // 设置 Pane 和 Content
-        if (prop.Pane != null)
+        if (prop.Pane is not null)
             splitView.Pane = prop.Pane.Content;
-        if (prop.Content != null)
+        if (prop.Content is not null)
             splitView.Content = prop.Content.Content;
 
-        return new Element<SplitView>(uiScope, splitView, splitView);
-
-        void ApplySplitViewStyle(SplitView sv, HPanelStyle style)
-        {
-            sv.Margin = style.Margin;
-            if (style.ZIndex is not null) sv.ZIndex = style.ZIndex.Value;
-
-            if (style.Width is not null) sv.Width = style.Width.Value;
-            if (style.Height is not null) sv.Height = style.Height.Value;
-            if (style.MinWidth is not null) sv.Width = style.MinWidth.Value;
-            if (style.MaxWidth is not null) sv.Width = style.MaxWidth.Value;
-            if (style.MinHeight is not null) sv.Height = style.MinHeight.Value;
-            if (style.MaxHeight is not null) sv.Height = style.MaxHeight.Value;
-
-            sv.HorizontalAlignment = style.HorizontalAlignment;
-            sv.VerticalAlignment = style.VerticalAlignment;
-
-            sv.Background = style.Background;
-            // 如需边框等可扩展
-        }
+        return new Element<SplitView>(uiScope, border, splitView);
     }
 }

@@ -2,63 +2,48 @@ using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
 /// <summary>
 /// ComboBox 配置类（泛型，T 为项数据类型）
 /// </summary>
-public class HComboBoxProp<T>
+public class HComboBoxProp<T>(
+    Accessor<IReadOnlyList<T>> itemsSource,
+    Accessor<T?>? selectedItem = null,
+    MutSignal<T?>? bindSelectedItem = null,
+    Accessor<bool>? isEditable = null,
+    Accessor<string>? placeholderText = null,
+    Accessor<double>? maxDropDownHeight = null,
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null
+)
 {
-    public readonly Accessor<FullStyle>? Style;
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
     // 数据源
-    public readonly Accessor<IReadOnlyList<T>> ItemsSource;
+    public readonly Accessor<IReadOnlyList<T>> ItemsSource = itemsSource;
 
     // 项模板
     public required Func<T, IElement> ItemTemplate { get; init; }
 
     // 选中项
-    public readonly Accessor<T?>? SelectedItem;
+    public readonly Accessor<T?>? SelectedItem = selectedItem;
 
     // 选中项（双向绑定）
-    public readonly MutSignal<T?>? BindSelectedItem;
+    public readonly MutSignal<T?>? BindSelectedItem = bindSelectedItem;
 
     // 是否可编辑
-    public readonly Accessor<bool>? IsEditable;
+    public readonly Accessor<bool>? IsEditable = isEditable;
 
     // 占位文本（当没有选中时显示）
-    public readonly Accessor<string>? PlaceholderText;
+    public readonly Accessor<string>? PlaceholderText = placeholderText;
 
     // 最大下拉高度
-    public readonly Accessor<double>? MaxDropDownHeight;
-
-    public HComboBoxProp(
-        Accessor<IReadOnlyList<T>> itemsSource,
-        Accessor<T?>? selectedItem = null,
-        MutSignal<T?>? bindSelectedItem = null,
-        Accessor<bool>? isEditable = null,
-        Accessor<string>? placeholderText = null,
-        Accessor<double>? maxDropDownHeight = null,
-        Accessor<string>? strStyle = null
-    )
-    {
-        ItemsSource = itemsSource;
-
-        BindSelectedItem = bindSelectedItem;
-        SelectedItem = bindSelectedItem ?? selectedItem;
-
-        IsEditable = isEditable;
-
-        PlaceholderText = placeholderText;
-
-        MaxDropDownHeight = maxDropDownHeight;
-
-        if (strStyle is not null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
+    public readonly Accessor<double>? MaxDropDownHeight = maxDropDownHeight;
 }
 
 public static partial class BaseComponent
@@ -72,24 +57,19 @@ public static partial class BaseComponent
             Child = comboBox
         };
 
-        if (prop.Style is not null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            var style = prop.Style.Value;
-            StyleUtil.ApplyStyle(style.Normal, comboBox, border);
-            if (prop.Style.IsReactive)
-            {
-                uiScope.CreateEffect(scope =>
-                {
-                    var style2 = scope.Track(prop.Style);
-                    StyleUtil.ApplyStyle(style2.Normal, comboBox, border);
-                });
-            }
-        }
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, comboBox, border, StyleUtil.ApplyStyle);
+        state.ApplyVariantsStyle(comboBox, border, StyleUtil.ApplyStyle);
 
         // 绑定数据源
         comboBox.ItemsSource = prop.ItemsSource.Value;
         if (prop.ItemsSource.IsReactive)
-            uiScope.CreateEffect(() => comboBox.ItemsSource = prop.ItemsSource.RxValue);
+            uiScope.CreateEffect(epochScope => comboBox.ItemsSource = epochScope.Track(prop.ItemsSource));
 
         // 绑定项模板
         comboBox.ItemTemplate = new FuncDataTemplate<T>((item, _) =>
@@ -104,7 +84,7 @@ public static partial class BaseComponent
         {
             comboBox.IsEditable = prop.IsEditable.Value;
             if (prop.IsEditable.IsReactive)
-                uiScope.CreateEffect(() => comboBox.IsEditable = prop.IsEditable.RxValue);
+                uiScope.CreateEffect(epochScope => comboBox.IsEditable = epochScope.Track(prop.IsEditable));
         }
 
         // 绑定占位文本
@@ -112,7 +92,7 @@ public static partial class BaseComponent
         {
             comboBox.PlaceholderText = prop.PlaceholderText.Value;
             if (prop.PlaceholderText.IsReactive)
-                uiScope.CreateEffect(() => comboBox.PlaceholderText = prop.PlaceholderText.RxValue);
+                uiScope.CreateEffect(epochScope => comboBox.PlaceholderText = epochScope.Track(prop.PlaceholderText));
         }
 
         // 绑定最大下拉高度
@@ -120,7 +100,8 @@ public static partial class BaseComponent
         {
             comboBox.MaxDropDownHeight = prop.MaxDropDownHeight.Value;
             if (prop.MaxDropDownHeight.IsReactive)
-                uiScope.CreateEffect(() => comboBox.MaxDropDownHeight = prop.MaxDropDownHeight.RxValue);
+                uiScope.CreateEffect(epochScope =>
+                    comboBox.MaxDropDownHeight = epochScope.Track(prop.MaxDropDownHeight));
         }
 
         // 双向绑定 BindSelectedItem
@@ -144,13 +125,7 @@ public static partial class BaseComponent
         {
             comboBox.SelectedItem = prop.SelectedItem.Value;
             if (prop.SelectedItem.IsReactive)
-            {
-                uiScope.CreateEffect(() =>
-                {
-                    var selected = prop.SelectedItem.RxValue;
-                    comboBox.SelectedItem = selected;
-                });
-            }
+                uiScope.CreateEffect(epochScope => comboBox.SelectedItem = epochScope.Track(prop.SelectedItem));
         }
 
         return new Element<ComboBox>(uiScope, border, comboBox);

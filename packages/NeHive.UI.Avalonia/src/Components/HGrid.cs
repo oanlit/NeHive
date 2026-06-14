@@ -1,10 +1,9 @@
 using System.Collections;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -30,119 +29,23 @@ public readonly struct HgLen
     public static HgLen Star(double value = 1) => new(new GridLength(value, GridUnitType.Star));
 }
 
-public class HGridStyle(
-    Thickness? margin = null,
-    int? zIndex = null,
-    double? width = null,
-    double? height = null,
-    double? minWidth = null,
-    double? maxWidth = null,
-    double? minHeight = null,
-    double? maxHeight = null,
-    double? columnSpacing = null,
-    double? rowSpacing = null,
-    HorizontalAlignment? horizontalAlignment = null,
-    VerticalAlignment? verticalAlignment = null,
-    IBrush? background = null
-)
-{
-    // 边距
-    public Thickness Margin { get; private set; } = margin ?? new(0);
-    public int? ZIndex { get; private set; } = zIndex;
-
-    public double? Width { get; private set; } = width;
-    public double? Height { get; private set; } = height;
-    public double? MinWidth { get; private set; } = minWidth;
-    public double? MaxWidth { get; private set; } = maxWidth;
-    public double? MinHeight { get; private set; } = minHeight;
-    public double? MaxHeight { get; private set; } = maxHeight;
-
-    public double ColumnSpacing { get; private set; } = columnSpacing ?? 0;
-    public double RowSpacing { get; private set; } = rowSpacing ?? 0;
-
-    // 对齐
-    public HorizontalAlignment HorizontalAlignment { get; private set; } =
-        horizontalAlignment ?? HorizontalAlignment.Stretch;
-
-    public VerticalAlignment VerticalAlignment { get; private set; } =
-        verticalAlignment ?? VerticalAlignment.Stretch;
-
-    // 背景
-    public IBrush? Background { get; private set; } = background;
-
-    // 样式默认值
-    public static HGridStyle Default => new();
-
-    public HGridStyle Merge(HGridStyle style)
-    {
-        Margin = style.Margin;
-        ZIndex = style.ZIndex;
-
-        Width = style.Width;
-        Height = style.Height;
-        MinWidth = style.MinWidth;
-        MaxWidth = style.MaxWidth;
-        MinHeight = style.MinHeight;
-        MaxHeight = style.MaxHeight;
-
-        ColumnSpacing = style.ColumnSpacing;
-        RowSpacing = style.RowSpacing;
-        HorizontalAlignment = style.HorizontalAlignment;
-        VerticalAlignment = style.VerticalAlignment;
-        Background = style.Background ?? Background;
-        return this;
-    }
-
-    public static Accessor<HGridStyle> Parse(Accessor<string> text)
-    {
-        return new Computed<HGridStyle>(() =>
-        {
-            var str = text.RxValue;
-            var result = StyleParser.Parse(str);
-            return new HGridStyle(
-                result.Margin,
-                result.ZIndex,
-                result.Width,
-                result.Height,
-                result.MinWidth,
-                result.MaxWidth,
-                result.MinHeight,
-                result.MaxHeight,
-                result.ColumnSpacing,
-                result.RowSpacing,
-                result.HorizontalAlignment,
-                result.VerticalAlignment,
-                result.Background
-            );
-        });
-    }
-}
-
-public class HGridProp : IEnumerable<KeyValuePair<GridPosition, IElement>>
+public class HGridProp(
+    Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
+    Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null
+) : IEnumerable<KeyValuePair<GridPosition, IElement>>
 {
     private readonly Dictionary<GridPosition, IElement> _children = new();
 
     // 布局属性（响应式）
-    public readonly Accessor<IReadOnlyList<HgLen>>? RowDefinitions;
-    public readonly Accessor<IReadOnlyList<HgLen>>? ColumnDefinitions;
+    public readonly Accessor<IReadOnlyList<HgLen>>? RowDefinitions = rowDefinitions;
+    public readonly Accessor<IReadOnlyList<HgLen>>? ColumnDefinitions = columnDefinitions;
 
     // 布局属性
-    public readonly Accessor<FullStyle>? Style;
-
-    public HGridProp(
-        Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
-        Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
-        Accessor<string>? strStyle = null
-    )
-    {
-        RowDefinitions = rowDefinitions;
-        ColumnDefinitions = columnDefinitions;
-
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
     public IElement this[GridPosition key]
     {
@@ -176,6 +79,15 @@ public static partial class BaseComponent
         {
             Child = grid
         };
+        
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
+        {
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
+        state.ApplyVariantsStyle(grid, border, ApplyStyle);
 
         // 应用响应式属性
         uiScope.CreateEffect(() =>
@@ -195,15 +107,6 @@ public static partial class BaseComponent
             }
         });
 
-        if (prop.Style != null)
-        {
-            uiScope.CreateEffect(scope =>
-            {
-                var style = scope.Track(prop.Style);
-                ApplyStyle(style.Normal);
-            });
-        }
-
         // 添加子元素并应用附加属性
         foreach (var (position, childElement) in prop)
         {
@@ -217,9 +120,9 @@ public static partial class BaseComponent
 
         return new Element(uiScope, border);
 
-        void ApplyStyle(StyleSet style)
+        void ApplyStyle(StyleSet style, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(style, grid, border);
+            StyleUtil.ApplyStyle(style, layout, bord);
             if (style.Width is not null)
                 grid.Width = style.Width.Value;
 
@@ -237,7 +140,7 @@ public static partial class BaseComponent
 
             if (style.MaxHeight is not null)
                 grid.MaxHeight = style.MaxHeight.Value;
-            
+
             if (style.ColumnSpacing is not null) grid.ColumnSpacing = style.ColumnSpacing.Value;
             if (style.RowSpacing is not null) grid.RowSpacing = style.RowSpacing.Value;
         }

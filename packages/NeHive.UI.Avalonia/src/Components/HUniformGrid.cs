@@ -1,34 +1,27 @@
 using System.Collections;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Layout;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HUniformGridProp : IEnumerable<IElement>
+public class HUniformGridProp(
+    Accessor<int>? rows = null,
+    Accessor<int>? columns = null,
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null
+) : IEnumerable<IElement>
 {
     private readonly List<IElement> _children = [];
 
-    public readonly Accessor<int>? Rows;
-    public readonly Accessor<int>? Columns;
-    public readonly Accessor<FullStyle>? Style;
-
-    public HUniformGridProp(
-        Accessor<int>? rows = null,
-        Accessor<int>? columns = null,
-        Accessor<string>? strStyle = null,
-        Accessor<HGridStyle>? style = null
-    )
-    {
-        Rows = rows;
-        Columns = columns;
-
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
+    public readonly Accessor<int>? Rows = rows;
+    public readonly Accessor<int>? Columns = columns;
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
     // 索引器（可按整数位置添加，但通常用集合初始化器）
     public IElement this[int index]
@@ -62,21 +55,29 @@ public static partial class BaseComponent
             Child = grid
         };
 
-        // 应用样式（直接复用 HGrid 的样式应用逻辑）
-        if (prop.Style != null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            uiScope.CreateEffect(scope =>
-            {
-                var style = scope.Track(prop.Style);
-                ApplyStyle(style.Normal);
-            });
-        }
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
+        state.ApplyVariantsStyle(grid, border, ApplyStyle);
 
         // 绑定行数和列数
-        if (prop.Rows != null)
-            uiScope.CreateEffect(() => grid.Rows = prop.Rows.RxValue);
-        if (prop.Columns != null)
-            uiScope.CreateEffect(() => grid.Columns = prop.Columns.RxValue);
+        if (prop.Rows is not null)
+        {
+            grid.Rows = prop.Rows.Value;
+            if (prop.Rows.IsReactive)
+                uiScope.CreateEffect(epochScope => grid.Rows = epochScope.Track(prop.Rows));
+        }
+
+        if (prop.Columns is not null)
+        {
+            grid.Columns = prop.Columns.Value;
+            if (prop.Columns.IsReactive)
+                uiScope.CreateEffect(epochScope => grid.Columns = epochScope.Track(prop.Columns));
+        }
 
         // 添加子元素
         foreach (var childElement in prop)
@@ -86,12 +87,12 @@ public static partial class BaseComponent
 
         return new Element<UniformGrid>(uiScope, border, grid);
 
-        void ApplyStyle(StyleSet style)
+        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(style, grid, border);
+            StyleUtil.ApplyStyle(styleValue, grid, border);
 
-            if (style.ColumnSpacing is not null) grid.ColumnSpacing = style.ColumnSpacing.Value;
-            if (style.RowSpacing is not null) grid.RowSpacing = style.RowSpacing.Value;
+            if (styleValue.ColumnSpacing is not null) grid.ColumnSpacing = styleValue.ColumnSpacing.Value;
+            if (styleValue.RowSpacing is not null) grid.RowSpacing = styleValue.RowSpacing.Value;
         }
     }
 }

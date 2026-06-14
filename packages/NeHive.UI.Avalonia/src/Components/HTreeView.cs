@@ -1,7 +1,9 @@
 using System.Collections;
 using Avalonia.Controls;
+
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -21,21 +23,15 @@ public class HTreeViewItemProp(
     public void Add(HTreeViewItemProp child) => Children.Add(child);
 }
 
-public class HTreeViewProp : IEnumerable<HTreeViewItemProp>
+public class HTreeViewProp(
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null) : IEnumerable<HTreeViewItemProp>
 {
     private readonly List<HTreeViewItemProp> _roots = new();
 
-    public readonly Accessor<FullStyle>? Style;
-
-    public HTreeViewProp(
-        Accessor<string>? strStyle = null
-    )
-    {
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
 
     // 集合初始化器支持
     public void Add(HTreeViewItemProp root) => _roots.Add(root);
@@ -55,21 +51,28 @@ public static partial class BaseComponent
             Child = treeView
         };
 
-        if (prop.Style is not null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            uiScope.CreateEffect(epochScope =>
-            {
-                var style = epochScope.Track(prop.Style);
-                StyleUtil.ApplyStyle(style.Normal, treeView, border);
-            });
-        }
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, treeView, border, StyleUtil.ApplyStyle);
+        state.ApplyVariantsStyle(treeView, border, StyleUtil.ApplyStyle);
 
         // 递归构建 TreeViewItem
         TreeViewItem BuildItem(HTreeViewItemProp itemProp)
         {
             var tvi = new TreeViewItem();
-            uiScope.CreateEffect(() => tvi.Header = itemProp.Header.RxValue);
-            uiScope.CreateEffect(() => tvi.IsExpanded = itemProp.IsExpanded.RxValue);
+
+            tvi.Header = itemProp.Header.Value;
+            if(itemProp.Header.IsReactive)
+                uiScope.CreateEffect(epochScope => tvi.Header = epochScope.Track(itemProp.Header));
+
+            tvi.IsExpanded = itemProp.IsExpanded.Value;
+            if(itemProp.IsExpanded.IsReactive)
+                uiScope.CreateEffect(epochScope => tvi.IsExpanded = epochScope.Track(itemProp.IsExpanded));
+            
             foreach (var childProp in itemProp.Children)
             {
                 tvi.Items.Add(BuildItem(childProp));

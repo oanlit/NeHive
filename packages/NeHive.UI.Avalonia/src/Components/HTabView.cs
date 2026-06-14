@@ -1,31 +1,29 @@
 using System.Collections;
 using Avalonia.Controls;
+using Avalonia.Layout;
+
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
 /// <summary>
 /// TabControl 配置类，支持索引器添加标签页
 /// </summary>
-public class HTabViewProp : IEnumerable<(Accessor<string> Header, IElement Content)>
+public class HTabViewProp(
+    MutSignal<int>? bindSelectedIndex = null,
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null)
+    : IEnumerable<(Accessor<string> Header, IElement Content)>
 {
     private readonly List<(Accessor<string> Header, IElement Content)> _items = [];
 
-    public readonly MutSignal<int>? BindSelectedIndex;
-    public readonly Accessor<FullStyle>? Style;
-
-    public HTabViewProp(
-        MutSignal<int>? bindSelectedIndex = null,
-        Accessor<string>? strStyle = null)
-    {
-        BindSelectedIndex = bindSelectedIndex;
-        if (strStyle != null)
-        {
-            Style = StyleParser.ParseFull(strStyle);
-        }
-    }
-
+    public readonly MutSignal<int>? BindSelectedIndex = bindSelectedIndex;
+    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
+    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    
     // 索引器：支持 Accessor<string> 标题（响应式）
     public IElement this[Accessor<string> header]
     {
@@ -54,15 +52,14 @@ public static partial class BaseComponent
             Child = tabControl
         };
 
-        // 应用布局样式
-        if (prop.Style is not null)
+        var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
-            uiScope.CreateEffect(epochScope =>
-            {
-                var style = epochScope.Track(prop.Style);
-                ApplyStyle(style.Normal);
-            });
-        }
+            StrVariants = prop.Style.Value.Variants,
+            Variants = prop.Variants
+        };
+
+        state.ApplyAccessorStyle(prop.Style, tabControl, border, ApplyStyle);
+        state.ApplyVariantsStyle(tabControl, border, ApplyStyle);
 
         // tabControl.ItemTemplate = 
 
@@ -71,7 +68,11 @@ public static partial class BaseComponent
         foreach (var (headerAccessor, contentElement) in prop)
         {
             var tabItem = new TabItem();
-            uiScope.CreateEffect(() => tabItem.Header = headerAccessor.RxValue);
+            
+            tabItem.Header = headerAccessor.Value;
+            if(headerAccessor.IsReactive)
+                uiScope.CreateEffect(epochScope => tabItem.Header = epochScope.Track(headerAccessor));
+            
             tabItem.Content = contentElement.Content;
             tabItems.Add(tabItem);
         }
@@ -102,17 +103,17 @@ public static partial class BaseComponent
 
         return new Element(uiScope, border);
 
-        void ApplyStyle(StyleSet style)
+        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(style, tabControl, border);
-            
-            if (style.VerticalTextAlignment is not null)
-                border.VerticalAlignment = style.VerticalTextAlignment.Value;
-            if (style.Foreground is not null) tabControl.Foreground = style.Foreground;
-            if (style.FontSize is not null) tabControl.FontSize = style.FontSize.Value;
-            if (style.FontWeight is not null) tabControl.FontWeight = style.FontWeight.Value;
-            if (style.FontStyle is not null) tabControl.FontStyle = style.FontStyle.Value;
-            if (style.Foreground is not null) tabControl.Foreground = style.Foreground;
+            StyleUtil.ApplyStyle(styleValue, layout, bord);
+
+            if (styleValue.VerticalTextAlignment is not null)
+                border.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
+            if (styleValue.Foreground is not null) tabControl.Foreground = styleValue.Foreground;
+            if (styleValue.FontSize is not null) tabControl.FontSize = styleValue.FontSize.Value;
+            if (styleValue.FontWeight is not null) tabControl.FontWeight = styleValue.FontWeight.Value;
+            if (styleValue.FontStyle is not null) tabControl.FontStyle = styleValue.FontStyle.Value;
+            if (styleValue.Foreground is not null) tabControl.Foreground = styleValue.Foreground;
         }
     }
 }

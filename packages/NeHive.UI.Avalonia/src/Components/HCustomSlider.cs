@@ -5,6 +5,7 @@ using NeHive.Reactive;
 using Avalonia.Media;
 using Avalonia.Input;
 using NeHive.UI.Avalonia.Styles;
+using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 

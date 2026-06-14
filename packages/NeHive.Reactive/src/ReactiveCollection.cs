@@ -11,9 +11,7 @@ using System.Collections.ObjectModel;
 /// Reactive collections should not be treated as
 /// ordinary immutable snapshots.
 /// </summary>
-public interface IReactiveCollection<out T> : IEnumerable<T>
-{
-}
+public interface IReactiveCollection<out T> : IEnumerable<T>;
 
 /// <summary>
 /// A reactive list container that tracks individual element access, count changes,

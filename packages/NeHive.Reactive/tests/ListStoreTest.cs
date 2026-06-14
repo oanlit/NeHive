@@ -7,7 +7,7 @@ public class ListStoreTest
     {
         var snapshot = new List<int?>();
 
-        for (int i = 0; i < store.Count; i++)
+        for (var i = 0; i < store.Count; i++)
         {
             store.TryGetValue(i, out var v);
             snapshot.Add(v);
