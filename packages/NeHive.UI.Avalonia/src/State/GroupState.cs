@@ -7,47 +7,40 @@ public interface IGroupState;
 
 public class GroupState(StyleSet baseStyle) : IGroupState
 {
-    private MutSignal<bool>? _isHover;
-    private MutSignal<bool>? _isFocus;
-    private MutSignal<bool>? _isClicked;
+    internal MutSignal<bool>? InnerIsHover;
+    internal MutSignal<bool>? InnerIsFocus;
+    internal MutSignal<bool>? InnerIsClicked;
 
     public StyleSet BaseStyle = baseStyle;
-    public StyleSet CurrentStyle = StyleUtil.Copy(baseStyle);
+    public StyleSet CurrentStyle = baseStyle.Copy();
     public Dictionary<string, List<string>>? Variants;
-
 
     public Signal<bool> IsHover
     {
         get
         {
-            _isHover ??= new MutSignal<bool>(false);
-            return _isHover;
+            InnerIsHover ??= new MutSignal<bool>(false);
+            return InnerIsHover;
         }
     }
-
-    internal void SetHover(bool value) => _isHover?.RxValue = value;
 
     public Signal<bool> IsFocus
     {
         get
         {
-            _isFocus ??= new MutSignal<bool>(false);
-            return _isFocus;
+            InnerIsFocus ??= new MutSignal<bool>(false);
+            return InnerIsFocus;
         }
     }
-
-    internal void SetFocus(bool value) => _isFocus?.RxValue = value;
-
+    
     public Signal<bool> IsClicked
     {
         get
         {
-            _isClicked ??= new MutSignal<bool>(false);
-            return _isClicked;
+            InnerIsClicked ??= new MutSignal<bool>(false);
+            return InnerIsClicked;
         }
     }
-
-    internal void SetClicked(bool value) => _isClicked?.RxValue = value;
 
     public void ResetSetStyle()
     {

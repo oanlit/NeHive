@@ -6,7 +6,9 @@ using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HGroupProp<T>(Accessor<string>? strStyle = null) where T : IGroupState
+public class HGroupProp<T>(
+    Accessor<string>? strStyle = null
+) where T : IGroupState
 {
     public readonly Accessor<FullStyle>? Style = StyleParser.ParseFull(strStyle);
 
@@ -51,7 +53,7 @@ public static partial class BaseComponent
                 if (!e.GetCurrentPoint(border).Properties.IsLeftButtonPressed)
                     return;
 
-                state.SetClicked(true);
+                state.InnerIsClicked?.RxValue = true;
                 state.SetClickStyle();
                 StyleUtil.ApplyStyle(state.CurrentStyle, border, border);
                 e.Handled = true;
@@ -59,7 +61,7 @@ public static partial class BaseComponent
 
             border.PointerReleased += (_, e) =>
             {
-                state.SetClicked(false);
+                state.InnerIsClicked?.RxValue = false;
                 state.ResetSetStyle();
                 state.SetCurrentStyle();
                 StyleUtil.ApplyStyle(state.CurrentStyle, border, border);
@@ -68,15 +70,15 @@ public static partial class BaseComponent
 
             border.PointerExited += (_, _) =>
             {
-                state.SetHover(false);
-                state.SetClicked(false); // 移出区域时取消按下状态
+                state.InnerIsHover?.RxValue = false;
+                state.InnerIsClicked?.RxValue = false; // 移出区域时取消按下状态
                 state.ResetSetStyle();
                 StyleUtil.ApplyStyle(state.CurrentStyle, border, border);
             };
 
             border.PointerEntered += (_, _) =>
             {
-                state.SetHover(true);
+                state.InnerIsHover?.RxValue = true;
                 state.SetHoverStyle();
                 StyleUtil.ApplyStyle(state.CurrentStyle, border, border);
             };
