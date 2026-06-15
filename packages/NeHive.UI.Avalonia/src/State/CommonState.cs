@@ -68,21 +68,22 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         Layoutable layout, Border border,
         Action<StyleSet, Layoutable, Border> applyStyle)
     {
-        if (accessorStyle.IsReactive)
+        applyStyle(CurrentStyle, layout, border);
+        if (!accessorStyle.IsReactive) return;
+        var firstApply = true;
+        uiScope.CreateEffect(epochScope =>
         {
-            uiScope.CreateEffect(epochScope =>
+            var styleValue = epochScope.Track(accessorStyle);
+            BaseStyle = styleValue.Normal;
+            StrVariants = styleValue.Variants;
+            CurrentStyle = BaseStyle.Copy();
+            if(firstApply)
             {
-                var styleValue = epochScope.Track(accessorStyle);
-                BaseStyle = styleValue.Normal;
-                StrVariants = styleValue.Variants;
-                CurrentStyle = BaseStyle.Copy();
-                applyStyle(CurrentStyle, layout, border);
-            });
-        }
-        else
-        {
+                firstApply = false;
+                return;
+            }
             applyStyle(CurrentStyle, layout, border);
-        }
+        });
     }
 
     public void ApplyVariantsStyle(Layoutable layout, Border border, 

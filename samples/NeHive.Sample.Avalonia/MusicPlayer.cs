@@ -220,11 +220,10 @@ public static class MusicPlayerDemo
                                 mediaPlayer.SeekTo(TimeSpan.FromMilliseconds(val));
                         })
                     {
-                        Thumb = state => Show(new(new(() => state.IsHover.RxValue || state.IsDragging.RxValue))
-                        {
-                            IfTrue = () => HSvgImage("~/Assets/circle-star.svg",
-                                strStyle: "w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full")
-                        }) // HCustomSlider.Thumb
+                        Thumb = state => HSvgImage("~/Assets/circle-star.svg",
+                            strStyle: new(() =>
+                                $"w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full {(state.IsHover.RxValue ? "opacity-100" : "opacity-0")}")
+                        ) // HCustomSlider.Thumb
                     }), // HCustomSlider
                     HTextBlock(
                         new(() => duration.RxValue.ToString(@"mm\:ss")),

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Layout;
 using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Components;
@@ -19,18 +20,19 @@ public static partial class ControlFlow
         uiScope.CreateEffect(epochScope =>
         {
             var when = epochScope.Track(prop.When);
-
-            if (!when)
+            IElement child;
+            if (when)
+            {
+                child = prop.IfTrue();
+            }
+            else
             {
                 if (prop.IfFalse is null) return;
-                var fallback = prop.IfFalse();
-                panel.Children.Add(fallback.Content);
-                epochScope.OnCleanup += fallback.Dispose;
-                return;
+                child = prop.IfFalse();
             }
-
-            var child = prop.IfTrue();
-            panel.Children.Add(child.Content);
+            
+            var content = child.Content;
+            panel.Children.Add(content);
             epochScope.OnCleanup += child.Dispose;
         });
         return new Element(uiScope, panel);

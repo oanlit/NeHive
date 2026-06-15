@@ -70,15 +70,6 @@ public static partial class BaseComponent
                     if (styleValue.ColumnSpacing is not null) stack.Spacing = styleValue.ColumnSpacing.Value;
                     break;
             }
-            //
-            // var overflowHandle = styleValue;
-            // if (overflowHandle is not null)
-            // {
-            //     if (overflowHandle is OverflowHandle.Visible)
-            //         stack.ClipToBounds = false;
-            //     else if (overflowHandle is OverflowHandle.Hidden)
-            //         stack.ClipToBounds = true;
-            // }
         }
     }
 }
