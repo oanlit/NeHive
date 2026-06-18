@@ -13,6 +13,9 @@ public class HMenuItemProp(
     Accessor<string>? header = null,
     Accessor<bool>? isEnabled = null,
     Accessor<bool>? isChecked = null,
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null,
     Action? onClick = null
 ) : IEnumerable<HMenuItemProp>
 {

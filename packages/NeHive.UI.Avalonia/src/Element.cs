@@ -67,7 +67,12 @@ public class Element : IElement
     public static IElement WithScope(Func<UiScope, IElement> builder)
     {
         var uiScope = new UiScope();
-        var element = uiScope.RunInScope(() => builder(uiScope));
+
+        IElement element;
+        using (new ScopeFrame(uiScope))
+        {
+            element = builder(uiScope);
+        }
 
         return element.Scope == uiScope
             ? element

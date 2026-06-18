@@ -8,27 +8,26 @@ using NeHive.UI.Avalonia.State;
 namespace NeHive.UI.Avalonia.Components;
 
 public class HDockPanelProp(
-    Accessor<bool>? lastChildFill = null,
+    bool? lastChildFill = null,
     Accessor<string>? strStyle = null,
     Accessor<StyleSet>? style = null,
     Dictionary<string, StyleSet>? variants = null
-) : IEnumerable<(Dock Dock, IElement Element)>
+) : IEnumerable<(Dock? Dock, IElement Element)>
 {
-    private readonly List<(Dock Dock, IElement Element)> _children = [];
-    public readonly Accessor<bool> LastChildFill = lastChildFill ?? true;
+    private readonly List<(Dock? Dock, IElement Element)> _children = [];
+    public readonly bool LastChildFill = lastChildFill ?? true;
     public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
     public readonly Dictionary<string, StyleSet>? Variants = variants;
 
-
     // 集合初始化器支持：添加子元素并指定停靠方向
-    public IElement this[Dock key]
+    public IElement this[Dock? key]
     {
         set => _children.Add((key, value));
     }
 
     public void Add(IElement element, Dock dock) => _children.Add((dock, element));
 
-    public IEnumerator<(Dock Dock, IElement Element)> GetEnumerator() => _children.GetEnumerator();
+    public IEnumerator<(Dock? Dock, IElement Element)> GetEnumerator() => _children.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
@@ -57,16 +56,22 @@ public static partial class BaseComponent
         state.ApplyVariantsStyle(dockPanel, border, ApplyStyle);
 
         // 添加子元素并设置 Dock 附加属性
-        // var lastItem = prop.LastOrDefault();
+        Control? lastItem = null;
         foreach (var (dock, element) in prop)
         {
             var control = element.Content;
-            DockPanel.SetDock(control, dock);
+            if (dock is null)
+            {
+                lastItem = control;
+                continue;
+            }
+
+            DockPanel.SetDock(control, dock.Value);
             dockPanel.Children.Add(control);
         }
 
-
-        uiScope.CreateEffect(() => dockPanel.LastChildFill = prop.LastChildFill.RxValue);
+        dockPanel.LastChildFill = prop.LastChildFill;
+        if(lastItem is not null) dockPanel.Children.Add(lastItem);
 
         return new Element<DockPanel>(uiScope, border, dockPanel);
 

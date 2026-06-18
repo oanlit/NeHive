@@ -1,38 +1,36 @@
+using Avalonia;
 using Avalonia.Controls;
+using NeHive.Model;
+using NeHive.Reactive;
 using NeHive.UI.Avalonia;
 
 namespace NeHive.Sample.Avalonia;
 
 public class MainWindow : Window
 {
-    private readonly IElement _mainNavDemo;
-  
+    private readonly Scope _scope = new();
+
     public MainWindow()
     {
         Width = 1000;
         Height = 700;
         Title = "NeHive UI Avalonia Demo";
-        _mainNavDemo = DemoComponent.MainNavDemo();
-        // _mainNavDemo = MusicPlayerDemo.MusicPlayer();
-        // _mainNavDemo = DemoComponent.TextStyleDemo();
-        // _mainNavDemo = DemoComponent.GroupDemo();
-        // _mainNavDemo = DemoComponent.ContextDemo();
-        Content = _mainNavDemo.Content;
-        // var slider = new SimpleSlider
-        // {
-        //     Width = 300,
-        //     Height = 20,
-        //     Minimum = 0,
-        //     Maximum = 100,
-        //     Value = 50
-        // };
-        //
-        // Content = slider;
+        var size = new MutSignal<Size>(ClientSize);
+        Resized += (_, e) => size.RxValue = e.ClientSize;
+        _scope
+            .SetContext(NeHiveUiContext.Window, this)
+            .SetContext(NeHiveUiContext.WindowSize, size);
+        Scope.RootScope.SetContext(NeHiveUiContext.Window, this)
+            .SetContext(NeHiveUiContext.WindowSize, size);
+        using (new ScopeFrame(_scope))
+        {
+            Content = DemoComponent.CategorizedMainNavDemo().Content;
+        }
     }
 
     protected override void OnClosed(EventArgs e)
     {
-        _mainNavDemo.Dispose();
+        _scope.Dispose();
         base.OnClosed(e);
     }
 }

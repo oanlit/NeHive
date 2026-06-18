@@ -71,7 +71,7 @@ public static class StyleUtil
         if (style.CornerRadius is not null) border.CornerRadius = style.CornerRadius.Value;
         if (style.Opacity is not null) border.Opacity = style.Opacity.Value;
 
-        if(style.ClipToBounds is not null) border.ClipToBounds = style.ClipToBounds.Value;
+        if (style.ClipToBounds is not null) border.ClipToBounds = style.ClipToBounds.Value;
         if (style.Effect is not null) border.Effect = style.Effect;
         var boxShadows = style.BoxShadows;
         if (boxShadows is not null)
@@ -152,6 +152,8 @@ public static class StyleUtil
 
                 target.ClipToBounds = source.ClipToBounds;
                 target.Effect = source.Effect;
+                if (source.BoxShadows is null) target.BoxShadows = null;
+                else target.BoxShadows = [..source.BoxShadows];
                 target.BoxShadows = source.BoxShadows;
                 target.Cursor = source.Cursor;
                 target.FlowDirection = source.FlowDirection;
@@ -187,7 +189,7 @@ public static class StyleUtil
 
             if (source.ClipToBounds is not null) target.ClipToBounds = source.ClipToBounds;
             if (source.Effect is not null) target.Effect = source.Effect;
-            if (source.BoxShadows is not null) target.BoxShadows = source.BoxShadows;
+            if (source.BoxShadows is not null) target.BoxShadows = [..source.BoxShadows];
             if (source.Cursor is not null) target.Cursor = source.Cursor;
             if (source.FlowDirection is not null) target.FlowDirection = source.FlowDirection;
 

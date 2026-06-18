@@ -80,7 +80,7 @@ public static class DemoComponent
             }), // HStackPanel
             ForEach<int>(new(items)
             {
-                Container = HScrollViewer(new(
+                ItemsPanel = HScrollViewer(new(
                     horizontalScrollBarVisibility: ScrollBarVisibility.Hidden,
                     verticalScrollBarVisibility: ScrollBarVisibility.Visible,
                     strStyle: "m-2 min-h-60 max-h-80 w-100 gap-8 p-3 vertical bg-gray-100 rounded-xl border border-gray-300"

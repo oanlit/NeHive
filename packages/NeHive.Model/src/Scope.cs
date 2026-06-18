@@ -362,6 +362,17 @@ public class Scope : IScope
         Context[contextKey] = value;
         return this;
     }
+    
+    public IContextSetter RemoveContext<T>(ContextKey<T> contextKey) where T : notnull
+    {
+        Context?.Remove(contextKey);
+        return this;
+    }
+
+    public void ClearContext()
+    {
+        Context = null;
+    }
 
     /// <summary>
     /// Executes a function within this scope.

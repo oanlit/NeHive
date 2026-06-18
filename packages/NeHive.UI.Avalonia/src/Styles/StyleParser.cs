@@ -75,6 +75,7 @@ public static class StyleParser
         }
 
         MergeTemp(ref set);
+        set.TempStyle = null;
     }
 
     public static void Parse(string strStyle, ref StyleSet set)
@@ -102,6 +103,7 @@ public static class StyleParser
         Parse(strStyle, ref set);
 
         MergeTemp(ref set);
+        set.TempStyle = null;
 
         lock (StyleCache)
         {
@@ -148,6 +150,7 @@ public static class StyleParser
         }
 
         MergeTemp(ref baseStyle);
+        baseStyle.TempStyle = null;
     }
 
     public static Accessor<FullStyle> ParseFull(
@@ -232,10 +235,7 @@ public static class StyleParser
 
         var textDecoration = temp.TextDecoration;
         if (textDecoration is not null)
-        {
-            styles.TextDecorations ??= [];
-            styles.TextDecorations.Add(textDecoration);
-        }
+            styles.TextDecorations = [textDecoration];
 
         var builder = TransformOperations.CreateBuilder(4);
 

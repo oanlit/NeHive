@@ -1,6 +1,7 @@
 using System.Collections;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Rendering.SceneGraph;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
@@ -39,7 +40,7 @@ public static partial class BaseComponent
         {
             Child = stack
         };
-        
+
         foreach (var child in prop)
             stack.Children.Add(child.Content);
         

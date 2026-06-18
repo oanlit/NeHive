@@ -12,7 +12,10 @@ namespace NeHive.UI.Avalonia.Components;
 /// </summary>
 public class HTreeViewItemProp(
     Accessor<string> header,
-    Accessor<bool>? isExpanded = null
+    Accessor<bool>? isExpanded = null,
+    Accessor<string>? strStyle = null,
+    Accessor<StyleSet>? style = null,
+    Dictionary<string, StyleSet>? variants = null
 )
 {
     public readonly Accessor<string> Header = header;

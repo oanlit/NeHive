@@ -628,7 +628,7 @@ public class AtomHandler
         if (widthStr.Length != 1) return;
         var val = TryParseValue(widthStr[0]);
         if (val is null) return;
-        val *= UnitScale;
+        
         var w = val.Value;
         var t = set.BorderThickness ?? new Thickness(0);
         set.BorderThickness = new Thickness(w, t.Top, t.Right, t.Bottom);
@@ -640,7 +640,7 @@ public class AtomHandler
         if (widthStr.Length != 1) return;
         var val = TryParseValue(widthStr[0]);
         if (val is null) return;
-        val *= UnitScale;
+
         var w = val.Value;
         var t = set.BorderThickness ?? new Thickness(0);
         set.BorderThickness = new Thickness(t.Left, w, t.Right, t.Bottom);
@@ -652,7 +652,7 @@ public class AtomHandler
         if (widthStr.Length != 1) return;
         var val = TryParseValue(widthStr[0]);
         if (val is null) return;
-        val *= UnitScale;
+
         var w = val.Value;
         var t = set.BorderThickness ?? new Thickness(0);
         set.BorderThickness = new Thickness(t.Left, t.Top, w, t.Bottom);
@@ -664,7 +664,7 @@ public class AtomHandler
         if (widthStr.Length != 1) return;
         var val = TryParseValue(widthStr[0]);
         if (val is null) return;
-        val *= UnitScale;
+
         var w = val.Value;
         var t = set.BorderThickness ?? new Thickness(0);
         set.BorderThickness = new Thickness(t.Left, t.Top, t.Right, w);

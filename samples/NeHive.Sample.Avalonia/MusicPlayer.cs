@@ -139,7 +139,7 @@ public static class MusicPlayerDemo
                 {
                     ForEach<TrackInfo>(new(playlist)
                     {
-                        Container = HStackPanel(new(strStyle: "gap-1 vertical")),
+                        ItemsPanel = HStackPanel(new(strStyle: "gap-1 vertical")),
                         ItemTemplate = (track, index) =>
                             HButton(track.Title,
                                 strStyle: new(() =>
