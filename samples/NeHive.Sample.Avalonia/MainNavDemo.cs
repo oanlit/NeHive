@@ -153,7 +153,8 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
                 [new(left: 420, top: 280)] =
                     HButton("Bottom Right Action",
-                        strStyle: PrimaryBtnBase + " bg-coffee-400 hover:bg-coffee-500 border-coffee-500",
+                        strStyle: PrimaryBtnBase +
+                                  " bg-coffee-400 hover:bg-coffee-500 click:bg-coffee-700 border-coffee-500",
                         onClick: _ => Console.WriteLine("Bottom Right Button Clicked")
                     ), // HButton
 
@@ -594,13 +595,21 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
         return scope.RootElement(new(strStyle: DemoCardBase + VerticalStackBase)
         {
-            HTextBlock(text, strStyle: SectionTitleStyle),
+            HTextBlock("Window & Dialog Management", strStyle: SectionTitleStyle),
+            HTextBlock("Open a modal dialog to input text; result reflects back here",
+                strStyle: "text-sm fg-coffee-700 mb-2"),
+
+            HTextBlock(new(() => string.IsNullOrEmpty(text.RxValue) ? "(No input yet)" : text.RxValue),
+                strStyle:
+                "text-lg fw-medium fg-matcha-800 p-3 bg-matcha-50 rounded-xl border border-matcha-200 w-full"),
+
             HStackPanel(new(strStyle: HorizontalRowBase + "mt-2")
             {
-                HButton("Open Dialog", strStyle: SecondaryBtnBase,
+                HButton("Open Dialog",
+                    strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
                     onClick: _ => OpenDialog(scope, text))
             }) // HStackPanel
-        }); // HStackPanel
+        });
     }
 
     private static void OpenDialog(UiScope scope, MutSignal<string> text)
@@ -614,29 +623,38 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
         var dialog = scope.CreateWindow((window, _) =>
         {
-            return HStackPanel(new(strStyle: VerticalStackBase + "mt-2")
+            return HStackPanel(new(strStyle: VerticalStackBase + "mt-2 p-4 gap-4")
             {
+                HTextBlock("Enter your text", strStyle: "text-lg fw-semibold fg-matcha-800"),
                 HTextBox(
                     bindText: text,
-                    placeholderText: "Enter custom text content here...",
+                    placeholderText: "Type something...",
                     strStyle: InputBaseStyle + "text-base"
                 ), // HTextBox
-                HStackPanel(new(strStyle: HorizontalRowBase + "mx-auto")
+                HStackPanel(new(strStyle: HorizontalRowBase + "justify-end gap-2 mt-2")
                 {
-                    HButton("Ok", strStyle: SecondaryBtnBase,
-                        onClick: _ => window.Close()),
-                    HButton("Cancel", strStyle: SecondaryBtnBase, onClick: _ =>
-                    {
-                        text.RxValue = "";
-                        window.Close();
-                    }) // HButton
+                    HButton("Cancel",
+                        strStyle: PrimaryBtnBase +
+                                  " bg-coffee-400 hover:bg-coffee-500 click:bg-coffee-700 border-coffee-500",
+                        onClick: _ => CancelInput(window)
+                    ), // HButton
+                    HButton("OK",
+                        strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
+                        onClick: _ => window.Close())
                 }) // HStackPanel
             }); // HStackPanel
-        });
+        }); // dialog
+
         dialog.Width = 400;
-        dialog.Height = 320;
-        // dialog.Show();
+        dialog.Height = 240;
         dialog.ShowDialog(parentWindow);
+        return;
+
+        void CancelInput(Window window)
+        {
+            text.RxValue = "";
+            window.Close();
+        }
     }
 
     private static IElement WindowDemo()

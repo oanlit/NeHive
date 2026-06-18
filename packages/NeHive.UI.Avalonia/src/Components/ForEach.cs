@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using NeHive.Model;
 using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Components;
@@ -18,6 +19,16 @@ public static partial class ControlFlow
         var container = prop.ItemsPanel?.Expose ?? panel;
 
         // 用 ArrayMapMemo 做“数据层 diff + 生命周期管理”
+        Func<T, ISignal<int>, IElement> template = (data, i) =>
+        {
+            IElement result;
+            using (new ScopeFrame(uiScope))
+            {
+                result = prop.ItemTemplate(data, i);
+            }
+
+            return result;
+        };
         var memo = new ArrayMapMemo<T, IElement, T>(prop.Each, prop.ItemTemplate);
 
         uiScope.CreateEffect(epochScope =>

@@ -1,5 +1,6 @@
 using NeHive.Reactive;
 using Avalonia.Controls;
+using NeHive.Model;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
 
 namespace NeHive.UI.Avalonia.Components;
@@ -40,20 +41,29 @@ public static partial class ControlFlow
             {
                 case AsyncMemoState.Pending:
                 case AsyncMemoState.Refreshing:
-                    var loadingContent = prop.Loading?.Invoke(data) ?? DefaultLoading();
-                    newChild = loadingContent;
+                    using (new ScopeFrame(uiScope))
+                    {
+                        var loadingContent = prop.Loading?.Invoke(data) ?? DefaultLoading();
+                        newChild = loadingContent;
+                    }
                     break;
 
                 case AsyncMemoState.Ready:
                     try
                     {
                         data = memo.RxValue!; // 就绪时取值（可能是信号，直接读当前值）
-                        newChild = prop.Success(data);
+                        using (new ScopeFrame(uiScope))
+                        {
+                            newChild = prop.Success(data);
+                        }
                     }
                     catch (Exception ex)
                     {
                         // RxValue 可能抛出异常（如果底层错误），转为错误状态处理
-                        newChild = prop.Error?.Invoke(ex) ?? DefaultError(ex);
+                        using (new ScopeFrame(uiScope))
+                        {
+                            newChild = prop.Error?.Invoke(ex) ?? DefaultError(ex);
+                        }
                     }
 
                     break;

@@ -20,8 +20,8 @@ public class MainWindow : Window
         _scope
             .SetContext(NeHiveUiContext.Window, this)
             .SetContext(NeHiveUiContext.WindowSize, size);
-        Scope.RootScope.SetContext(NeHiveUiContext.Window, this)
-            .SetContext(NeHiveUiContext.WindowSize, size);
+        // Scope.RootScope.SetContext(NeHiveUiContext.Window, this)
+        //     .SetContext(NeHiveUiContext.WindowSize, size);
         using (new ScopeFrame(_scope))
         {
             Content = DemoComponent.CategorizedMainNavDemo().Content;

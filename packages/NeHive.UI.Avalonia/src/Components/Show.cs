@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
+using NeHive.Model;
 using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Components;
@@ -23,12 +24,18 @@ public static partial class ControlFlow
             IElement child;
             if (when)
             {
-                child = prop.IfTrue();
+                using (new ScopeFrame(uiScope))
+                {
+                    child = prop.IfTrue();
+                }
             }
             else
             {
                 if (prop.IfFalse is null) return;
-                child = prop.IfFalse();
+                using (new ScopeFrame(uiScope))
+                {
+                    child = prop.IfFalse();
+                }
             }
             
             var content = child.Content;

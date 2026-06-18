@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using NeHive.Model;
 using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Components;
@@ -27,7 +28,12 @@ public static partial class ControlFlow
                 childFactory = prop.Default;
             }
 
-            var child = childFactory();
+            IElement child;
+            using (new ScopeFrame(uiScope))
+            {
+                child = childFactory();
+            }
+
             container.Children.Add(child.Content);
             epochScope.OnCleanup += child.Dispose;
         });
