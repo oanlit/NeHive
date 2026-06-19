@@ -45,8 +45,9 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
     /// <summary>Text input universal base style</summary>
     private const string InputBaseStyle = """
                                           p-2.5 rounded-lg border border-matcha-200 bg-coffee-50 w-full
+                                          hover:cursor-text hover:border-matcha-300
                                           focus:border-matcha-500 focus:ring-2 focus:ring-matcha-200
-                                          transition-colors duration-200 hover:border-matcha-300 
+                                          transition-colors duration-200 
                                           """;
 
     /// <summary>Scrollable container base style</summary>
@@ -77,11 +78,12 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 HButton("+1",
                     strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
                     onClick: _ => count.RxValue++
-                ),
+                ), // HButton
                 HButton("-1",
-                    strStyle: PrimaryBtnBase + " bg-coffee-400 hover:bg-coffee-500 border-coffee-500",
+                    strStyle: PrimaryBtnBase +
+                              " bg-coffee-400 hover:bg-coffee-500 click:bg-coffee-700 border-coffee-500",
                     onClick: _ => count.RxValue--
-                )
+                ) // HButton
             }) // HStackPanel
         }); // HStackPanel
     }
@@ -102,9 +104,9 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 rowDefinitions: new([HgLen.Auto, HgLen.Star()]),
                 columnDefinitions: new([120, HgLen.Star()]),
                 strStyle: new(() => $"""
-                                     {DemoContent} w-full min-h-48
-                                     gap-x-{gapX.RxValue} gap-y-4 transition-all duration-300
-                                     """)
+                    {DemoContent} w-full min-h-48
+                    gap-x-{gapX.RxValue} gap-y-4 transition-all duration-300
+                """)
             )
             {
                 [(0, 0)] = HTextBlock("Top Left Cell",
@@ -188,19 +190,19 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 displayMode: SplitViewDisplayMode.CompactInline,
                 openPaneLength: 200,
                 compactPaneLength: 48,
-                strStyle: "w-full h-80 rounded-xl overflow-hidden border border-matcha-200")
+                strStyle: "w-full h-40 rounded-xl overflow-hidden border border-matcha-200")
             {
                 Pane = HStackPanel(new HStackPanelProp(strStyle: "gap-2 p-4 bg-matcha-50 vertical h-full")
                 {
                     HButton("Home Dashboard", strStyle: SecondaryBtnBase + " w-full text-left"),
                     HButton("Application Settings", strStyle: SecondaryBtnBase + " w-full text-left")
-                }),
-                Content = HStackPanel(new(strStyle: "p-6 vertical gap-2 bg-white h-full")
+                }), // HSplitView.Pane
+                Content = HStackPanel(new(strStyle: "h-full gap-2 p-6 vertical bg-matcha-300")
                 {
                     HTextBlock("Main Content Area", strStyle: "text-lg fw-bold fg-matcha-800"),
                     HTextBlock("Sidebar supports expand/collapse in compact inline mode",
                         strStyle: "fg-coffee-500")
-                })
+                }) // // HSplitView.Content
             }),
             HButton("Toggle Sidebar",
                 strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
@@ -291,8 +293,8 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 HButton("Item 2", strStyle: SecondaryBtnBase),
                 HButton("Long Text Content Item 3", strStyle: SecondaryBtnBase),
                 HButton("Item 4", strStyle: SecondaryBtnBase)
-            })
-        });
+            }) // HWrapPanel
+        }); // HStackPanel
     }
 
     #endregion
@@ -350,8 +352,8 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 ),
                 [(0, 2)] = HTextBlock("Right Column",
                     strStyle: "ml-2 p-3 bg-matcha-50 rounded h-full fg-matcha-800 text-center")
-            })
-        });
+            }) // HGrid
+        }); // HStackPanel
     }
 
     #endregion
@@ -420,7 +422,13 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HTextBox(
                 bindText: textSignal,
                 // placeholderText: "Enter custom text content here...",
-                strStyle: InputBaseStyle + "text-base hover:cursor-text",
+                strStyle: InputBaseStyle + "text-base selection:bg-matcha-300",
+                onTextChanged: newText => log.RxValue = $"Input content updated: {newText}"
+            ), // HTextBox
+            HTextBox(
+                bindText: textSignal,
+                // placeholderText: "Type something...",
+                strStyle: InputBaseStyle + "text-base selection:bg-matcha-300",
                 onTextChanged: newText => log.RxValue = $"Input content updated: {newText}"
             ), // HTextBox
             HTextBlock(new(() => $"Realtime Bound Value: {textSignal.RxValue}"),
@@ -1323,28 +1331,24 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             {
                 // Left Category Sidebar – Manual implementation without HListBox
                 [(0, 0)] =
-                    HScrollViewer(new(
-                        strStyle: "bg-white rounded-2xl border border-matcha-200 shadow-sm h-full overflow-auto")
+                    ForEach<DemoCategory>(new(categoriesSignal)
                     {
-                        HStackPanel(new(strStyle: "gap-1 vertical p-1")
-                        {
-                            ForEach<DemoCategory>(new(categoriesSignal)
-                            {
-                                ItemsPanel = HStackPanel(new(strStyle: "gap-1 vertical")),
-                                ItemTemplate = (cat, _) =>
-                                    HButton(cat.Name,
-                                        strStyle: new(() => $"""
-                                                             w-full text-left px-3 py-2 rounded-lg transition-colors cursor-pointer
-                                                             {(selectedCategory.RxValue == cat
-                                                                 ? "bg-matcha-500 fg-white"
-                                                                 : "fg-matcha-800 hover:bg-matcha-50")}
-                                                             """),
-                                        onClick: _ => selectedCategory.RxValue = cat
-                                    ) // HButton
-                                // ForEach<DemoCategory>.ItemTemplate
-                            }) // ForEach<DemoCategory>
-                        }) // HStackPanel
-                    }), // HScrollViewer
+                        ItemsPanel =
+                            HScrollViewer(new(
+                                strStyle:
+                                "h-full vertical gap-1 px-3 py-2 bg-white border border-matcha-200 rounded-2xl shadow-sm")),
+                        ItemTemplate = (cat, _) =>
+                            HButton(cat.Name,
+                                strStyle: new(() => $"""
+                                                     w-full px-3 py-2 text-left fw-medium {(selectedCategory.RxValue == cat
+                                                         ? "fg-white bg-matcha-400"
+                                                         : "fg-matcha-800 bg-matcha-50 hover:bg-matcha-100")}
+                                                         rounded-lg transition-colors cursor-pointer
+                                                     """),
+                                onClick: _ => selectedCategory.RxValue = cat
+                            ) // HButton
+                        // ForEach<DemoCategory>.ItemTemplate
+                    }), // ForEach<DemoCategory>
                 // [(0, 0)]
 
                 // Right Main Content Area (unchanged)
@@ -1365,7 +1369,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                                                          px-3 py-2 text-sm fw-medium rounded-lg transition-all duration-200
                                                          {(currentView.RxValue == view
                                                              ? "bg-matcha-500 fg-white shadow-md"
-                                                             : "bg-matcha-50 fg-matcha-700 hover:bg-matcha-100")}
+                                                             : "bg-matcha-50 fg-matcha-700 hover:bg-matcha-100 shadow-none")}
                                                          """),
                                     onClick: _ => SelectDemo(view)
                                 ) // HButton
