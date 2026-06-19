@@ -629,7 +629,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 HTextBox(
                     bindText: text,
                     // placeholderText: "Type something...",
-                    strStyle: InputBaseStyle + "text-base"
+                    strStyle: InputBaseStyle + "text-base focus:border-matcha-500"
                 ), // HTextBox
                 HStackPanel(new(strStyle: HorizontalRowBase + "justify-end gap-2 mt-2")
                 {
