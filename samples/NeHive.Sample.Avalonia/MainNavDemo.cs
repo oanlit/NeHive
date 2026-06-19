@@ -419,13 +419,13 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HTextBlock("TextBox Text Input Control Demo", strStyle: SectionTitleStyle),
             HTextBox(
                 bindText: textSignal,
-                placeholderText: "Enter custom text content here...",
-                strStyle: InputBaseStyle + "text-base",
+                // placeholderText: "Enter custom text content here...",
+                strStyle: InputBaseStyle + "text-base hover:cursor-text",
                 onTextChanged: newText => log.RxValue = $"Input content updated: {newText}"
             ), // HTextBox
             HTextBlock(new(() => $"Realtime Bound Value: {textSignal.RxValue}"),
                 strStyle: "mt-2 text-base fw-medium fg-gray-800"),
-            HTextBlock(new(() => log.RxValue), strStyle: "text-sm fg-gray-500 mt-1 italic")
+            HTextBlock(log, strStyle: "text-sm fg-gray-500 mt-1 italic")
         }); // HStackPanel
     }
 
@@ -628,7 +628,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 HTextBlock("Enter your text", strStyle: "text-lg fw-semibold fg-matcha-800"),
                 HTextBox(
                     bindText: text,
-                    placeholderText: "Type something...",
+                    // placeholderText: "Type something...",
                     strStyle: InputBaseStyle + "text-base"
                 ), // HTextBox
                 HStackPanel(new(strStyle: HorizontalRowBase + "justify-end gap-2 mt-2")
