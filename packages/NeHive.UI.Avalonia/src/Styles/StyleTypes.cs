@@ -61,7 +61,13 @@ internal class TempStyle
     public double? BorderGradientDir;
     public Color? BorderFromColor;
     public Color? BorderToColor;
-    
+
+    public bool HasShadow = false;
+    public BoxShadow? BoxShadow;
+    public Color? RingColor;
+    public double? RingWidth;
+    public double? RingOffset;
+
     public TextDecoration? TextDecoration;
 
     public TransitionScope? TransitionScope;
@@ -84,13 +90,13 @@ public class StyleSet : BaseStyle
     public double? LetterSpacing;
     public double? LineHeight;
     public double? LineSpacing;
-    
+
     public int? MaxLines;
     public TextTrimming? TextTrimming;
-    
+
     public TextAlignment? TextAlignment;
     public VerticalAlignment? VerticalTextAlignment;
-    
+
     public TextWrapping? TextWrapping;
     public TextDecorationCollection? TextDecorations;
     public InlineCollection? Inlines;

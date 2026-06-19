@@ -69,6 +69,7 @@ public static class StyleParser
     public static void Parse(IEnumerable<string>? parts, ref StyleSet set)
     {
         if (parts is null) return;
+        set.BoxShadows = [];
         foreach (var part in parts)
         {
             ParsePart(part, ref set);
@@ -237,6 +238,51 @@ public static class StyleParser
         if (textDecoration is not null)
             styles.TextDecorations = [textDecoration];
 
+        if (temp.HasShadow)
+        {
+            List<BoxShadow> boxShadows = [];
+
+            var totalSpread = 0.0;
+            var boxShadowHasValue = false;
+            var boxShadow = new BoxShadow();
+
+            if (temp.RingOffset is not null)
+            {
+                totalSpread = temp.RingOffset.Value;
+                boxShadows.Add(new BoxShadow
+                {
+                    OffsetX = 0,
+                    OffsetY = 0,
+                    Blur = 0,
+                    Spread = temp.RingOffset.Value,
+                    Color = global::Avalonia.Media.Colors.White
+                });
+            }
+
+            if (temp.RingColor is not null)
+            {
+                boxShadow.Color = temp.RingColor.Value;
+                boxShadowHasValue = true;
+            }
+
+            if (temp.RingWidth is not null)
+            {
+                totalSpread += temp.RingWidth.Value;
+                boxShadow.Spread = totalSpread;
+                boxShadowHasValue = true;
+            }
+
+            if (boxShadowHasValue) boxShadows.Add(boxShadow);
+
+            if (temp.BoxShadow is not null) boxShadows.Add(temp.BoxShadow.Value);
+        
+            styles.BoxShadows ??= [];
+            for (var i = boxShadows.Count - 1; i >= 0; i--)
+            {
+                styles.BoxShadows.Add(boxShadows[i]);
+            }
+        }
+
         var builder = TransformOperations.CreateBuilder(4);
 
         if (temp.TranslateTransform is not null)
@@ -277,7 +323,7 @@ public static class StyleParser
             _ => null
         };
         if (transition is null) return;
-        
+
         transition.Duration = TimeSpan.FromMilliseconds(duration);
         if (temp.Easing is not null) transition.Easing = temp.Easing;
         styles.Transitions =

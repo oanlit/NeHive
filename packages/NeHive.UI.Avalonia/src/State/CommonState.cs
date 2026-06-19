@@ -22,7 +22,7 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
     public void ResetSetStyle()
     {
         if (CurrentIsBase) return;
-        CurrentStyle.Merge(BaseStyle);
+        CurrentStyle.Merge(BaseStyle, true);
         CurrentIsBase = true;
     }
 

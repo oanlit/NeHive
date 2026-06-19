@@ -10,7 +10,7 @@ public class AtomHandler
 {
     // 1单位 = 4px（Tailwind 标准）
     private const double UnitScale = 4;
-    
+
     // 原子类字典：前缀 → 处理逻辑
     internal static readonly Dictionary<string, Action<string[], bool, StyleSet>> DefaultHandlers = new()
     {
@@ -108,7 +108,7 @@ public class AtomHandler
         ["wrap"] = (_, _, set) => set.TextWrapping = TextWrapping.Wrap,
         ["whitespace-nowrap"] = (_, _, set) => set.TextWrapping = TextWrapping.NoWrap,
         ["wrap-overflow"] = (_, _, set) => set.TextWrapping = TextWrapping.WrapWithOverflow,
-        
+
         ["underline"] = (_, _, set) => EnsureDecoration(set).Location = TextDecorationLocation.Underline,
         ["overline"] = (_, _, set) => EnsureDecoration(set).Location = TextDecorationLocation.Overline,
         ["baseline"] = (_, _, set) => EnsureDecoration(set).Location = TextDecorationLocation.Baseline,
@@ -145,9 +145,9 @@ public class AtomHandler
         ["italic"] = (_, _, set) => set.FontStyle = FontStyle.Italic,
         ["oblique"] = (_, _, set) => set.FontStyle = FontStyle.Oblique,
         ["not-italic"] = (_, _, set) => set.FontStyle = FontStyle.Normal,
-        
+
         ["font-"] = ApplyFont,
-        
+
         ["fg-"] = ApplyForeground,
         ["fg-gradient-"] = (vals, _, set) => EnsureTemp(set).FgGradientDir = TryGetDir(vals),
         ["fg-from-"] = (vals, _, set) => EnsureTemp(set).FgFromColor = ParseColor(vals),
@@ -204,7 +204,11 @@ public class AtomHandler
         ["shadow-md"] = (_, _, set) => ApplyShadow(set, 6, new Vector(0, 3)),
         ["shadow-lg"] = (_, _, set) => ApplyShadow(set, 10, new Vector(0, 6)),
         ["shadow-xl"] = (_, _, set) => ApplyShadow(set, 18, new Vector(0, 10)),
-        ["shadow-none"] = (_, _, set) => set.BoxShadows = null,
+        ["shadow-none"] = (_, _, set) => EnsureTemp(set).HasShadow = false,
+
+        ["ring-"] = ApplyRingColor,
+        ["ring-w-"] = ApplyRingWidth,
+        ["ring-offset-"] = ApplyRingOffset,
 
         // 光标
         ["cursor-default"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Arrow),
@@ -271,7 +275,7 @@ public class AtomHandler
         ["skew-x-"] = ApplySkewX,
         ["skew-y-"] = ApplySkewY
     };
-    
+
     private static void ApplyMargin(string[] v, bool isNegative, StyleSet set)
     {
         if (v.Length != 1) return;
@@ -516,7 +520,7 @@ public class AtomHandler
             "widest" => 2,
             _ => TryParseValue(value)
         };
-        if(isNegative)  set.LetterSpacing = -set.LetterSpacing;
+        if (isNegative) set.LetterSpacing = -set.LetterSpacing;
     }
 
     private static void ApplyLineHeight(string[] v, bool isNegative, StyleSet set)
@@ -563,7 +567,7 @@ public class AtomHandler
         val *= UnitScale;
         set.FontSize = val.Value;
     }
-    
+
     private static void ApplyFont(string[] v, bool isNegative, StyleSet set)
     {
         if (isNegative) return;
@@ -628,7 +632,7 @@ public class AtomHandler
         if (widthStr.Length != 1) return;
         var val = TryParseValue(widthStr[0]);
         if (val is null) return;
-        
+
         var w = val.Value;
         var t = set.BorderThickness ?? new Thickness(0);
         set.BorderThickness = new Thickness(w, t.Top, t.Right, t.Bottom);
@@ -690,16 +694,54 @@ public class AtomHandler
 
     private static void ApplyShadow(StyleSet set, double blurRadius, Vector offset)
     {
-        // var advanced = EnsureAdvanced(set);
-        //
-        set.BoxShadows ??= [];
-        set.BoxShadows.Add(new BoxShadow
+        var temp = EnsureTemp(set);
+        temp.BoxShadow = new BoxShadow
         {
             Blur = blurRadius,
             OffsetX = offset.X,
             OffsetY = offset.Y,
             Color = Color.Parse("#40000000")
-        });
+        };
+        temp.HasShadow = true;
+    }
+
+    private static void ApplyRingWidth(string[] v, bool isNegative, StyleSet set)
+    {
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+
+        var w = val.Value;
+        if (isNegative) w = -w;
+        
+        var temp = EnsureTemp(set);
+        temp.RingWidth = w;
+        temp.HasShadow = true;
+    }
+
+    private static void ApplyRingOffset(string[] v, bool isNegative, StyleSet set)
+    {
+        
+        if (v.Length != 1) return;
+        var val = TryParseValue(v[0]);
+        if (val is null) return;
+
+        var w = val.Value;
+        if (isNegative) w = -w;
+        
+        var temp = EnsureTemp(set);
+        temp.RingOffset = w;
+        temp.HasShadow = true;
+    }
+
+    private static void ApplyRingColor(string[] color, bool isNegative, StyleSet set)
+    {
+        if (isNegative) return;
+        var c = ParseColor(color);
+        if (c is null) return;
+        var temp = EnsureTemp(set);
+        temp.RingColor = c.Value;
+        temp.HasShadow = true;
     }
 
     private static TempStyle EnsureTemp(StyleSet set)
@@ -727,7 +769,6 @@ public class AtomHandler
 
     private static void SetRelativePoint(double x, double y, StyleSet set)
     {
-        // var advanced = EnsureAdvanced(set);
         set.RenderTransformOrigin = new RelativePoint(x, y, RelativeUnit.Relative);
     }
 

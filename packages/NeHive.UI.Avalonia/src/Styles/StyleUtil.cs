@@ -74,7 +74,7 @@ public static class StyleUtil
         if (style.ClipToBounds is not null) border.ClipToBounds = style.ClipToBounds.Value;
         if (style.Effect is not null) border.Effect = style.Effect;
         var boxShadows = style.BoxShadows;
-        if (boxShadows is null)
+        if (boxShadows is null || boxShadows.Count is 0)
         {
             border.BoxShadow = new();
         }

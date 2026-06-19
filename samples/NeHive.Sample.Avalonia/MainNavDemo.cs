@@ -39,14 +39,14 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
     private const string SecondaryBtnBase = """
                                             px-2.5 py-1 rounded-md border border-coffee-200 bg-coffee-50 fg-coffee-700
                                             hover:bg-matcha-100 click:bg-matcha-200 transition-colors duration-100
-                                            focus:ring-1 focus:ring-matcha-300 
+                                            focus:ring-w-1 focus:ring-matcha-300 
                                             """;
 
     /// <summary>Text input universal base style</summary>
     private const string InputBaseStyle = """
                                           p-2.5 rounded-lg border border-matcha-200 bg-coffee-50 w-full
                                           hover:cursor-text hover:border-matcha-300
-                                          focus:border-matcha-500 focus:ring-2 focus:ring-matcha-200
+                                          focus:border-matcha-500 focus:ring-w-2 focus:ring-matcha-200 selection:bg-matcha-300 
                                           transition-colors duration-200 
                                           """;
 
@@ -422,13 +422,13 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HTextBox(
                 bindText: textSignal,
                 // placeholderText: "Enter custom text content here...",
-                strStyle: InputBaseStyle + "text-base selection:bg-matcha-300",
+                strStyle: InputBaseStyle + "text-base focus:ring-offset-2",
                 onTextChanged: newText => log.RxValue = $"Input content updated: {newText}"
             ), // HTextBox
             HTextBox(
                 bindText: textSignal,
                 // placeholderText: "Type something...",
-                strStyle: InputBaseStyle + "text-base selection:bg-matcha-300",
+                strStyle: InputBaseStyle + "text-base",
                 onTextChanged: newText => log.RxValue = $"Input content updated: {newText}"
             ), // HTextBox
             HTextBlock(new(() => $"Realtime Bound Value: {textSignal.RxValue}"),
