@@ -411,7 +411,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
     #region TextBox Input Demo
 
-    private static IElement TextBoxDemo()
+    private static IElement TextPresenterDemo()
     {
         var textSignal = new MutSignal<string>("Default input text value");
         var log = new MutSignal<string>("");
@@ -428,7 +428,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HTextBox(
                 bindText: textSignal,
                 // placeholderText: "Type something...",
-                strStyle: InputBaseStyle + "text-base",
+                strStyle: InputBaseStyle + "text-base selection:fg-matcha-800",
                 onTextChanged: newText => log.RxValue = $"Input content updated: {newText}"
             ), // HTextBox
             HTextBlock(new(() => $"Realtime Bound Value: {textSignal.RxValue}"),
@@ -1300,7 +1300,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 DemoView.SplitPanelDemo, DemoView.DockPanelDemo, DemoView.WrapPanelDemo,
                 DemoView.UniformGridDemo, DemoView.GridSplitterDemo, DemoView.ScrollDemo),
 
-            new("🔘 Basic Input Controls", DemoView.TextBoxDemo, DemoView.CheckBoxDemo, DemoView.RadioButtonDemo,
+            new("🔘 Basic Input Controls", DemoView.TextPresenterDemo, DemoView.CheckBoxDemo, DemoView.RadioButtonDemo,
                 DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.ProgressBarDemo,
                 DemoView.SliderDemo, DemoView.WindowDemo),
 
@@ -1397,7 +1397,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                                     [DemoView.GridSplitterDemo] = GridSplitterDemo,
                                     [DemoView.ScrollDemo] = ScrollDemo,
 
-                                    [DemoView.TextBoxDemo] = TextBoxDemo,
+                                    [DemoView.TextPresenterDemo] = TextPresenterDemo,
                                     [DemoView.CheckBoxDemo] = CheckBoxDemo,
                                     [DemoView.RadioButtonDemo] = RadioButtonDemo,
                                     [DemoView.ToggleSwitchDemo] = ToggleSwitchDemo,
@@ -1460,7 +1460,7 @@ public enum DemoView
     GridSplitterDemo,
     ScrollDemo,
 
-    TextBoxDemo,
+    TextPresenterDemo,
     CheckBoxDemo,
     RadioButtonDemo,
     ToggleSwitchDemo,

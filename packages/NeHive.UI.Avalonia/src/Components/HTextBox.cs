@@ -1,19 +1,18 @@
 using Avalonia;
+using Avalonia.Data;
+using Avalonia.Data.Converters;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Input;
-using Avalonia.Input.Platform;
-using Avalonia.Input.TextInput;
-using Avalonia.Threading;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.State;
 using NeHive.UI.Avalonia.Styles;
-using System.Globalization;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public static class HTextBoxStyle
+public static class HTextPresenterStyle
 {
     public static StyleSet DefaultStyleSet => new()
     {
@@ -32,120 +31,17 @@ public static class HTextBoxStyle
     };
 }
 
-public class HTextBoxExpose
+public class HTextPresenterExpose
 {
     public Action<string>? TextChanged = _ => { };
     public Action<bool>? FocusChanged = _ => { };
 }
 
-public class HTextBoxTextInputClient : TextInputMethodClient
-{
-    private readonly TextBlock _textBlock;
-    private readonly Border _caret;
-
-    public Func<string>? GetText { get; set; }
-    public Func<int>? GetCaretIndex { get; set; }
-    public Func<(int start, int end)>? GetSelection { get; set; }
-
-    public HTextBoxTextInputClient(TextBlock textBlock, Border caret)
-    {
-        _textBlock = textBlock;
-        _caret = caret;
-    }
-
-    public override Visual TextViewVisual => _textBlock;
-    public override bool SupportsPreedit => false;
-    public override bool SupportsSurroundingText => true;
-    public override string SurroundingText => GetText?.Invoke() ?? string.Empty;
-
-    public override Rect CursorRectangle
-    {
-        get
-        {
-            var text = GetText?.Invoke() ?? string.Empty;
-            var caretIndex = GetCaretIndex?.Invoke() ?? 0;
-            var textToCaret = text.Substring(0, Math.Min(caretIndex, text.Length));
-
-            var typeface = new Typeface(_textBlock.FontFamily, _textBlock.FontStyle, _textBlock.FontWeight);
-            var culture = CultureInfo.CurrentCulture;
-
-            var width = MeasureTextWithTrailingSpaces(textToCaret, typeface, culture, _textBlock.FontSize);
-
-            var height = _textBlock.Bounds.Height > 0 ? _textBlock.Bounds.Height : _textBlock.FontSize * 1.2;
-            return new Rect(width, height / 2, _caret.Width, height);
-        }
-    }
-
-    public override TextSelection Selection
-    {
-        get
-        {
-            var (start, end) = GetSelection?.Invoke() ?? (0, 0);
-            return new TextSelection(start, end);
-        }
-        set { }
-    }
-
-    public static double MeasureTextWithTrailingSpaces(string text, Typeface typeface, CultureInfo culture,
-        double fontSize)
-    {
-        if (string.IsNullOrEmpty(text)) return 0;
-
-        int trailingSpaces = 0;
-        for (int i = text.Length - 1; i >= 0; i--)
-        {
-            if (char.IsWhiteSpace(text[i])) trailingSpaces++;
-            else break;
-        }
-
-        var mainText = trailingSpaces > 0 ? text.Substring(0, text.Length - trailingSpaces) : text;
-
-        double width = 0;
-        if (mainText.Length > 0)
-        {
-            var formattedMainText = new FormattedText(
-                mainText,
-                culture,
-                FlowDirection.LeftToRight,
-                typeface,
-                fontSize,
-                null);
-            width += formattedMainText.Width;
-        }
-
-        if (trailingSpaces > 0)
-        {
-            var formattedSpace1 = new FormattedText(
-                "a",
-                culture,
-                FlowDirection.LeftToRight,
-                typeface,
-                fontSize,
-                null);
-            var formattedSpace2 = new FormattedText(
-                " a",
-                culture,
-                FlowDirection.LeftToRight,
-                typeface,
-                fontSize,
-                null);
-
-            var formattedSpace = formattedSpace2.Width - formattedSpace1.Width;
-            width += formattedSpace * trailingSpaces;
-        }
-
-        return width;
-    }
-
-    public void NotifyCursorChanged() => RaiseCursorRectangleChanged();
-    public void NotifyTextChanged() => RaiseSurroundingTextChanged();
-}
-
 public static partial class BaseComponent
 {
-    public static IElement<HTextBoxExpose> HTextBox(
+    public static IElement<HTextPresenterExpose> HTextBox(
         MutSignal<string> bindText,
-        Accessor<bool>? selectable = null,
+        // Accessor<bool>? selectable = null,
         Accessor<bool>? editable = null,
         Accessor<string>? strStyle = null,
         Accessor<StyleSet>? style = null,
@@ -153,55 +49,180 @@ public static partial class BaseComponent
         Action<string>? onTextChanged = null)
     {
         editable ??= true;
-        var styleAccessor = StyleParser.ParseFull(strStyle, HTextBoxStyle.DefaultStyleSet, style);
-
+        var styleAccessor = StyleParser.ParseFull(strStyle, HTextPresenterStyle.DefaultStyleSet, style);
         UiScope uiScope = new();
 
-        var textBlock = new TextBlock
+        var textBox = new TextBox
         {
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
-        var caret = new Border
-        {
-            Width = 1,
-            Background = Brushes.Black,
-            IsVisible = false,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Stretch
-        };
-
-        // 选区背景可视化控件
-        var selectionBg = new Border
-        {
-            Background = new SolidColorBrush(Color.FromArgb(100, 0, 120, 215)), // 系统选区蓝
-            IsVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Stretch,
-            HorizontalAlignment = HorizontalAlignment.Left
+            Padding = new Thickness(0), // 将 Padding 交由我们的内部 Border 接管
         };
-
-        var contentPanel = new Panel();
-        contentPanel.Children.Add(selectionBg); // 最底层
-        contentPanel.Children.Add(textBlock); // 中间层
-        contentPanel.Children.Add(caret); // 最顶层
-
+        // 2. 纯 C# 代码使用 FuncControlTemplate 构建极简模板，完全重写其视觉树
         var border = new Border
         {
-            Child = contentPanel,
-            Focusable = true
+            Child = textBox
         };
 
+        textBox.Template = new FuncControlTemplate<TextBox>((control, scope) =>
+        {
+            var dockPanel = new DockPanel
+            {
+                [!!Layoutable.HorizontalAlignmentProperty] =
+                    control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+                [!!Layoutable.VerticalAlignmentProperty] =
+                    control.GetObservable(Layoutable.VerticalAlignmentProperty).ToBinding(),
+            };
+            var floatingPlaceholder = new TextBlock
+            {
+                [!!TextBlock.ForegroundProperty] = control.GetObservable(TextBlock.ForegroundProperty).ToBinding(),
+                [!!TextBlock.TextProperty] = control.GetObservable(TextBlock.TextProperty).ToBinding(),
+                [!Visual.IsVisibleProperty] = new MultiBinding
+                {
+                    Converter = BoolConverters.And,
+                    Bindings =
+                    [
+                        new Binding("UseFloatingPlaceholder")
+                            { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) },
+                        new Binding("Text")
+                        {
+                            RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent),
+                            Converter = StringConverters.IsNotNullOrEmpty
+                        }
+                    ]
+                }
+            };
+            DockPanel.SetDock(floatingPlaceholder, Dock.Top);
+            dockPanel.Children.Add(floatingPlaceholder);
+
+            var dataValidationErrors = new DataValidationErrors();
+            var grid = new Grid
+            {
+                ColumnDefinitions =
+                [
+                    new ColumnDefinition(GridLength.Auto),
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto)
+                ]
+            };
+            var contentPresenter1 = new ContentPresenter
+            {
+                [!!ContentPresenter.ContentProperty] =
+                    control.GetObservable(TextBox.InnerLeftContentProperty).ToBinding(),
+            };
+            Grid.SetColumn(contentPresenter1, 0);
+            Grid.SetColumnSpan(contentPresenter1, 1);
+            grid.Children.Add(contentPresenter1);
+
+            var scrollViewer = new ScrollViewer
+            {
+                [!!ScrollViewer.AllowAutoHideProperty] =
+                    control.GetObservable(ScrollViewer.AllowAutoHideProperty).ToBinding(),
+                [!!ScrollViewer.BringIntoViewOnFocusChangeProperty] =
+                    control.GetObservable(ScrollViewer.BringIntoViewOnFocusChangeProperty).ToBinding(),
+                [!!ScrollViewer.HorizontalScrollBarVisibilityProperty] =
+                    control.GetObservable(ScrollViewer.HorizontalScrollBarVisibilityProperty).ToBinding(),
+                [!!ScrollViewer.IsScrollChainingEnabledProperty] =
+                    control.GetObservable(ScrollViewer.IsScrollChainingEnabledProperty).ToBinding(),
+                [!!ScrollViewer.VerticalScrollBarVisibilityProperty] =
+                    control.GetObservable(ScrollViewer.VerticalScrollBarVisibilityProperty).ToBinding(),
+            };
+
+            var panel = new Panel();
+            
+            var presenter = new TextPresenter
+            {
+                Name = "PART_TextPresenter",
+                [!!TextPresenter.CaretBrushProperty] = control.GetObservable(TextBox.CaretBrushProperty).ToBinding(),
+                [!!TextPresenter.CaretIndexProperty] = control.GetObservable(TextBox.CaretIndexProperty).ToBinding(),
+                [!!TextPresenter.LineHeightProperty] = control.GetObservable(TextBox.LineHeightProperty).ToBinding(),
+                [!!TextPresenter.PasswordCharProperty] =
+                    control.GetObservable(TextBox.PasswordCharProperty).ToBinding(),
+                [!!TextPresenter.RevealPasswordProperty] =
+                    control.GetObservable(TextBox.RevealPasswordProperty).ToBinding(),
+                [!!TextPresenter.SelectionBrushProperty] =
+                    control.GetObservable(TextBox.SelectionBrushProperty).ToBinding(),
+                [!!TextPresenter.SelectionEndProperty] =
+                    control.GetObservable(TextBox.SelectionEndProperty).ToBinding(),
+                [!!TextPresenter.SelectionForegroundBrushProperty] =
+                    control.GetObservable(TextBox.SelectionForegroundBrushProperty).ToBinding(),
+                [!!TextPresenter.SelectionStartProperty] =
+                    control.GetObservable(TextBox.SelectionStartProperty).ToBinding(),
+                [!!TextPresenter.TextProperty] = control[!TextBox.TextProperty],
+                [!!TextPresenter.TextAlignmentProperty] =
+                    control.GetObservable(TextBox.TextAlignmentProperty).ToBinding(),
+                [!!TextPresenter.TextWrappingProperty] =
+                    control.GetObservable(TextBox.TextWrappingProperty).ToBinding(),
+            };
+            scope.Register("PART_TextPresenter", presenter);
+            
+            // var placeholder = new TextBlock
+            // {
+            //     [!!TextBlock.ForegroundProperty] = control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
+            //     [!!Layoutable.HorizontalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+            //     [!!Layoutable.VerticalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+            //     // [!!Visual.OpacityProperty] = control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
+            //     [!!TextBlock.TextProperty] = control.GetObservable(TextBox.PlaceholderTextProperty).ToBinding(),
+            //     [!!Layoutable.VerticalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+            //     [!!TextPresenter.TextAlignmentProperty] =
+            //         control.GetObservable(TextBox.TextAlignmentProperty).ToBinding(),
+            //     [!!TextPresenter.TextWrappingProperty] =
+            //         control.GetObservable(TextBox.TextWrappingProperty).ToBinding(),
+            //     [!Visual.IsVisibleProperty] = new MultiBinding
+            //     {
+            //         Converter = BoolConverters.And,
+            //         Bindings =
+            //         [
+            //             new Binding("PreeditText")
+            //             {
+            //                 ElementName = "PART_TextPresenter",
+            //                 Converter = StringConverters.IsNotNullOrEmpty
+            //             },
+            //             new Binding("Text")
+            //             {
+            //                 RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent),
+            //                 Converter = StringConverters.IsNotNullOrEmpty
+            //             }
+            //         ]
+            //     }
+            // };
+            // panel.Children.Add(placeholder);
+            panel.Children.Add(presenter);
+            
+            scrollViewer.Content = panel;
+            Grid.SetColumn(scrollViewer, 1);
+            Grid.SetColumnSpan(scrollViewer, 1);
+            grid.Children.Add(scrollViewer);
+
+            var contentPresenter2 = new ContentPresenter
+            {
+                [!!ContentPresenter.ContentProperty] =
+                    control.GetObservable(TextBox.InnerRightContentProperty).ToBinding(),
+            };
+            Grid.SetColumn(contentPresenter2, 2);
+            Grid.SetColumnSpan(contentPresenter2, 1);
+            grid.Children.Add(contentPresenter2);
+
+            dataValidationErrors.Content = grid;
+            dockPanel.Children.Add(dataValidationErrors);
+            
+            scope.Register("PART_ScrollViewer", scrollViewer);
+            
+            return dockPanel;
+        });
+        // 3. 获取模板内部控件引用，并应用样式体系
         var state = new CommonState(uiScope, styleAccessor.Value.Normal)
         {
             StrVariants = styleAccessor.Value.Variants,
             Variants = variants
         };
 
-        state.ApplyAccessorStyle(styleAccessor, textBlock, border, ApplyStyle);
-        state.ApplyVariantsStyle(textBlock, border, ApplyStyle);
-        // 实现selection: 伪类
+        // 在模板应用后捕获内部控件
+        // textBox.TemplateApplied += (_, _) => ApplyStyle(styleAccessor.Value.Normal, textBox, border);
+        // 注入您的响应式样式状态体系
+        state.ApplyAccessorStyle(styleAccessor, textBox, border, ApplyStyle);
+        state.ApplyVariantsStyle(textBox, border, ApplyStyle);
         ApplySelectionStyle(styleAccessor.Value);
-
         if (styleAccessor.IsReactive)
         {
             var firstApply = true;
@@ -213,363 +234,54 @@ public static partial class BaseComponent
                     firstApply = false;
                     return;
                 }
+
                 ApplySelectionStyle(fullStyle);
             });
         }
 
-        textBlock.Text = bindText.Value;
-        uiScope.CreateEffect(() => textBlock.Text = bindText.RxValue);
-
-        var expose = new HTextBoxExpose();
-        var caretIndex = 0;
-        var selAnchor = 0;
-        var isFocused = false;
-        var isSelecting = false;
-
-        var imeClient = new HTextBoxTextInputClient(textBlock, caret)
-        {
-            GetText = () => bindText.Value,
-            GetCaretIndex = () => caretIndex,
-            GetSelection = () => (Math.Min(selAnchor, caretIndex), Math.Max(selAnchor, caretIndex))
-        };
-
-        border.TextInputMethodClientRequested += (_, e) => e.Client = imeClient;
-
-        var caretTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(530) };
-        caretTimer.Tick += (_, _) => caret.IsVisible = !caret.IsVisible;
-
-        uiScope.OnCleanup += () => caretTimer.Stop();
-
+        // 4. 数据双向绑定
         uiScope.OnMount += () =>
         {
+            textBox.Text = bindText.Value;
             uiScope.CreateEffect(epochScope =>
             {
-                var isEditable = epochScope.Track(editable);
-                if (!isEditable && isFocused)
-                {
-                    caret.IsVisible = false;
-                    caretTimer.Stop();
-                    selectionBg.IsVisible = false;
-                }
-                else if (isEditable && isFocused)
-                {
-                    caret.IsVisible = true;
-                    caretTimer.Start();
-                    UpdateSelectionVisual();
-                }
+                var newText = epochScope.Pull(bindText);
+                if (textBox.Text != newText) textBox.Text = newText;
             });
-
-            border.GotFocus += (_, _) =>
-            {
-                isFocused = true;
-                if (editable.Value)
-                {
-                    caret.IsVisible = true;
-                    caretTimer.Start();
-                }
-
-                UpdateCaretPosition();
-                UpdateSelectionVisual();
-                expose.FocusChanged?.Invoke(true);
-            };
-
-            border.LostFocus += (_, _) =>
-            {
-                isFocused = false;
-                caret.IsVisible = false;
-                caretTimer.Stop();
-                selAnchor = caretIndex; // 失去焦点时清除选区
-                selectionBg.IsVisible = false;
-                expose.FocusChanged?.Invoke(false);
-            };
-
-            border.PointerPressed += (_, e) =>
-            {
-                border.Focus();
-                e.Handled = true;
-
-                if (!editable.Value) return;
-
-                var point = e.GetPosition(textBlock);
-                caretIndex = GetCaretIndexFromPoint(point);
-
-                if (e.KeyModifiers.HasFlag(KeyModifiers.Shift) && isFocused)
-                {
-                    // 按住Shift扩展选区，保持锚点不动
-                }
-                else
-                {
-                    selAnchor = caretIndex;
-                }
-
-                isSelecting = true;
-                BlinkCaret();
-            };
-
-            border.PointerMoved += (_, e) =>
-            {
-                if (!isSelecting || !editable.Value) return;
-
-                var point = e.GetPosition(textBlock);
-                caretIndex = GetCaretIndexFromPoint(point);
-
-                BlinkCaret();
-            };
-
-            border.PointerReleased += (_, _) => { isSelecting = false; };
-
-            border.TextInput += (_, e) =>
-            {
-                if (!editable.Value || !isFocused) return;
-
-                // 如果有选区，先删除选中的文本
-                if (Math.Max(selAnchor, caretIndex) > Math.Min(selAnchor, caretIndex))
-                {
-                    DeleteSelection();
-                }
-
-                var currentText = bindText.Value;
-                var t = e.Text ?? "";
-                bindText.RxValue = currentText.Insert(caretIndex, t);
-                caretIndex += t.Length;
-                selAnchor = caretIndex;
-
-                BlinkCaret();
-                imeClient.NotifyTextChanged();
-                onTextChanged?.Invoke(bindText.Value);
-                expose.TextChanged?.Invoke(bindText.Value);
-                e.Handled = true;
-            };
-
-            border.KeyDown += async (_, e) =>
-            {
-                if (!editable.Value || !isFocused) return;
-
-                var currentText = bindText.Value;
-                var handled = true;
-                var clipboard = TopLevel.GetTopLevel(border)?.Clipboard;
-
-                switch (e.Key)
-                {
-                    case Key.C when e.KeyModifiers.HasFlag(KeyModifiers.Control):
-                        if (Math.Max(selAnchor, caretIndex) > Math.Min(selAnchor, caretIndex) && clipboard != null)
-                        {
-                            var selectedText = currentText.Substring(Math.Min(selAnchor, caretIndex),
-                                Math.Max(selAnchor, caretIndex) - Math.Min(selAnchor, caretIndex));
-                            await clipboard.SetTextAsync(selectedText);
-                        }
-
-                        break;
-                    case Key.X when e.KeyModifiers.HasFlag(KeyModifiers.Control):
-                        if (Math.Max(selAnchor, caretIndex) > Math.Min(selAnchor, caretIndex) && clipboard != null)
-                        {
-                            var selectedText = currentText.Substring(Math.Min(selAnchor, caretIndex),
-                                Math.Max(selAnchor, caretIndex) - Math.Min(selAnchor, caretIndex));
-                            await clipboard.SetTextAsync(selectedText);
-                            DeleteSelection();
-                        }
-
-                        break;
-                    case Key.V when e.KeyModifiers.HasFlag(KeyModifiers.Control):
-                        if (clipboard != null)
-                        {
-                            var pasteText = await clipboard.TryGetTextAsync();
-                            if (!string.IsNullOrEmpty(pasteText))
-                            {
-                                if (Math.Max(selAnchor, caretIndex) > Math.Min(selAnchor, caretIndex))
-                                {
-                                    DeleteSelection();
-                                    currentText = bindText.Value; // 删除后更新当前文本
-                                }
-
-                                bindText.RxValue = currentText.Insert(caretIndex, pasteText);
-                                caretIndex += pasteText.Length;
-                                selAnchor = caretIndex;
-                                imeClient.NotifyTextChanged();
-                                onTextChanged?.Invoke(bindText.Value);
-                                expose.TextChanged?.Invoke(bindText.Value);
-                            }
-                        }
-
-                        break;
-                    case Key.A when e.KeyModifiers.HasFlag(KeyModifiers.Control):
-                        selAnchor = 0;
-                        caretIndex = currentText.Length;
-                        break;
-                    case Key.Back:
-                        if (Math.Max(selAnchor, caretIndex) > Math.Min(selAnchor, caretIndex))
-                        {
-                            DeleteSelection();
-                        }
-                        else if (caretIndex > 0)
-                        {
-                            var t = currentText.Remove(caretIndex - 1, 1);
-                            caretIndex--;
-                            selAnchor = caretIndex;
-                            imeClient.NotifyTextChanged();
-                            bindText.RxValue = t;
-                            onTextChanged?.Invoke(t);
-                            expose.TextChanged?.Invoke(t);
-                        }
-
-                        break;
-                    case Key.Delete:
-                        if (Math.Max(selAnchor, caretIndex) > Math.Min(selAnchor, caretIndex))
-                        {
-                            DeleteSelection();
-                        }
-                        else if (caretIndex < currentText.Length)
-                        {
-                            var t = currentText.Remove(caretIndex, 1);
-                            imeClient.NotifyTextChanged();
-                            bindText.RxValue = t;
-                            onTextChanged?.Invoke(t);
-                            expose.TextChanged?.Invoke(t);
-                        }
-
-                        break;
-                    case Key.Left:
-                        if (caretIndex > 0) caretIndex--;
-                        if (!e.KeyModifiers.HasFlag(KeyModifiers.Shift)) selAnchor = caretIndex;
-                        break;
-                    case Key.Right:
-                        if (caretIndex < currentText.Length) caretIndex++;
-                        if (!e.KeyModifiers.HasFlag(KeyModifiers.Shift)) selAnchor = caretIndex;
-                        break;
-                    case Key.Home:
-                        caretIndex = 0;
-                        if (!e.KeyModifiers.HasFlag(KeyModifiers.Shift)) selAnchor = caretIndex;
-                        break;
-                    case Key.End:
-                        caretIndex = currentText.Length;
-                        if (!e.KeyModifiers.HasFlag(KeyModifiers.Shift)) selAnchor = caretIndex;
-                        break;
-                    default:
-                        handled = false;
-                        break;
-                }
-
-                if (handled)
-                {
-                    BlinkCaret();
-                    e.Handled = true;
-                }
-            };
         };
 
-        return new Element<HTextBoxExpose>(uiScope, border, expose);
-
-        int GetCaretIndexFromPoint(Point point)
+        var expose = new HTextPresenterExpose();
+        // 5. 响应交互行为体系
+        textBox.TextChanged += (_, _) =>
         {
-            var text = textBlock.Text ?? "";
-            if (string.IsNullOrEmpty(text)) return 0;
-
-            int newIndex = 0;
-            double currentWidth = 0;
-            var typeface = new Typeface(textBlock.FontFamily, textBlock.FontStyle, textBlock.FontWeight);
-            var culture = CultureInfo.CurrentCulture;
-
-            for (int i = 0; i < text.Length; i++)
-            {
-                var subText = text.Substring(0, i + 1);
-                double nextWidth =
-                    HTextBoxTextInputClient.MeasureTextWithTrailingSpaces(subText, typeface, culture,
-                        textBlock.FontSize);
-
-                if (point.X <= nextWidth)
-                {
-                    double charWidth = nextWidth - currentWidth;
-                    if (point.X < currentWidth + charWidth / 2)
-                    {
-                        newIndex = i;
-                    }
-                    else
-                    {
-                        newIndex = i + 1;
-                    }
-
-                    break;
-                }
-
-                currentWidth = nextWidth;
-                newIndex = i + 1;
-            }
-
-            return newIndex;
-        }
-
-        void DeleteSelection()
-        {
-            int start = Math.Min(selAnchor, caretIndex);
-            int end = Math.Max(selAnchor, caretIndex);
-            if (end <= start) return;
-
-            var currentText = bindText.Value;
-            var t = currentText.Remove(start, end - start);
-            caretIndex = start;
-            selAnchor = caretIndex;
-            imeClient.NotifyTextChanged();
+            var t = textBox.Text ?? "";
+            if (bindText.Value == t) return;
             bindText.RxValue = t;
             onTextChanged?.Invoke(t);
             expose.TextChanged?.Invoke(t);
-            UpdateSelectionVisual();
-        }
-
-        void BlinkCaret()
+        };
+        textBox.GotFocus += (_, _) => expose.FocusChanged?.Invoke(true);
+        textBox.LostFocus += (_, _) => expose.FocusChanged?.Invoke(false);
+        // 响应 editable 访问器
+        uiScope.CreateEffect(epochScope =>
         {
-            if (!isFocused || !editable.Value) return;
-            caret.IsVisible = true;
-            caretTimer.Stop();
-            caretTimer.Start();
-            UpdateCaretPosition();
-            UpdateSelectionVisual();
-        }
+            var isEditable = epochScope.Track(editable);
+            textBox.IsReadOnly = !isEditable;
+        });
 
-        void UpdateCaretPosition()
-        {
-            var text = textBlock.Text ?? "";
-            var idx = Math.Min(caretIndex, text.Length);
-            var textToCaret = text.Substring(0, idx);
+        return new Element<HTextPresenterExpose>(uiScope, border, expose);
 
-            var typeface = new Typeface(textBlock.FontFamily, textBlock.FontStyle, textBlock.FontWeight);
-            var culture = CultureInfo.CurrentCulture;
-
-            double width =
-                HTextBoxTextInputClient.MeasureTextWithTrailingSpaces(textToCaret, typeface, culture,
-                    textBlock.FontSize);
-
-            caret.Margin = new Thickness(width, 0, 0, 0);
-            imeClient.NotifyCursorChanged();
-        }
-
-        void UpdateSelectionVisual()
-        {
-            int start = Math.Min(selAnchor, caretIndex);
-            int end = Math.Max(selAnchor, caretIndex);
-            if (end > start)
-            {
-                selectionBg.IsVisible = true;
-                var text = textBlock.Text ?? "";
-                var typeface = new Typeface(textBlock.FontFamily, textBlock.FontStyle, textBlock.FontWeight);
-                var culture = CultureInfo.CurrentCulture;
-
-                double x1 = HTextBoxTextInputClient.MeasureTextWithTrailingSpaces(
-                    text.Substring(0, Math.Min(start, text.Length)), typeface, culture, textBlock.FontSize);
-                double x2 = HTextBoxTextInputClient.MeasureTextWithTrailingSpaces(
-                    text.Substring(0, Math.Min(end, text.Length)), typeface, culture, textBlock.FontSize);
-
-                selectionBg.Margin = new Thickness(x1, 0, 0, 0);
-                selectionBg.Width = x2 - x1;
-            }
-            else
-            {
-                selectionBg.IsVisible = false;
-            }
-        }
-
+        // 内部方法：将您的 StyleSet 映射到 TextBox 和 Border 上
         void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
         {
-            StyleUtil.ApplyStyle(styleValue, textBlock, bord);
+            StyleUtil.ApplyStyle(styleValue, layout, bord);
+            if (styleValue.Width is not null) layout.Width = styleValue.Width.Value;
+            if (styleValue.Height is not null) layout.Height = styleValue.Height.Value;
+            if (styleValue.MaxWidth is not null) layout.MaxWidth = styleValue.MaxWidth.Value;
+            if (styleValue.MinWidth is not null) layout.MinWidth = styleValue.MinWidth.Value;
+            if (styleValue.MinHeight is not null) layout.MinHeight = styleValue.MinHeight.Value;
+            if (styleValue.MaxHeight is not null) layout.MaxHeight = styleValue.MaxHeight.Value;
+
             ApplyTextStyle(styleValue);
         }
 
@@ -590,37 +302,42 @@ public static partial class BaseComponent
             }
 
             if (!hasSelectionStyle) return;
-
-            if (selectionStyle.Background is not null) selectionBg.Background = selectionStyle.Background;
-            // ApplyTextStyle(selectionStyle);
+            if (selectionStyle.Background is not null) textBox.SelectionBrush = selectionStyle.Background;
+            if (selectionStyle.Foreground is not null) textBox.SelectionForegroundBrush = selectionStyle.Foreground;
         }
 
         void ApplyTextStyle(StyleSet styleValue)
         {
-            if (styleValue.TextAlignment is not null) textBlock.TextAlignment = styleValue.TextAlignment.Value;
-            if (styleValue.TextWrapping is not null) textBlock.TextWrapping = styleValue.TextWrapping.Value;
+            if (styleValue.LetterSpacing is not null) textBox.LetterSpacing = styleValue.LetterSpacing.Value;
+            if (styleValue.LineHeight is not null) textBox.LineHeight = styleValue.LineHeight.Value;
+            if (styleValue.TextAlignment is not null) textBox.TextAlignment = styleValue.TextAlignment.Value;
+            if (styleValue.VerticalTextAlignment is not null)
+                textBox.VerticalContentAlignment = styleValue.VerticalTextAlignment.Value;
+            if (styleValue.TextWrapping is not null) textBox.TextWrapping = styleValue.TextWrapping.Value;
+            if (styleValue.FontSize is not null) textBox.FontSize = styleValue.FontSize.Value;
+            if (styleValue.FontWeight is not null) textBox.FontWeight = styleValue.FontWeight.Value;
+            if (styleValue.FontFamily is not null) textBox.FontFamily = styleValue.FontFamily;
+            if (styleValue.FontStretch is not null) textBox.FontStretch = styleValue.FontStretch.Value;
+            if (styleValue.FontFeatures is not null) textBox.FontFeatures = styleValue.FontFeatures;
+            if (styleValue.FontStyle is not null) textBox.FontStyle = styleValue.FontStyle.Value;
             if (styleValue.Foreground is not null)
             {
-                textBlock.Foreground = styleValue.Foreground;
-                caret.Background = styleValue.Foreground;
+                textBox.Foreground = styleValue.Foreground;
+                textBox.CaretBrush = styleValue.Foreground;
             }
-
-            if (styleValue.FontSize is not null) textBlock.FontSize = styleValue.FontSize.Value;
-            if (styleValue.FontWeight is not null) textBlock.FontWeight = styleValue.FontWeight.Value;
-            if (styleValue.FontStyle is not null) textBlock.FontStyle = styleValue.FontStyle.Value;
         }
     }
 
-    public static IElement<HTextBoxExpose> HTextBox(
-        out HTextBoxExpose expose,
+    public static IElement<HTextPresenterExpose> HTextBox(
+        out HTextPresenterExpose expose,
         MutSignal<string> bindText,
         Accessor<bool>? selectable = null,
-        Accessor<bool>? editable = null,
+        // Accessor<bool>? editable = null,
         Accessor<string>? strStyle = null,
         Accessor<StyleSet>? style = null,
         Dictionary<string, StyleSet>? variants = null)
     {
-        var el = HTextBox(bindText, selectable, editable, strStyle, style, variants);
+        var el = HTextBox(bindText, selectable, strStyle, style, variants);
         expose = el.Expose;
         return el;
     }

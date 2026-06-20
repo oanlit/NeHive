@@ -58,7 +58,6 @@ public static partial class BaseComponent
 
             if (styleValue.TextAlignment is not null)
             {
-                // textBlock.TextAlignment = styleValue.TextAlignment.Value;
                 switch (styleValue.TextAlignment.Value)
                 {
                     case TextAlignment.Left:

@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Styling;
-using Avalonia.Themes.Fluent;
+using Avalonia.Themes.Simple;
 using NeHive.Model;
 using NeHive.UI.Avalonia.Styles;
 
@@ -39,7 +39,7 @@ public class App : Application
             colors["coffee-700"] = Color.FromRgb(124, 107, 86);
         });
         RequestedThemeVariant = ThemeVariant.Default;
-        Styles.Add(new FluentTheme());
+        Styles.Add(new SimpleTheme());
     }
 
     public override void OnFrameworkInitializationCompleted()
