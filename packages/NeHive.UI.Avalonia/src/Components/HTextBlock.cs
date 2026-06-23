@@ -73,7 +73,7 @@ public static partial class BaseComponent
             }
 
             if (styleValue.VerticalTextAlignment is not null)
-                border.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
+                textBlock.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
 
             if (styleValue.TextWrapping is not null) textBlock.TextWrapping = styleValue.TextWrapping.Value;
             if (styleValue.TextDecorations is not null) textBlock.TextDecorations = styleValue.TextDecorations;

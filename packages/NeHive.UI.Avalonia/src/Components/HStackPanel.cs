@@ -1,38 +1,13 @@
-using System.Collections;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Rendering.SceneGraph;
-using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HStackPanelProp(
-    Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null) : ISingleChildrenProp
-{
-    private readonly List<IElement> _children = [];
-
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
-
-    public IEnumerator<IElement> GetEnumerator()
-        => _children.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator()
-        => GetEnumerator();
-
-    public void Add(IElement element)
-    {
-        _children.Add(element);
-    }
-}
-
 public static partial class BaseComponent
 {
-    public static IElement<StackPanel> HStackPanel(HStackPanelProp prop)
+    public static IElement<StackPanel> HStackPanel(HPanelProp prop)
     {
         var uiScope = new UiScope();
         var stack = new StackPanel();

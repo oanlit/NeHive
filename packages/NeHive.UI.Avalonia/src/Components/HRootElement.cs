@@ -6,7 +6,7 @@ using Avalonia.Layout;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class RootProp : HStackPanelProp
+public class RootProp : HPanelProp
 {
     public Action<IContextSetter>? ContextSetter;
 

@@ -23,7 +23,7 @@ public class MainWindow : Window
 
         using (new ScopeFrame(_scope))
         {
-            Content = DemoComponent.CategorizedMainNavDemo().Content;
+            Content = DemoComponent.MainNavDemo().Content;
         }
     }
 

@@ -97,13 +97,18 @@ public class AtomHandler
         ["text-clip-none"] = (_, _, set) => set.TextTrimming = TextTrimming.None,
         ["truncate"] = (_, _, set) => set.TextTrimming = TextTrimming.WordEllipsis,
         ["line-clamp-"] = ApplyMaxLine,
-
-        ["text-center"] = (_, _, set) => set.TextAlignment = TextAlignment.Center,
+        
         ["text-left"] = (_, _, set) => set.TextAlignment = TextAlignment.Left,
+        ["text-x-center"] = (_, _, set) => set.TextAlignment = TextAlignment.Center,
         ["text-right"] = (_, _, set) => set.TextAlignment = TextAlignment.Right,
         ["text-top"] = (_, _, set) => set.VerticalTextAlignment = VerticalAlignment.Top,
-        ["text-middle"] = (_, _, set) => set.VerticalTextAlignment = VerticalAlignment.Center,
+        ["text-y-center"] = (_, _, set) => set.VerticalTextAlignment = VerticalAlignment.Center,
         ["text-bottom"] = (_, _, set) => set.VerticalTextAlignment = VerticalAlignment.Bottom,
+        ["text-center"] = (_, _, set) =>
+        {
+            set.TextAlignment = TextAlignment.Center;
+            set.VerticalTextAlignment = VerticalAlignment.Center;
+        },
 
         ["wrap"] = (_, _, set) => set.TextWrapping = TextWrapping.Wrap,
         ["whitespace-nowrap"] = (_, _, set) => set.TextWrapping = TextWrapping.NoWrap,
@@ -530,17 +535,17 @@ public class AtomHandler
         var value = v[0];
         double? letterSpacing = value switch
         {
-            "leading-none" => 1,
-            "leading-tight" => 1.25,
-            "leading-snug" => 1.375,
-            "leading-normal" => 1.5,
-            "leading-relaxed" => 1.625,
-            "leading-loose" => 2,
+            "none" => 1,
+            "tight" => 1.25,
+            "snug" => 1.375,
+            "normal" => 1.5,
+            "relaxed" => 1.625,
+            "loose" => 2,
             _ => null
         };
         if (letterSpacing is not null)
         {
-            set.LineHeight = letterSpacing.Value;
+            set.LineHeight = letterSpacing.Value * 4 * UnitScale;
             return;
         }
 
@@ -713,7 +718,7 @@ public class AtomHandler
 
         var w = val.Value;
         if (isNegative) w = -w;
-        
+
         var temp = EnsureTemp(set);
         temp.RingWidth = w;
         temp.HasShadow = true;
@@ -721,14 +726,13 @@ public class AtomHandler
 
     private static void ApplyRingOffset(string[] v, bool isNegative, StyleSet set)
     {
-        
         if (v.Length != 1) return;
         var val = TryParseValue(v[0]);
         if (val is null) return;
 
         var w = val.Value;
         if (isNegative) w = -w;
-        
+
         var temp = EnsureTemp(set);
         temp.RingOffset = w;
         temp.HasShadow = true;
@@ -862,7 +866,7 @@ public class AtomHandler
         var rotate = TryParseValue(val);
         if (rotate is null) return;
 
-        var r = rotate.Value;
+        var r = rotate.Value / 180 * Math.PI;
         if (isNegative) r = -r;
         EnsureTemp(set).RotateTransform = new RotateTransform { Angle = r };
     }
@@ -874,7 +878,7 @@ public class AtomHandler
         var skew = TryParseValue(val);
         if (skew is null) return;
 
-        var sk = skew.Value;
+        var sk = skew.Value / 180 * Math.PI;
         if (isNegative) sk = -sk;
         EnsureTemp(set).SkewTransform = new SkewTransform { AngleX = sk, AngleY = sk };
     }
@@ -888,7 +892,7 @@ public class AtomHandler
 
         var advanced = EnsureTemp(set);
         var scaleTransform = advanced.SkewTransform ?? new SkewTransform();
-        var sk = skew.Value;
+        var sk = skew.Value / 180 * Math.PI;
         if (isNegative) sk = -sk;
         scaleTransform.AngleX = sk;
         advanced.SkewTransform = scaleTransform;
@@ -903,7 +907,7 @@ public class AtomHandler
 
         var advanced = EnsureTemp(set);
         var scaleTransform = advanced.SkewTransform ?? new SkewTransform();
-        var sk = skew.Value;
+        var sk = skew.Value / 180 * Math.PI;
         if (isNegative) sk = -sk;
         scaleTransform.AngleY = sk;
         advanced.SkewTransform = scaleTransform;

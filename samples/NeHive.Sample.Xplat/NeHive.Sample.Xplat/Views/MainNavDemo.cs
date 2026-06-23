@@ -479,7 +479,7 @@ public static class DemoComponent
                 openPaneLength: 200,
                 compactPaneLength: 48)
             {
-                Pane = HStackPanel(new HStackPanelProp(strStyle: "gap-2 p-4 bg-gray-200")
+                Pane = HStackPanel(new HPanelProp(strStyle: "gap-2 p-4 bg-gray-200")
                 {
                     HButton("Home", onClick: _ => { }),
                     HButton("Settings", onClick: _ => { })

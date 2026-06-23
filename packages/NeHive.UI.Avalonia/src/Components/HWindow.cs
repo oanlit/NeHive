@@ -28,7 +28,9 @@ public static partial class BaseComponent
             }
 
             window.Content = c;
-
+            window.Width = c.Width;
+            window.Height = c.Height;
+            
             var isClosed = false;
             window.Closing += (_, _) =>
             {
