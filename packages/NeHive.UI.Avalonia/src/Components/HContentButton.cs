@@ -1,9 +1,6 @@
-using System.Collections;
-
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Interactivity;
-
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
@@ -15,23 +12,13 @@ public class HContentButtonProp(
     Accessor<StyleSet>? style = null,
     Dictionary<string, StyleSet>? variants = null,
     Action<RoutedEventArgs>? onClick = null)
-    : ISingleChildrenProp
 {
-    private readonly List<IElement> _children = [];
     public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
     public readonly Dictionary<string, StyleSet>? Variants = variants;
     public readonly Action<RoutedEventArgs>? OnClick = onClick;
 
-    public IEnumerator<IElement> GetEnumerator()
-        => _children.GetEnumerator();
-
-    IEnumerator IEnumerable.GetEnumerator()
-        => GetEnumerator();
-
-    public void Add(IElement element)
-    {
-        _children.Add(element);
-    }
+    public IElement? Content { get; init; }
+    public IElement? Flyout { get; init; }
 }
 
 public static partial class BaseComponent
@@ -42,12 +29,21 @@ public static partial class BaseComponent
         UiScope uiScope = new();
         // 创建基础视觉元素
 
-        var stack = new StackPanel();
+        var content = prop.Content?.Content ?? new Control();
         var border = new Border
         {
             HorizontalAlignment = HorizontalAlignment.Left,
-            Child = stack
+            Child = content
         };
+
+        if (prop.Flyout is not null)
+        {
+            var flyout = new Flyout
+            {
+                Content = prop.Flyout
+            };
+            border.ContextFlyout = flyout;
+        }
 
         var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
@@ -55,8 +51,8 @@ public static partial class BaseComponent
             Variants = prop.Variants
         };
 
-        state.ApplyAccessorStyle(prop.Style, stack, border, ApplyStyle);
-        state.ApplyVariantsStyle(stack, border, ApplyStyle);
+        state.ApplyAccessorStyle(prop.Style, content, border, StyleUtil.ApplyStyle);
+        state.ApplyVariantsStyle(content, border, StyleUtil.ApplyStyle);
 
         var expose = new HButtonExpose();
         // 事件挂载
@@ -73,9 +69,6 @@ public static partial class BaseComponent
             };
         };
 
-        foreach (var child in prop)
-            stack.Children.Add(child.Content);
-
         return new Element<HButtonExpose>(uiScope, border, expose);
 
         // 统一触发点击的方法
@@ -84,26 +77,6 @@ public static partial class BaseComponent
             var args = new RoutedEventArgs(Button.ClickEvent);
             prop.OnClick?.Invoke(args);
             expose.Click.Invoke(args);
-        }
-
-        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
-        {
-            StyleUtil.ApplyStyle(styleValue, layout, bord);
-
-            var orientation = styleValue.Orientation ?? Orientation.Vertical;
-            stack.Orientation = orientation;
-
-            switch (orientation)
-            {
-                case Orientation.Vertical:
-                    if (styleValue.RowSpacing is not null) stack.Spacing = styleValue.RowSpacing.Value;
-                    break;
-                case Orientation.Horizontal:
-                    if (styleValue.ColumnSpacing is not null) stack.Spacing = styleValue.ColumnSpacing.Value;
-                    break;
-            }
-
-            if (styleValue.Orientation is not null) stack.Orientation = styleValue.Orientation.Value;
         }
     }
 

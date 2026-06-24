@@ -31,24 +31,19 @@ public static class HTextPresenterStyle
     };
 }
 
-public class HTextPresenterExpose
-{
-    public Action<string>? TextChanged = _ => { };
-    public Action<bool>? FocusChanged = _ => { };
-}
-
 public static partial class BaseComponent
 {
-    public static IElement<HTextPresenterExpose> HTextBox(
+    public static IElement<TextBox> HTextBox(
         MutSignal<string> bindText,
+        Accessor<char>? passwordChar = null,
         // Accessor<bool>? selectable = null,
-        Accessor<bool>? editable = null,
+        Accessor<bool>? isReadOnly = null,
         Accessor<string>? strStyle = null,
         Accessor<StyleSet>? style = null,
         Dictionary<string, StyleSet>? variants = null,
         Action<string>? onTextChanged = null)
     {
-        editable ??= true;
+        isReadOnly ??= false;
         var styleAccessor = StyleParser.ParseFull(strStyle, HTextPresenterStyle.DefaultStyleSet, style);
         UiScope uiScope = new();
 
@@ -129,7 +124,7 @@ public static partial class BaseComponent
             };
 
             var panel = new Panel();
-            
+
             var presenter = new TextPresenter
             {
                 Name = "PART_TextPresenter",
@@ -155,7 +150,7 @@ public static partial class BaseComponent
                     control.GetObservable(TextBox.TextWrappingProperty).ToBinding(),
             };
             scope.Register("PART_TextPresenter", presenter);
-            
+
             // var placeholder = new TextBlock
             // {
             //     [!!TextBlock.ForegroundProperty] = control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
@@ -188,7 +183,7 @@ public static partial class BaseComponent
             // };
             // panel.Children.Add(placeholder);
             panel.Children.Add(presenter);
-            
+
             scrollViewer.Content = panel;
             Grid.SetColumn(scrollViewer, 1);
             Grid.SetColumnSpan(scrollViewer, 1);
@@ -205,9 +200,9 @@ public static partial class BaseComponent
 
             dataValidationErrors.Content = grid;
             dockPanel.Children.Add(dataValidationErrors);
-            
+
             scope.Register("PART_ScrollViewer", scrollViewer);
-            
+
             return dockPanel;
         });
         // 3. 获取模板内部控件引用，并应用样式体系
@@ -250,26 +245,25 @@ public static partial class BaseComponent
             });
         };
 
-        var expose = new HTextPresenterExpose();
-        // 5. 响应交互行为体系
-        textBox.TextChanged += (_, _) =>
+        if (passwordChar is not null)
         {
-            var t = textBox.Text ?? "";
-            if (bindText.Value == t) return;
-            bindText.RxValue = t;
-            onTextChanged?.Invoke(t);
-            expose.TextChanged?.Invoke(t);
-        };
-        textBox.GotFocus += (_, _) => expose.FocusChanged?.Invoke(true);
-        textBox.LostFocus += (_, _) => expose.FocusChanged?.Invoke(false);
+            textBox.PasswordChar = passwordChar.Value;
+            if (passwordChar.IsReactive)
+            {
+                uiScope.CreateEffect(epochScope =>
+                {
+                    textBox.PasswordChar = epochScope.Track(passwordChar);
+                });
+            }
+        }
+
         // 响应 editable 访问器
         uiScope.CreateEffect(epochScope =>
         {
-            var isEditable = epochScope.Track(editable);
-            textBox.IsReadOnly = !isEditable;
+            textBox.IsReadOnly = epochScope.Track(isReadOnly);
         });
 
-        return new Element<HTextPresenterExpose>(uiScope, border, expose);
+        return new Element<TextBox>(uiScope, border, textBox);
 
         // 内部方法：将您的 StyleSet 映射到 TextBox 和 Border 上
         void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
@@ -328,16 +322,17 @@ public static partial class BaseComponent
         }
     }
 
-    public static IElement<HTextPresenterExpose> HTextBox(
-        out HTextPresenterExpose expose,
+    public static IElement<TextBox> HTextBox(
+        out TextBox expose,
         MutSignal<string> bindText,
-        Accessor<bool>? selectable = null,
-        // Accessor<bool>? editable = null,
+        // Accessor<bool>? selectable = null,
+        Accessor<char>? passwordChar = null,
+        Accessor<bool>? isReadOnly = null,
         Accessor<string>? strStyle = null,
         Accessor<StyleSet>? style = null,
         Dictionary<string, StyleSet>? variants = null)
     {
-        var el = HTextBox(bindText, selectable, strStyle, style, variants);
+        var el = HTextBox(bindText, passwordChar, isReadOnly, strStyle, style, variants);
         expose = el.Expose;
         return el;
     }

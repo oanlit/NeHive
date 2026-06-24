@@ -101,11 +101,12 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HTextBlock("Grid Responsive Layout", strStyle: DemoTitle),
             HTextBlock("Define rows/columns with auto and star sizing", strStyle: DemoDesc),
             HGrid(new(
+                showGridLines: true,
                 rowDefinitions: new([HgLen.Auto, HgLen.Star()]),
                 columnDefinitions: new([120, HgLen.Star()]),
                 strStyle: new(() => $"""
                                          {DemoContent} w-full min-h-48
-                                         gap-x-{gapX.RxValue} gap-y-4 transition-all duration-300
+                                         gap-x-{gapX.RxValue} gap-y-4
                                      """)
             )
             {
@@ -118,6 +119,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                         strStyle: PrimaryBtnBase + " w-full",
                         onClick: _ => gapX.RxValue++
                     ) // HButton
+                // [(1, 0, 1, 2)]
             }) // HGrid
         }); // HStackPanel
     }
@@ -387,21 +389,27 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             {
                 HContentButton(new(
                     strStyle: PrimaryBtnBase +
-                              " w-36 h-10 gap-2 horizontal justify-center items-center bg-matcha-400 hover:bg-matcha-500",
+                              " w-36 h-10 bg-matcha-400 hover:bg-matcha-500",
                     onClick: _ => scroll.ScrollToHome()
                 )
                 {
-                    HSvgImage("~/Assets/arrow-big-up-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
-                    HTextBlock("Scroll To Top", strStyle: "fw-bold text-xs fg-white")
+                    Content = HStackPanel(new(strStyle: "gap-2 horizontal")
+                    {
+                        HSvgImage("~/Assets/arrow-big-up-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
+                        HTextBlock("Scroll To Top", strStyle: "fw-bold text-xs fg-white")
+                    })
                 }), // HContentButton
                 HContentButton(new(
                     strStyle: PrimaryBtnBase +
-                              " w-36 h-10 gap-2 horizontal justify-center items-center bg-coffee-400 hover:bg-coffee-500 click:bg-coffee-700 border-coffee-500",
+                              " w-36 h-10 bg-coffee-400 hover:bg-coffee-500 click:bg-coffee-700 border-coffee-500",
                     onClick: _ => scroll.ScrollToEnd()
                 )
                 {
-                    HSvgImage("~/Assets/arrow-big-down-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
-                    HTextBlock("Scroll To Bottom", strStyle: "fw-bold text-xs fg-white")
+                    Content = HStackPanel(new(strStyle: "gap-2 horizontal")
+                    {
+                        HSvgImage("~/Assets/arrow-big-down-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
+                        HTextBlock("Scroll To Bottom", strStyle: "fw-bold text-xs fg-white")
+                    }) // HStackPanel
                 }) // HContentButton
             })
         });
@@ -589,8 +597,73 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 strStyle: "w-72 h-6"
             ), // HSlider
             HTextBlock(new(() => $"Audio Volume Level: {volume.RxValue:F0}"),
-                strStyle: "mt-2 text-xl fw-semibold fg-indigo-600")
+                strStyle: "mt-2 text-xl fw-semibold fg-matcha-600")
         }); // HStackPanel
+    }
+
+    #endregion
+
+    #region Flyout Demo
+
+    private static IElement FlyoutDemo()
+    {
+        var select = new MutSignal<string>("");
+        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        {
+            HTextBlock("Flyout Demo", strStyle: SectionTitleStyle),
+            HStackPanel(new(strStyle: HorizontalRowBase)
+            {
+                HFlyout(new(
+                    placement: PlacementMode.Right,
+                    showMode: FlyoutShowMode.Transient
+                )
+                {
+                    Host = (host, flyout) =>
+                        HButton("File",
+                            strStyle: PrimaryBtnBase,
+                            onClick: _ => flyout.ShowAt(host, showAtPointer: true)),
+                    Content = flyout => HStackPanel(new(strStyle: VerticalStackBase +
+                                                                  "gap-y-1 p-2 bg-matcha-50 border border-matcha-300 rounded-lg shadow")
+                    {
+                        HButton("Open", strStyle: "text-sm fg-matcha-700 bg-matcha-200/0 hover:bg-matcha-300",
+                            onClick: _ => SetSelect(flyout, "Open")),
+                        // HButton
+                        HButton("Save", strStyle: "text-sm fg-matcha-700 bg-transparent hover:bg-matcha-300",
+                            onClick: _ => SetSelect(flyout, "Save")),
+                        // HButton
+                    }) // HFlyout.Content
+                }), // HFlyout
+
+                HFlyout(new(
+                    placement: PlacementMode.Right,
+                    showMode: FlyoutShowMode.Transient
+                )
+                {
+                    Host = (host, flyout) =>
+                        HButton("Edit",
+                            strStyle: PrimaryBtnBase,
+                            onClick: _ => flyout.ShowAt(host, showAtPointer: true)),
+                    Content = flyout => HStackPanel(new(strStyle: VerticalStackBase +
+                                                                  "gap-y-1 p-2 bg-matcha-50 border border-matcha-300 rounded-lg shadow")
+                    {
+                        HButton("Copy", strStyle: "text-sm fg-matcha-700 bg-matcha-200/0 hover:bg-matcha-300",
+                            onClick: _ => SetSelect(flyout, "Copy")),
+                        // HButton
+                        HButton("Paste", strStyle: "text-sm fg-matcha-700 bg-transparent hover:bg-matcha-300",
+                            onClick: _ => SetSelect(flyout, "Paste")),
+                        // HButton
+                    }) // HFlyout.Content
+                }), // HFlyout
+            }),
+            HTextBlock(new(() => $"You Selected: {select.RxValue}."),
+                strStyle: "fg-coffee-500")
+        }); // HStackPanel
+
+        void SetSelect(Flyout flyout, string value)
+        {
+            select.RxValue = value;
+            flyout.Hide();
+        }
     }
 
     #endregion
@@ -725,10 +798,10 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 strStyle: InputBaseStyle + "w-64"
             )
             {
-                ItemTemplate = c => HTextBlock($"{c.Name} (Region Code: {c.Code})", strStyle: "p-2 hover:bg-indigo-50")
+                ItemTemplate = c => HTextBlock($"{c.Name} (Region Code: {c.Code})", strStyle: "p-2 hover:bg-matcha-50")
             }),
             HTextBlock(new(() => $"Selected Region: {selectedCountry.RxValue?.Name ?? "Nothing selected"}"),
-                strStyle: "mt-2 fw-medium fg-indigo-600")
+                strStyle: "mt-2 fw-medium fg-matcha-600")
         });
     }
 
@@ -746,17 +819,17 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 new(header: "File", strStyle: "px-3 py-1 rounded hover:bg-gray-200 transition-colors")
                 {
                     new(header: "Open Document", onClick: () => Console.WriteLine("Open File Command Triggered"),
-                        strStyle: "px-3 py-1 hover:bg-indigo-50"),
+                        strStyle: "px-3 py-1 hover:bg-matcha-50"),
                     new(header: "Save Changes", onClick: () => Console.WriteLine("Save File Command Triggered"),
-                        strStyle: "px-3 py-1 hover:bg-indigo-50"),
+                        strStyle: "px-3 py-1 hover:bg-matcha-50"),
                     new(header: "-"),
                     new(header: "Exit Application", onClick: () => Environment.Exit(0),
                         strStyle: "px-3 py-1 hover:bg-rose-50 text-rose-600")
                 },
                 new(header: "Edit", strStyle: "px-3 py-1 rounded hover:bg-gray-200 transition-colors")
                 {
-                    new(header: "Copy Selection", strStyle: "px-3 py-1 hover:bg-indigo-50"),
-                    new(header: "Paste Content", strStyle: "px-3 py-1 hover:bg-indigo-50")
+                    new(header: "Copy Selection", strStyle: "px-3 py-1 hover:bg-matcha-50"),
+                    new(header: "Paste Content", strStyle: "px-3 py-1 hover:bg-matcha-50")
                 }
             }) // HMenu
         }); // HStackPanel
@@ -1421,7 +1494,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                     strStyle: "underline decoration-dashed decoration-matcha-500 text-lg"),
                 HTextBlock("dotted underline",
                     strStyle: "underline decoration-dotted decoration-matcha-500 text-lg"),
-                HTextBlock("decoration-w-4", strStyle: "underline decoration-w-4 decoration-indigo-500 text-lg"),
+                HTextBlock("decoration-w-4", strStyle: "underline decoration-w-4 decoration-matcha-500 text-lg"),
                 HTextBlock("decoration-rose-500", strStyle: "underline decoration-rose-500 text-lg")
             }), // DemoSection
 
@@ -1778,7 +1851,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             {
                 HTextBlock("Hover: scale-110 rotate-3 ease-out",
                     strStyle:
-                    "transition-transform duration-300 ease-out hover:scale-110 hover:rotate-3 p-4 bg-indigo-50 rounded-xl cursor-pointer")
+                    "transition-transform duration-300 ease-out hover:scale-110 hover:rotate-3 p-4 bg-matcha-50 rounded-xl cursor-pointer")
             }) // DemoSection
         }); // HStackPanel
     }
@@ -1856,25 +1929,28 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                         $"""
                          px-4 py-2 horizontal rounded-lg
                          {(theme.RxValue is "dark" ? "fg-matcha-100 bg-matcha-900 border-matcha-700" : "fg-coffee-700 bg-coffee-50 border-matcha-200")} 
-                         transition-colors duration-300 border-w-1 focus:ring-w-2 focus:ring-indigo-300
+                         transition-colors duration-300 border-w-1 focus:ring-w-2 focus:ring-matcha-300
                          """),
                     onClick: _ => toggleTheme())
                 {
-                    Switch<string>(new(theme)
+                    Content = HStackPanel(new()
                     {
-                        Cases = new()
+                        Switch<string>(new(theme)
                         {
-                            ["dark"] = () => HSvgImage("~/Assets/sun.svg",
-                                strStyle: new(() =>
+                            Cases = new()
+                            {
+                                ["dark"] = () => HSvgImage("~/Assets/sun.svg",
+                                    strStyle: new(() =>
+                                        $"w-4 h-4 fw-extralight fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
+                            }, // Switch<string>.Cases
+                            Default = () => HSvgImage("~/Assets/moon.svg",
+                                strStyle:
+                                new(() =>
                                     $"w-4 h-4 fw-extralight fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
-                        }, // Switch<string>.Cases
-                        Default = () => HSvgImage("~/Assets/moon.svg",
-                            strStyle:
-                            new(() =>
-                                $"w-4 h-4 fw-extralight fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
-                    }), // Switch<string>
-                    HTextBlock(new(() => $"Switch To {(theme.RxValue is "dark" ? "Light" : "Dark")} Theme Mode"),
-                        strStyle: new(() => $"ml-2 fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
+                        }), // Switch<string>
+                        HTextBlock(new(() => $"Switch To {(theme.RxValue is "dark" ? "Light" : "Dark")} Theme Mode"),
+                            strStyle: new(() => $"ml-2 fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
+                    }) // HContentButton.Content
                 }) // HContentButton
             }); // rootElement
         });
@@ -1924,7 +2000,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
             new("🔘 Basic Input Controls", DemoView.TextBoxDemo, DemoView.CheckBoxDemo, DemoView.RadioButtonDemo,
                 DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.ProgressBarDemo,
-                DemoView.SliderDemo, DemoView.WindowDemo),
+                DemoView.SliderDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
 
             new("📋 Data Selection & Lists", DemoView.TreeViewDemo, DemoView.ComboBoxDemo,
                 DemoView.MenuDemo),
@@ -2038,6 +2114,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                                 [DemoView.FilePickerDemo] = FilePickerDemo,
                                 [DemoView.ProgressBarDemo] = ProgressBarDemo,
                                 [DemoView.SliderDemo] = SliderDemo,
+                                [DemoView.FlyoutDemo] = FlyoutDemo,
                                 [DemoView.WindowDemo] = WindowDemo,
 
                                 [DemoView.TreeViewDemo] = TreeViewDemo,
@@ -2110,6 +2187,7 @@ public enum DemoView
     FilePickerDemo,
     ProgressBarDemo,
     SliderDemo,
+    FlyoutDemo,
     WindowDemo,
 
     TreeViewDemo,

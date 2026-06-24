@@ -30,6 +30,7 @@ public readonly struct HgLen
 }
 
 public class HGridProp(
+    Accessor<bool>? showGridLines = null,
     Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
     Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
     Accessor<string>? strStyle = null,
@@ -39,7 +40,7 @@ public class HGridProp(
 {
     private readonly Dictionary<GridPosition, IElement> _children = new();
 
-    // 布局属性（响应式）
+    public readonly Accessor<bool>? ShowGridLines = showGridLines;
     public readonly Accessor<IReadOnlyList<HgLen>>? RowDefinitions = rowDefinitions;
     public readonly Accessor<IReadOnlyList<HgLen>>? ColumnDefinitions = columnDefinitions;
 
@@ -79,7 +80,7 @@ public static partial class BaseComponent
         {
             Child = grid
         };
-        
+
         var state = new CommonState(uiScope, prop.Style.Value.Normal)
         {
             StrVariants = prop.Style.Value.Variants,
@@ -90,23 +91,44 @@ public static partial class BaseComponent
         state.ApplyVariantsStyle(grid, border, ApplyStyle);
 
         // 应用响应式属性
-        uiScope.CreateEffect(() =>
+        var showGridLines= prop.ShowGridLines;
+        if (showGridLines is not null)
         {
-            if (prop.RowDefinitions is not null)
+            grid.ShowGridLines = showGridLines.Value;
+            if (showGridLines.IsReactive)
             {
-                grid.RowDefinitions.Clear();
-                foreach (var rowDef in prop.RowDefinitions.RxValue)
-                    grid.RowDefinitions.Add(new RowDefinition(rowDef.Value));
+                uiScope.CreateEffect(epochScope =>
+                {
+                    grid.ShowGridLines = epochScope.Track(showGridLines);
+                });
             }
+        }
 
-            if (prop.ColumnDefinitions is not null)
+        var rowDefinitions = prop.RowDefinitions;
+        if (rowDefinitions is not null)
+        {
+            ApplyRowDefinitions(rowDefinitions.Value);
+            if (rowDefinitions.IsReactive)
             {
-                grid.ColumnDefinitions.Clear();
-                foreach (var colDef in prop.ColumnDefinitions.RxValue)
-                    grid.ColumnDefinitions.Add(new ColumnDefinition(colDef.Value));
+                uiScope.CreateEffect(epochScope =>
+                {
+                    ApplyRowDefinitions(epochScope.Track(rowDefinitions));
+                });
             }
-        });
-
+        }
+        var columnDefinitions = prop.ColumnDefinitions;
+        if (columnDefinitions is not null)
+        {
+            ApplyColumnDefinitions(columnDefinitions.Value);
+            if (columnDefinitions.IsReactive)
+            {
+                uiScope.CreateEffect(epochScope =>
+                {
+                    ApplyRowDefinitions(epochScope.Track(columnDefinitions));
+                });
+            }
+        }
+        
         // 添加子元素并应用附加属性
         foreach (var (position, childElement) in prop)
         {
@@ -143,6 +165,20 @@ public static partial class BaseComponent
 
             if (style.ColumnSpacing is not null) grid.ColumnSpacing = style.ColumnSpacing.Value;
             if (style.RowSpacing is not null) grid.RowSpacing = style.RowSpacing.Value;
+        }
+
+        void ApplyColumnDefinitions(IEnumerable<HgLen> lens)
+        {
+            grid.ColumnDefinitions.Clear();
+            foreach (var len in lens)
+                grid.ColumnDefinitions.Add(new ColumnDefinition(len.Value));
+        }
+        
+        void ApplyRowDefinitions(IEnumerable<HgLen> lens)
+        {
+            grid.RowDefinitions.Clear();
+            foreach (var len in lens)
+                grid.RowDefinitions.Add(new RowDefinition(len.Value));
         }
     }
 }

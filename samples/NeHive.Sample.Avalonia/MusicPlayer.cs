@@ -165,8 +165,8 @@ public static class MusicPlayerDemo
                         strStyle: "my-auto w-4 h-4 hover:opacity-50",
                         onClick: _ => PlayLast())
                     {
-                        HSvgImage("~/Assets/skip-back.svg",
-                            strStyle: "w-4 h-4 fw-extralight fg-black bg-black/0"),
+                        Content = HSvgImage("~/Assets/skip-back.svg",
+                            strStyle: "w-4 h-4 fw-extralight fg-black bg-black/0")
                     }), // HContentButton
                     HContentButton(new(strStyle:
                         """
@@ -177,15 +177,14 @@ public static class MusicPlayerDemo
                         """,
                         onClick: _ => isPlaying.RxValue = !isPlaying.Value)
                     {
-                        Show(new(isPlaying)
+                        Content = Show(new(isPlaying)
                         {
                             IfFalse = () => HSvgImage("~/Assets/play.svg",
                                 strStyle: """
                                           ml-1 w-6 h-6 fw-normal
                                           fg-gradient-r fg-from-blue-400 fg-to-red-800
                                           """
-                            ),
-                            // IfFalse
+                            ), // IfFalse
                             IfTrue = () => HSvgImage("~/Assets/stretch-vertical.svg",
                                 strStyle: """
                                           ml-0.5 w-6 h-6 fw-extralight
@@ -198,7 +197,7 @@ public static class MusicPlayerDemo
                         strStyle: "center bg-black/0 hover:opacity-50",
                         onClick: _ => PlayNext())
                     {
-                        HSvgImage("~/Assets/skip-forward.svg",
+                        Content = HSvgImage("~/Assets/skip-forward.svg",
                             strStyle: "w-4 h-4 fw-extralight fg-black bg-black/0")
                     }) // HContentButton
                 }), // HStackPanel

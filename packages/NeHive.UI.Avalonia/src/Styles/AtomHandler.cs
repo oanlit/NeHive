@@ -1005,7 +1005,10 @@ public class AtomHandler
 
             if (Colors.ColorDict.TryGetValue(color, out result))
             {
-                result = Color.FromArgb((byte)(255 * a / 100), result.R, result.G, result.B);
+                if (result.A is 1)
+                {
+                    result = Color.FromArgb((byte)(255 * a / 100), result.R, result.G, result.B);
+                }
                 resultAssign = true;
             }
 
