@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 
@@ -22,62 +23,35 @@ public static partial class BaseComponent
         }
     }
 
-    /// <summary>
-    /// 文件选择器按钮组件，点击打开系统文件对话框，选择后更新输出信号。
-    /// </summary>
-    /// <param name="bindSelectedPath">输出信号，选择后会被设置为所选文件的绝对路径（多选模式时为第一个文件路径）</param>
-    /// <param name="title">对话框标题</param>
-    /// <param name="allowMultiple">是否允许多选（此时 bindSelectedPath 输出第一个文件路径，额外路径可通过事件获取）</param>
-    /// <param name="filters">文件过滤器列表，例如 new FilePickerFilter("Text files", "*.txt")</param>
-    /// <param name="buttonText">按钮上显示的文本</param>
-    /// <param name="strStyle">按钮样式字符串</param>
-    /// <param name="onFileSelected">多选时的额外事件，参数为选中的所有文件路径数组</param>
-    /// <returns>IElement 组件</returns>
     public static IElement HFilePicker(
         MutSignal<string?> bindSelectedPath,
         string? title = null,
         bool allowMultiple = false,
         FilePickerFilter[]? filters = null,
-        Accessor<string>? buttonText = null,
+        Accessor<string>? text = null,
+        Action<string[]>? onFileSelected = null,
         Accessor<string>? strStyle = null,
-        Action<string[]>? onFileSelected = null
+        Accessor<StyleSet>? style = null,
+        Dictionary<string, StyleSet>? variants = null
     )
     {
-        buttonText ??= "Select File";
+        text ??= "Select File";
 
         // 按钮实例（需要获取点击事件并调用对话框）
         var uiScope = new UiScope();
 
-        var button = new Button();
+        IElement button;
 
-        var border = new Border
+        using (new ScopeFrame(uiScope))
         {
-            Child = button
-        };
-
-        Accessor<FullStyle>? style = null;
-        if (strStyle != null)
-        {
-            style = StyleParser.ParseFull(strStyle);
-        }
-
-        // 响应式更新按钮文本
-        uiScope.CreateEffect(() => button.Content = buttonText?.RxValue ?? "Select File");
-
-        if (style != null)
-        {
-            uiScope.CreateEffect(scope =>
-            {
-                var styleValue = scope.Track(style);
-                StyleUtil.ApplyStyle(styleValue.Normal, button, border);
-            });
+            button = HButton(text, strStyle, style, variants);
         }
 
         // 点击时打开文件对话框
-        button.Click += async (_, _) =>
+        button.Content.PointerPressed += async (_, _) =>
         {
             // 获取顶层窗口
-            var topLevel = TopLevel.GetTopLevel(button);
+            var topLevel = TopLevel.GetTopLevel(button.Content);
             if (topLevel == null) return;
 
             // 构建文件选择选项
@@ -106,6 +80,6 @@ public static partial class BaseComponent
             }
         };
 
-        return new Element(uiScope, border);
+        return new Element(uiScope, button);
     }
 }

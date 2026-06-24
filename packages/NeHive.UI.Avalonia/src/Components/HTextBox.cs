@@ -34,14 +34,14 @@ public static class HTextPresenterStyle
 public static partial class BaseComponent
 {
     public static IElement<TextBox> HTextBox(
-        MutSignal<string> bindText,
+        MutSignal<string?> bindText,
         Accessor<char>? passwordChar = null,
         // Accessor<bool>? selectable = null,
         Accessor<bool>? isReadOnly = null,
         Accessor<string>? strStyle = null,
         Accessor<StyleSet>? style = null,
         Dictionary<string, StyleSet>? variants = null,
-        Action<string>? onTextChanged = null)
+        Action<string?>? onTextInput = null)
     {
         isReadOnly ??= false;
         var styleAccessor = StyleParser.ParseFull(strStyle, HTextPresenterStyle.DefaultStyleSet, style);
@@ -53,7 +53,7 @@ public static partial class BaseComponent
             VerticalAlignment = VerticalAlignment.Stretch,
             Padding = new Thickness(0), // 将 Padding 交由我们的内部 Border 接管
         };
-        // 2. 纯 C# 代码使用 FuncControlTemplate 构建极简模板，完全重写其视觉树
+
         var border = new Border
         {
             Child = textBox
@@ -205,16 +205,13 @@ public static partial class BaseComponent
 
             return dockPanel;
         });
-        // 3. 获取模板内部控件引用，并应用样式体系
+
         var state = new CommonState(uiScope, styleAccessor.Value.Normal)
         {
             StrVariants = styleAccessor.Value.Variants,
             Variants = variants
         };
 
-        // 在模板应用后捕获内部控件
-        // textBox.TemplateApplied += (_, _) => ApplyStyle(styleAccessor.Value.Normal, textBox, border);
-        // 注入您的响应式样式状态体系
         state.ApplyAccessorStyle(styleAccessor, textBox, border, ApplyStyle);
         state.ApplyVariantsStyle(textBox, border, ApplyStyle);
         ApplySelectionStyle(styleAccessor.Value);
@@ -235,14 +232,17 @@ public static partial class BaseComponent
         }
 
         // 4. 数据双向绑定
-        uiScope.OnMount += () =>
+        textBox.Text = bindText.Value;
+        uiScope.CreateEffect(epochScope =>
         {
-            textBox.Text = bindText.Value;
-            uiScope.CreateEffect(epochScope =>
-            {
-                var newText = epochScope.Pull(bindText);
-                if (textBox.Text != newText) textBox.Text = newText;
-            });
+            var newText = epochScope.Pull(bindText);
+            if (textBox.Text != newText) textBox.Text = newText;
+        });
+        
+        textBox.TextChanged += (_, _) =>
+        {
+            bindText.RxValue = textBox.Text;
+            onTextInput?.Invoke(bindText.Value);
         };
 
         if (passwordChar is not null)
@@ -324,7 +324,7 @@ public static partial class BaseComponent
 
     public static IElement<TextBox> HTextBox(
         out TextBox expose,
-        MutSignal<string> bindText,
+        MutSignal<string?> bindText,
         // Accessor<bool>? selectable = null,
         Accessor<char>? passwordChar = null,
         Accessor<bool>? isReadOnly = null,

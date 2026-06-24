@@ -36,15 +36,12 @@ public static class DemoComponent
 hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:scale-95 ";
 
     /// <summary>Secondary / neutral button base style</summary>
-    private const string SecondaryBtnBase = """
-                                            px-2.5 py-1 rounded-md border border-coffee-200 bg-coffee-50 fg-coffee-700
-                                            hover:bg-matcha-100 click:bg-matcha-200 transition-colors duration-100
-                                            focus:ring-w-1 focus:ring-matcha-300 
-                                            """;
+    private const string SecondaryBtnBase = @"px-3 py-1.5 fg-white bg-coffee-400 border border-coffee-500 rounded-lg 
+hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:scale-95 ";
 
     /// <summary>Text input universal base style</summary>
     private const string InputBaseStyle = """
-                                          p-2.5 rounded-lg border border-matcha-200 bg-coffee-50 w-full
+                                          w-full p-2.5 bg-coffee-50 rounded-lg border border-matcha-200
                                           hover:cursor-text hover:border-matcha-300
                                           focus:border-matcha-500 focus:ring-w-2 focus:ring-matcha-200 selection:bg-matcha-300 
                                           transition-colors duration-200 
@@ -76,12 +73,11 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HStackPanel(new(strStyle: HorizontalRowBase)
             {
                 HButton("+1",
-                    strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
+                    strStyle: PrimaryBtnBase,
                     onClick: _ => count.RxValue++
                 ), // HButton
                 HButton("-1",
-                    strStyle: PrimaryBtnBase +
-                              " bg-coffee-400 hover:bg-coffee-500 click:bg-coffee-700 border-coffee-500",
+                    strStyle: SecondaryBtnBase,
                     onClick: _ => count.RxValue--
                 ) // HButton
             }) // HStackPanel
@@ -143,7 +139,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
                 [new(left: 420, top: 10)] =
                     HButton("Top Right Action",
-                        strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
+                        strStyle: PrimaryBtnBase,
                         onClick: _ => Console.WriteLine("Top Right Button Clicked")
                     ), // HButton
 
@@ -157,8 +153,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
                 [new(left: 420, top: 280)] =
                     HButton("Bottom Right Action",
-                        strStyle: PrimaryBtnBase +
-                                  " bg-coffee-400 hover:bg-coffee-500 click:bg-coffee-700 border-coffee-500",
+                        strStyle: SecondaryBtnBase,
                         onClick: _ => Console.WriteLine("Bottom Right Button Clicked")
                     ), // HButton
 
@@ -207,7 +202,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 }) // // HSplitView.Content
             }),
             HButton("Toggle Sidebar",
-                strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
+                strStyle: PrimaryBtnBase,
                 onClick: _ => isPaneOpen.RxValue = !isPaneOpen.RxValue)
         });
     }
@@ -388,31 +383,29 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HStackPanel(new(strStyle: HorizontalRowBase + " justify-center")
             {
                 HContentButton(new(
-                    strStyle: PrimaryBtnBase +
-                              " w-36 h-10 bg-matcha-400 hover:bg-matcha-500",
+                    strStyle: PrimaryBtnBase,
                     onClick: _ => scroll.ScrollToHome()
                 )
                 {
-                    Content = HStackPanel(new(strStyle: "gap-2 horizontal")
+                    Content = HStackPanel(new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
                     {
                         HSvgImage("~/Assets/arrow-big-up-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
                         HTextBlock("Scroll To Top", strStyle: "fw-bold text-xs fg-white")
-                    })
+                    }) // HStackPanel
                 }), // HContentButton
                 HContentButton(new(
-                    strStyle: PrimaryBtnBase +
-                              " w-36 h-10 bg-coffee-400 hover:bg-coffee-500 click:bg-coffee-700 border-coffee-500",
+                    strStyle: SecondaryBtnBase,
                     onClick: _ => scroll.ScrollToEnd()
                 )
                 {
-                    Content = HStackPanel(new(strStyle: "gap-2 horizontal")
+                    Content = HStackPanel(new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
                     {
                         HSvgImage("~/Assets/arrow-big-down-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
                         HTextBlock("Scroll To Bottom", strStyle: "fw-bold text-xs fg-white")
                     }) // HStackPanel
                 }) // HContentButton
-            })
-        });
+            }) // HStackPanel
+        }); // HStackPanel
     }
 
     #endregion
@@ -421,7 +414,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
     private static IElement TextBoxDemo()
     {
-        var textSignal = new MutSignal<string>("Default input text value");
+        var textSignal = new MutSignal<string?>("Default input text value");
         var log = new MutSignal<string>("");
 
         return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
@@ -431,13 +424,13 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 bindText: textSignal,
                 // placeholderText: "Enter custom text content here...",
                 strStyle: InputBaseStyle + "text-base focus:ring-offset-2",
-                onTextChanged: newText => log.RxValue = $"Input content updated: {newText}"
+                onTextInput: newText => log.RxValue = $"Input content updated: {newText}"
             ), // HTextBox
             HTextBox(
                 bindText: textSignal,
                 // placeholderText: "Type something...",
                 strStyle: InputBaseStyle + "text-base selection:fg-matcha-800",
-                onTextChanged: newText => log.RxValue = $"Input content updated: {newText}"
+                onTextInput: newText => log.RxValue = $"Input content updated: {newText}"
             ), // HTextBox
             HTextBlock(new(() => $"Realtime Bound Value: {textSignal.RxValue}"),
                 strStyle: "mt-2 text-base fw-medium fg-gray-800"),
@@ -539,7 +532,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 bindSelectedPath: selectedFile,
                 title: "Select An Image File",
                 filters: filterFlies,
-                strStyle: InputBaseStyle
+                strStyle: PrimaryBtnBase
             ), // HFilePicker
             HTextBlock(new(() => $"Selected File Path: {selectedFile.RxValue ?? "No file selected"}"),
                 strStyle: "mt-2 text-sm fg-coffee-700"),
@@ -575,7 +568,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HProgressBar(value: progress, strStyle: "w-full h-4 rounded-full overflow-hidden bg-gray-200"),
             HStackPanel(new(strStyle: HorizontalRowBase + "mt-2")
             {
-                HButton("Add 10% Progress", strStyle: PrimaryBtnBase + "bg-emerald-400 fg-white border-emerald-500",
+                HButton("Add 10% Progress", strStyle: PrimaryBtnBase,
                     onClick: _ => progress.RxValue = Math.Min(100, progress.RxValue + 10)),
                 HButton("Reset Progress To Zero", strStyle: SecondaryBtnBase, onClick: _ => progress.RxValue = 0)
             }), // HStackPanel
@@ -681,7 +674,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
     private static IElement WindowDemoComp(UiScope scope)
     {
-        var text = new MutSignal<string>("");
+        var text = new MutSignal<string?>("");
 
         return scope.RootElement(new(strStyle: DemoCardBase + VerticalStackBase)
         {
@@ -696,13 +689,13 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HStackPanel(new(strStyle: HorizontalRowBase + "mt-2")
             {
                 HButton("Open Dialog",
-                    strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
+                    strStyle: PrimaryBtnBase,
                     onClick: _ => OpenDialog(scope, text))
             }) // HStackPanel
         });
     }
 
-    private static void OpenDialog(UiScope scope, MutSignal<string> text)
+    private static void OpenDialog(UiScope scope, MutSignal<string?> text)
     {
         var parentWindow = scope.GetContext(NeHiveUiContext.Window);
         if (parentWindow is null)
@@ -724,12 +717,11 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 HStackPanel(new(strStyle: HorizontalRowBase + "justify-end gap-2 mt-2")
                 {
                     HButton("Cancel",
-                        strStyle: PrimaryBtnBase +
-                                  " bg-coffee-400 hover:bg-coffee-500 click:bg-coffee-700 border-coffee-500",
+                        strStyle: SecondaryBtnBase,
                         onClick: _ => CancelInput(window)
                     ), // HButton
                     HButton("OK",
-                        strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
+                        strStyle: PrimaryBtnBase,
                         onClick: _ => window.Close())
                 }) // HStackPanel
             }); // HStackPanel
@@ -924,7 +916,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HStackPanel(new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
             {
                 HButton("Add Item",
-                    strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
+                    strStyle: PrimaryBtnBase,
                     onClick: _ =>
                     {
                         var list = items.Value.ToList();
@@ -933,7 +925,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                     }
                 ), // HButton
                 HButton("Remove Last",
-                    strStyle: PrimaryBtnBase + " bg-coffee-400 hover:bg-coffee-500 border-coffee-500",
+                    strStyle: SecondaryBtnBase,
                     onClick: _ =>
                     {
                         var list = items.Value.ToList();
@@ -992,15 +984,14 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HTextBlock("Debounced ID changes trigger async fetch; shows loading/error/success",
                 strStyle: "text-sm fg-coffee-700 mb-2"),
 
-            // 控制 ID 的按钮
             HStackPanel(new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
             {
                 HButton("Increase ID",
-                    strStyle: PrimaryBtnBase + " bg-matcha-400 hover:bg-matcha-500",
+                    strStyle: PrimaryBtnBase,
                     onClick: _ => userId.RxValue++
                 ), // HButton
                 HButton("Decrease ID",
-                    strStyle: PrimaryBtnBase + " bg-coffee-400 hover:bg-coffee-500 border-coffee-500",
+                    strStyle: SecondaryBtnBase,
                     onClick: _ => userId.RxValue--
                 ) // HButton
             }), // HStackPanel

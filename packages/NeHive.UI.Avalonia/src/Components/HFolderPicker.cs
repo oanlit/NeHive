@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 
@@ -10,39 +11,24 @@ public static partial class BaseComponent
     public static IElement HFolderPicker(
         MutSignal<string?> bindSelectedPath,
         string? title = null,
-        Accessor<string>? buttonText = null,
+        Accessor<string>? text = null,
         string? startDirectory = null,
-        string? strStyle = null)
+        Accessor<string>? strStyle = null,
+        Accessor<StyleSet>? style = null,
+        Dictionary<string, StyleSet>? variants = null)
     {
-        buttonText ??= "Select File";
+        text ??= "Select File";
         
         var uiScope = new UiScope();
-        var button = new Button();
-        var border = new Border
+        IElement button;
+
+        using (new ScopeFrame(uiScope))
         {
-            Child = button
-        };
-        
-        uiScope.CreateEffect(() => button.Content = buttonText?.RxValue ?? "Select File");
-        
-        Accessor<FullStyle>? style = null;
-        if (strStyle != null)
-        {
-            style = StyleParser.ParseFull(strStyle);
+            button = HButton(text, strStyle, style, variants);
         }
-        
-        if (style != null)
+        button.Content.PointerPressed += async (_, _) =>
         {
-            uiScope.CreateEffect(scope =>
-            {
-                var styleValue = scope.Track(style);
-                StyleUtil.ApplyStyle(styleValue.Normal, button, border);
-            });
-        }
-        
-        button.Click += async (_, _) =>
-        {
-            var topLevel = TopLevel.GetTopLevel(button);
+            var topLevel = TopLevel.GetTopLevel(button.Content);
             if (topLevel == null) return;
 
             var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
@@ -61,6 +47,6 @@ public static partial class BaseComponent
             }
         };
 
-        return new Element(uiScope, border);
+        return new Element(uiScope, button);
     }
 }

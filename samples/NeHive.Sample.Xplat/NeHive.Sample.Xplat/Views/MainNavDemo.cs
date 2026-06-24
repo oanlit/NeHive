@@ -329,7 +329,7 @@ public static class DemoComponent
                 bindText: textSignal,
                 placeholderText: "Type something...",
                 strStyle: "w-100 p-3 font-bold border border-blue-400 rounded-lg",
-                onTextChanged: newText => log.RxValue = $"Input changed: {newText}"
+                onTextInput: newText => log.RxValue = $"Input changed: {newText}"
             ), // HTextBox
             HTextBlock(new(() => $"Realtime Content: {textSignal.RxValue}"), strStyle: "mt-2 text-base"),
             HTextBlock(new(() => log.RxValue), strStyle: "text-sm fg-gray-500")
