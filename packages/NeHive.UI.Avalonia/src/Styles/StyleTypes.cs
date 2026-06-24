@@ -65,8 +65,8 @@ internal class TempStyle
     public Color? BorderToColor;
     
     public double? MaskGradientDir;
-    public Color? MaskFromColor;
-    public Color? MaskToColor;
+    public double? MaskFromColor;
+    public double? MaskToColor;
 
     public bool HasShadow = false;
     public BoxShadow? BoxShadow;

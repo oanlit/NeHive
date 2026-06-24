@@ -548,7 +548,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 Child = HUriImage(selectedFile,
                     stretch: Stretch.UniformToFill,
                     strStyle:
-                    "mask-gradient-t mask-from-black/50 mask-to-black/20 transition-transform ease-in-out duration-500 hover:scale-110"
+                    "mask-gradient-b mask-from-50 mask-to-20 transition-transform ease-in-out duration-500 hover:scale-110"
                 ), // HUriImage
             }) // HBlock
         }); // HStackPanel
@@ -557,7 +557,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
         {
             return selectedFile.RxValue is null
                 ? "bg-gray-50 border-gray-200"
-                : "gradient-t from-white to-pink-300 border-pink-200";
+                : "gradient-b from-pink-300 to-blue-300 border-pink-200";
         }
     }
 

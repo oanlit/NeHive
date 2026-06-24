@@ -229,8 +229,11 @@ public static class StyleParser
         if (background is not null) styles.Background = background;
 
         gradientDir = temp.MaskGradientDir;
-        fromColor = temp.MaskFromColor;
-        toColor = temp.MaskToColor;
+
+        if (temp.MaskFromColor is null) fromColor = null;
+        else fromColor = new Color((byte)(255 * temp.MaskFromColor / 100), 0, 0, 0);
+        if (temp.MaskToColor is null) toColor = null;
+        else toColor = new Color((byte)(255 * temp.MaskToColor / 100), 0, 0, 0);
 
         var mask = GetGradientBrush(gradientDir, fromColor, toColor);
         if (mask is not null) styles.OpacityMask = mask;

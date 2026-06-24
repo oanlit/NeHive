@@ -172,8 +172,8 @@ public class AtomHandler
         
         ["mask-"] = ApplyMask,
         ["mask-gradient-"] = (vals, _, set) => EnsureTemp(set).MaskGradientDir = TryGetDir(vals),
-        ["mask-from-"] = (vals, _, set) => EnsureTemp(set).MaskFromColor = ParseColor(vals),
-        ["mask-to-"] = (vals, _, set) => EnsureTemp(set).MaskToColor = ParseColor(vals),
+        ["mask-from-"] = (vals, _, set) => EnsureTemp(set).MaskFromColor = TryParseValue(vals[0]),
+        ["mask-to-"] = (vals, _, set) => EnsureTemp(set).MaskToColor = TryParseValue(vals[0]),
 
         // 边框
         ["border"] = (_, _, set) => set.BorderThickness = new Thickness(1),
@@ -1002,10 +1002,6 @@ public class AtomHandler
             var cacheKey = string.Join("-", colors);
             if (ColorResultCache.TryGetValue(cacheKey, out var cacheValue)) return cacheValue;
 
-            if (colors.Length is 1 && colors[0] is "black/0")
-            {
-                Console.WriteLine("has color black/0");
-            }
             var values = colors[^1].Split('/'); // 500/50
             if (values.Length > 2) return null;
 
