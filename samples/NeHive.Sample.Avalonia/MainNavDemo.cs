@@ -542,15 +542,23 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 strStyle: InputBaseStyle
             ), // HFilePicker
             HTextBlock(new(() => $"Selected File Path: {selectedFile.RxValue ?? "No file selected"}"),
-                strStyle: "mt-2 text-sm fg-gray-700 break-all"),
-            HBlock(new(strStyle: "mt-2 w-64 h-64 overflow-hidden bg-gray-50 border border-gray-200 rounded-xl")
+                strStyle: "mt-2 text-sm fg-coffee-700"),
+            HBlock(new(strStyle: new(() => $"mt-2 w-64 h-64 overflow-hidden {MaskColor()} border rounded-xl"))
             {
                 Child = HUriImage(selectedFile,
                     stretch: Stretch.UniformToFill,
-                    strStyle: "transition-transform ease-in-out duration-500 hover:scale-110"
+                    strStyle:
+                    "mask-gradient-t mask-from-black/50 mask-to-black/20 transition-transform ease-in-out duration-500 hover:scale-110"
                 ), // HUriImage
             }) // HBlock
         }); // HStackPanel
+
+        string MaskColor()
+        {
+            return selectedFile.RxValue is null
+                ? "bg-gray-50 border-gray-200"
+                : "gradient-t from-white to-pink-300 border-pink-200";
+        }
     }
 
     #endregion
@@ -627,10 +635,11 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                     {
                         HButton("Open", strStyle: "text-sm fg-matcha-700 bg-matcha-200/0 hover:bg-matcha-300",
                             onClick: _ => SetSelect(flyout, "Open")),
-                        // HButton
                         HButton("Save", strStyle: "text-sm fg-matcha-700 bg-transparent hover:bg-matcha-300",
                             onClick: _ => SetSelect(flyout, "Save")),
-                        // HButton
+                        HSeparator(strStyle: "h-0.25 bg-matcha-700"),
+                        HButton("Exit", strStyle: "text-sm fg-matcha-700 bg-transparent hover:bg-matcha-300",
+                            onClick: _ => SetSelect(flyout, "Exit")),
                     }) // HFlyout.Content
                 }), // HFlyout
 
@@ -803,36 +812,6 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
             HTextBlock(new(() => $"Selected Region: {selectedCountry.RxValue?.Name ?? "Nothing selected"}"),
                 strStyle: "mt-2 fw-medium fg-matcha-600")
         });
-    }
-
-    #endregion
-
-    #region Top Menu Bar Demo
-
-    private static IElement MenuDemo()
-    {
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
-        {
-            HTextBlock("Menu Top Navigation Bar Demo", strStyle: SectionTitleStyle),
-            HMenu(new(strStyle: "p-2 bg-gray-50 rounded-lg border border-gray-200 w-fit")
-            {
-                new(header: "File", strStyle: "px-3 py-1 rounded hover:bg-gray-200 transition-colors")
-                {
-                    new(header: "Open Document", onClick: () => Console.WriteLine("Open File Command Triggered"),
-                        strStyle: "px-3 py-1 hover:bg-matcha-50"),
-                    new(header: "Save Changes", onClick: () => Console.WriteLine("Save File Command Triggered"),
-                        strStyle: "px-3 py-1 hover:bg-matcha-50"),
-                    new(header: "-"),
-                    new(header: "Exit Application", onClick: () => Environment.Exit(0),
-                        strStyle: "px-3 py-1 hover:bg-rose-50 text-rose-600")
-                },
-                new(header: "Edit", strStyle: "px-3 py-1 rounded hover:bg-gray-200 transition-colors")
-                {
-                    new(header: "Copy Selection", strStyle: "px-3 py-1 hover:bg-matcha-50"),
-                    new(header: "Paste Content", strStyle: "px-3 py-1 hover:bg-matcha-50")
-                }
-            }) // HMenu
-        }); // HStackPanel
     }
 
     #endregion
@@ -2002,8 +1981,7 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
                 DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.ProgressBarDemo,
                 DemoView.SliderDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
 
-            new("📋 Data Selection & Lists", DemoView.TreeViewDemo, DemoView.ComboBoxDemo,
-                DemoView.MenuDemo),
+            new("📋 Data Selection & Lists", DemoView.TreeViewDemo, DemoView.ComboBoxDemo),
 
             new("⚙️ Reactive Control Flow", DemoView.ShowDemo, DemoView.SwitchDemo,
                 DemoView.MatchDemo, DemoView.ForEachDemo, DemoView.LoadingDemo),
@@ -2119,7 +2097,6 @@ hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:
 
                                 [DemoView.TreeViewDemo] = TreeViewDemo,
                                 [DemoView.ComboBoxDemo] = ComboBoxDemo,
-                                [DemoView.MenuDemo] = MenuDemo,
 
                                 [DemoView.ShowDemo] = ShowDemo,
                                 [DemoView.SwitchDemo] = SwitchDemo,
@@ -2192,7 +2169,6 @@ public enum DemoView
 
     TreeViewDemo,
     ComboBoxDemo,
-    MenuDemo,
 
     ShowDemo,
     SwitchDemo,

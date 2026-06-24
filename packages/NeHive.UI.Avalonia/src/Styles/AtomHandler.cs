@@ -169,6 +169,11 @@ public class AtomHandler
         ["bg-center"] = (_, _, set) => set.BackgroundSizing = BackgroundSizing.CenterBorder,
         ["bg-inner"] = (_, _, set) => set.BackgroundSizing = BackgroundSizing.InnerBorderEdge,
         ["bg-outer"] = (_, _, set) => set.BackgroundSizing = BackgroundSizing.OuterBorderEdge,
+        
+        ["mask-"] = ApplyMask,
+        ["mask-gradient-"] = (vals, _, set) => EnsureTemp(set).MaskGradientDir = TryGetDir(vals),
+        ["mask-from-"] = (vals, _, set) => EnsureTemp(set).MaskFromColor = ParseColor(vals),
+        ["mask-to-"] = (vals, _, set) => EnsureTemp(set).MaskToColor = ParseColor(vals),
 
         // 边框
         ["border"] = (_, _, set) => set.BorderThickness = new Thickness(1),
@@ -181,6 +186,8 @@ public class AtomHandler
         ["border-r-"] = ApplyBorderRightWidth,
         ["border-b-"] = ApplyBorderBottomWidth,
         ["border-l-"] = ApplyBorderLeftWidth,
+        
+        // 圆角
         ["rounded"] = (_, _, set) => set.CornerRadius = new CornerRadius(4),
         ["rounded-"] = ApplyCornerRadius,
         ["rounded-sm"] = (_, _, set) => set.CornerRadius = new CornerRadius(2),
@@ -613,6 +620,14 @@ public class AtomHandler
         if (c is null) return;
         set.Background = new SolidColorBrush(c.Value);
     }
+    
+    private static void ApplyMask(string[] color, bool isNegative, StyleSet set)
+    {
+        if (isNegative) return;
+        var c = ParseColor(color);
+        if (c is null) return;
+        set.OpacityMask = new SolidColorBrush(c.Value);
+    }
 
     private static void ApplyBorderBrush(string[] color, bool isNegative, StyleSet set)
     {
@@ -987,6 +1002,10 @@ public class AtomHandler
             var cacheKey = string.Join("-", colors);
             if (ColorResultCache.TryGetValue(cacheKey, out var cacheValue)) return cacheValue;
 
+            if (colors.Length is 1 && colors[0] is "black/0")
+            {
+                Console.WriteLine("has color black/0");
+            }
             var values = colors[^1].Split('/'); // 500/50
             if (values.Length > 2) return null;
 
@@ -1005,7 +1024,7 @@ public class AtomHandler
 
             if (Colors.ColorDict.TryGetValue(color, out result))
             {
-                if (result.A is 1)
+                if (result.A is 255)
                 {
                     result = Color.FromArgb((byte)(255 * a / 100), result.R, result.G, result.B);
                 }

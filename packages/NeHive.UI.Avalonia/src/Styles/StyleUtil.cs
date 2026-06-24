@@ -65,13 +65,16 @@ public static class StyleUtil
 
         if (style.Background is not null) border.Background = style.Background;
         if (style.BackgroundSizing is not null) border.BackgroundSizing = style.BackgroundSizing.Value;
+        if (style.OpacityMask is not null) border.OpacityMask = style.OpacityMask;
 
         if (style.BorderBrush is not null) border.BorderBrush = style.BorderBrush;
         if (style.BorderThickness.HasValue) border.BorderThickness = style.BorderThickness.Value;
+
         if (style.CornerRadius is not null) border.CornerRadius = style.CornerRadius.Value;
         if (style.Opacity is not null) border.Opacity = style.Opacity.Value;
 
         if (style.ClipToBounds is not null) border.ClipToBounds = style.ClipToBounds.Value;
+        if (style.Clip is not null) border.Clip = style.Clip;
         if (style.Effect is not null) border.Effect = style.Effect;
         var boxShadows = style.BoxShadows;
         if (boxShadows is null || boxShadows.Count is 0)
@@ -148,6 +151,7 @@ public static class StyleUtil
 
                 target.Background = source.Background;
                 target.BorderBrush = source.BorderBrush;
+                target.OpacityMask = source.OpacityMask;
                 target.BorderThickness = source.BorderThickness;
                 target.CornerRadius = source.CornerRadius;
 
@@ -155,6 +159,7 @@ public static class StyleUtil
                 target.IsVisible = source.IsVisible;
 
                 target.ClipToBounds = source.ClipToBounds;
+                target.Clip = source.Clip;
                 target.Effect = source.Effect;
                 if (source.BoxShadows is null) target.BoxShadows = null;
                 else target.BoxShadows = [..source.BoxShadows];
@@ -184,6 +189,7 @@ public static class StyleUtil
             if (source.VerticalAlignment is not null) target.VerticalAlignment = source.VerticalAlignment;
 
             if (source.Background is not null) target.Background = source.Background;
+            if (source.OpacityMask is not null) target.OpacityMask = source.OpacityMask;
             if (source.BorderBrush is not null) target.BorderBrush = source.BorderBrush;
             if (source.BorderThickness is not null) target.BorderThickness = source.BorderThickness;
             if (source.CornerRadius is not null) target.CornerRadius = source.CornerRadius;
@@ -192,6 +198,7 @@ public static class StyleUtil
             if (source.IsVisible is not null) target.IsVisible = source.IsVisible;
 
             if (source.ClipToBounds is not null) target.ClipToBounds = source.ClipToBounds;
+            if (source.Clip is not null) target.Clip = source.Clip;
             if (source.Effect is not null) target.Effect = source.Effect;
             if (source.BoxShadows is not null) target.BoxShadows = [..source.BoxShadows];
             if (source.Cursor is not null) target.Cursor = source.Cursor;

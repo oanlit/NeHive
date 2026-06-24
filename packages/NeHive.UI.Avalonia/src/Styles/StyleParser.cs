@@ -211,7 +211,7 @@ public static class StyleParser
         });
     }
 
-    internal static void MergeTemp(ref StyleSet styles)
+    private static void MergeTemp(ref StyleSet styles)
     {
         var temp = styles.TempStyle;
         if (temp is null) return;
@@ -227,6 +227,13 @@ public static class StyleParser
         toColor = temp.BgToColor;
         var background = GetGradientBrush(gradientDir, fromColor, toColor);
         if (background is not null) styles.Background = background;
+
+        gradientDir = temp.MaskGradientDir;
+        fromColor = temp.MaskFromColor;
+        toColor = temp.MaskToColor;
+
+        var mask = GetGradientBrush(gradientDir, fromColor, toColor);
+        if (mask is not null) styles.OpacityMask = mask;
 
         gradientDir = temp.BorderGradientDir;
         fromColor = temp.BorderFromColor;
@@ -275,7 +282,7 @@ public static class StyleParser
             if (boxShadowHasValue) boxShadows.Add(boxShadow);
 
             if (temp.BoxShadow is not null) boxShadows.Add(temp.BoxShadow.Value);
-        
+
             styles.BoxShadows ??= [];
             for (var i = boxShadows.Count - 1; i >= 0; i--)
             {

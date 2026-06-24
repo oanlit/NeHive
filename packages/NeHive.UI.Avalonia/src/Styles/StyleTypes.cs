@@ -27,6 +27,7 @@ public class BaseStyle
     public VerticalAlignment? VerticalAlignment;
 
     public IBrush? Background;
+    public IBrush? OpacityMask;
     public IBrush? BorderBrush;
     public Thickness? BorderThickness;
     public BackgroundSizing? BackgroundSizing;
@@ -36,6 +37,7 @@ public class BaseStyle
     public bool? IsVisible;
 
     public bool? ClipToBounds;
+    public Geometry? Clip;
     public IEffect? Effect;
     public List<BoxShadow>? BoxShadows;
     public Cursor? Cursor;
@@ -61,6 +63,10 @@ internal class TempStyle
     public double? BorderGradientDir;
     public Color? BorderFromColor;
     public Color? BorderToColor;
+    
+    public double? MaskGradientDir;
+    public Color? MaskFromColor;
+    public Color? MaskToColor;
 
     public bool HasShadow = false;
     public BoxShadow? BoxShadow;
