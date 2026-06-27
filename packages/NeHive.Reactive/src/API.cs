@@ -1102,7 +1102,7 @@ public class AsyncMemo<T> : Signal<T?>
 
         if (error is not null)
         {
-            _loadEnd(_result, default, error);
+            _loadEnd(result, default, error);
             return Task.FromResult<T?>(default);
         }
 
@@ -1129,11 +1129,11 @@ public class AsyncMemo<T> : Signal<T?>
             try
             {
                 var v = await result;
-                return _loadEnd(_result, v);
+                return _loadEnd(result, v);
             }
             catch (Exception err)
             {
-                return _loadEnd(_result, default, err);
+                return _loadEnd(result, default, err);
             }
         }
     }

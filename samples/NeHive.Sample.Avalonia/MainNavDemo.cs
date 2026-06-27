@@ -31,11 +31,11 @@ public static class DemoComponent
     /// <summary>Horizontal row layout base with wrap support</summary>
     private const string HorizontalRowBase = "gap-3 horizontal items-center ";
 
-    /// <summary>Primary action button base style</summary>
+    /// <summary>Primary button base style</summary>
     private const string PrimaryBtnBase = @"px-3 py-1.5 fg-white bg-matcha-400 border border-matcha-500 rounded-lg 
 hover:bg-matcha-500 click:bg-matcha-600 transition-transform duration-100 click:scale-95 ";
 
-    /// <summary>Secondary / neutral button base style</summary>
+    /// <summary>Secondary button base style</summary>
     private const string SecondaryBtnBase = @"px-3 py-1.5 fg-white bg-coffee-400 border border-coffee-500 rounded-lg 
 hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:scale-95 ";
 
@@ -62,7 +62,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
         var count = new MutSignal<int>(0);
         var countText = () => $"Count: {count.RxValue}";
 
-        return HStackPanel(new(strStyle: DemoCardBase + " gap-3 vertical w-64")
+        return HStackPanel(new(strStyle: DemoCardBase + " w-64 gap-3 vertical")
         {
             HTextBlock($"Counter Instance #{id}",
                 strStyle: "text-lg fw-semibold fg-matcha-700"
@@ -167,7 +167,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             }),
             HTextBlock("Absolute uses fixed Left/Top offsets for child positioning",
                 strStyle: "text-xs fg-coffee-400 mt-2 italic")
-        });
+        }); // HStackPanel
     }
 
     #endregion
@@ -204,7 +204,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             HButton("Toggle Sidebar",
                 strStyle: PrimaryBtnBase,
                 onClick: _ => isPaneOpen.RxValue = !isPaneOpen.RxValue)
-        });
+        }); // HStackPanel
     }
 
     #endregion
@@ -704,6 +704,8 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             return;
         }
 
+        var parentIsLock = scope.GetContext(ContextKey.LockWindowCount);
+
         var dialog = scope.CreateWindow((window, _) =>
         {
             return HStackPanel(new(strStyle: VerticalStackBase + "mt-2 w-100 h-60 p-4")
@@ -729,8 +731,16 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         // dialog.Width = 400;
         // dialog.Height = 240;
+
+        dialog.Closed += (_, _) =>
+        {
+            if(parentIsLock is null) return;
+            parentIsLock.RxValue = parentIsLock.Value - 1;
+        };
         dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         dialog.ShowDialog(parentWindow);
+        if(parentIsLock is null) return;
+        parentIsLock.RxValue = parentIsLock.Value + 1;
         return;
 
         void CancelInput(Window window)
@@ -803,7 +813,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             }),
             HTextBlock(new(() => $"Selected Region: {selectedCountry.RxValue?.Name ?? "Nothing selected"}"),
                 strStyle: "mt-2 fw-medium fg-matcha-600")
-        });
+        }); // HStackPanel
     }
 
     #endregion
@@ -827,8 +837,8 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 {
                     IfTrue = () => HTextBlock("✨ Extra content is now visible",
                         strStyle: "fg-matcha-600 italic")
-                })
-            })
+                }) // Show
+            }) // HStackPanel
         });
     }
 
@@ -851,7 +861,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 HButton("Value 0", strStyle: SecondaryBtnBase, onClick: _ => switchValue.RxValue = 0),
                 HButton("Value 1", strStyle: SecondaryBtnBase, onClick: _ => switchValue.RxValue = 1),
                 HButton("Value 2", strStyle: SecondaryBtnBase, onClick: _ => switchValue.RxValue = 2)
-            }),
+            }), // HStackPanel
             HStackPanel(new(strStyle: "mt-2 p-3 bg-matcha-50 rounded-xl border border-matcha-200 w-full")
             {
                 Switch<int>(new(switchValue)
@@ -863,8 +873,8 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                         [2] = () => HTextBlock("Selected: 2 – third option", strStyle: "fg-matcha-500")
                     },
                     Default = () => HTextBlock("Unknown value", strStyle: "fg-coffee-400")
-                })
-            })
+                }) // Switch<int>
+            }) // HStackPanel
         });
     }
 
@@ -889,14 +899,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 {
                     Cases = new()
                     {
-                        [v => v == 0] = () => HTextBlock("⭐ Zero", strStyle: "fg-matcha-700"),
-                        [v => v > 0 && v <= 5] = () => HTextBlock("🔵 Small (1–5)", strStyle: "fg-matcha-600"),
+                        [v => v is 0] = () => HTextBlock("⭐ Zero", strStyle: "fg-matcha-700"),
+                        [v => v is > 0 and <= 5] = () => HTextBlock("🔵 Small (1–5)", strStyle: "fg-matcha-600"),
                         [v => v > 5] = () => HTextBlock("🟢 Large (6–10)", strStyle: "fg-matcha-500")
                     },
                     Default = () => HTextBlock("No match", strStyle: "fg-coffee-400")
-                })
-            })
-        });
+                }) // Match<double>
+            }) // HStackPanel
+        }); // HStackPanel
     }
 
     #endregion
@@ -1023,7 +1033,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
         return rootElement;
     }
 
-    public static IElement LoadingDemo() => Element.WithScope(LoadingDemoComp);
+    private static IElement LoadingDemo() => Element.WithScope(LoadingDemoComp);
 
     #endregion
 
@@ -1193,7 +1203,6 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     }
 
     #endregion
-
 
     #region Spacing Demo (Margin & Gap)
 
@@ -2123,6 +2132,28 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     }
 
     #endregion
+
+    public static IElement MainNav()
+    {
+        return Element.WithScope(scope =>
+        {
+            var isLockWindow = scope.GetContext(ContextKey.LockWindowCount);
+            var lockStyle = scope.CreateComputed(() =>
+                isLockWindow?.RxValue is 0
+                    ? "hidden"
+                    : "w-9999 h-9999 bg-black/40 visible"
+            );
+
+            return scope.RootElement(new(strStyle: "w-full h-full")
+            {
+                HPanel(new(strStyle: "w-full h-full")
+                {
+                    MainNavDemo(),
+                    HBlock(new(strStyle: lockStyle))
+                }) // HPanel
+            }); // RootElement
+        });
+    }
 
     // Helper Record Type
     private record DemoCategory(string Name, params DemoView[] Demos);

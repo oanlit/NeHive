@@ -137,4 +137,29 @@ public class AsyncMemoTest
 
         Assert.Equal(1, setupRuns);
     }
+    
+    [Fact]
+    public async Task AsyncMemo_Should_Handle_Burst_Race()
+    {
+        var signal = new MutSignal<int>(1);
+        var memo = new AsyncMemo<int>(async epoch =>
+        {
+            var v = epoch.Pull(signal);
+            switch (v)
+            {
+                case 0:
+                    return v;
+                case 1:
+                    await Task.Delay(100);
+                    return v;
+                default:
+                    await Task.Delay(10);
+                    return v;
+            }
+        });
+        signal.RxValue = 1;
+        signal.RxValue = 2;
+        await Task.Delay(200);
+        Assert.Equal(2, memo.Value);
+    }
 }

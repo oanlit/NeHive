@@ -77,7 +77,7 @@ public class Scope : IScope
     {
     }
 
-    private readonly List<Scope> _children = [];
+    private List<Scope> _children = [];
 
     /// <summary>
     /// Gets the parent scope.
@@ -278,6 +278,8 @@ public class Scope : IScope
         try
         {
             Cleanup();
+            _children = null!;
+            ClearContext();
         }
         finally
         {
@@ -290,6 +292,8 @@ public class Scope : IScope
         try
         {
             Cleanup(exceptions);
+            _children = null!;
+            ClearContext();
         }
         finally
         {
@@ -302,6 +306,9 @@ public class Scope : IScope
         try
         {
             Cleanup(out exceptions);
+            
+            _children = null!;
+            ClearContext();
         }
         finally
         {

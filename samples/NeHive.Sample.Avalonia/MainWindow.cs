@@ -13,17 +13,20 @@ public class MainWindow : Window
     public MainWindow()
     {
         Width = 1000;
-        Height = 700;
+        Height = 720;
         Title = "NeHive UI Avalonia Demo";
         var size = new MutSignal<Size>(ClientSize);
         Resized += (_, e) => size.RxValue = e.ClientSize;
+
+        var isLockWindow = new MutSignal<int>(0);
         _scope
             .SetContext(NeHiveUiContext.Window, this)
-            .SetContext(NeHiveUiContext.WindowSize, size);
+            .SetContext(NeHiveUiContext.WindowSize, size)
+            .SetContext(ContextKey.LockWindowCount, isLockWindow);
 
         using (new ScopeFrame(_scope))
         {
-            Content = DemoComponent.MainNavDemo().Content;
+            Content = DemoComponent.MainNav().Content;
         }
     }
 

@@ -72,10 +72,11 @@ public static class StyleUtil
 
         if (style.CornerRadius is not null) border.CornerRadius = style.CornerRadius.Value;
         if (style.Opacity is not null) border.Opacity = style.Opacity.Value;
+        if (style.IsVisible is not null) border.IsVisible = style.IsVisible.Value;
 
         if (style.ClipToBounds is not null) border.ClipToBounds = style.ClipToBounds.Value;
-        if (style.Clip is not null) border.Clip = style.Clip;
-        if (style.Effect is not null) border.Effect = style.Effect;
+        border.Clip = style.Clip;
+        border.Effect = style.Effect;
         var boxShadows = style.BoxShadows;
         if (boxShadows is null || boxShadows.Count is 0)
         {
