@@ -1,6 +1,6 @@
 namespace NeHive.UI.Avalonia.Components;
 
-public class HExpander
+public static partial class BaseComponent
 {
     
 }
