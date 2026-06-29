@@ -1,0 +1,26 @@
+<Solution>
+    <Folder Name="/NeHive.Model/src/">
+        <Project Path="NeHive.Model/src/NeHive.Model.csproj" />
+    </Folder>
+    <Folder Name="/NeHive.Model/tests/">
+        <Project Path="NeHive.Model/tests/NeHive.Model.Tests.csproj" />
+    </Folder>
+
+    <Folder Name="/NeHive.Reactive/src/">
+        <Project Path="NeHive.Reactive/src/NeHive.Reactive.csproj" />
+    </Folder>
+    <Folder Name="/NeHive.Reactive/tests/">
+        <Project Path="NeHive.Reactive/tests/NeHive.Reactive.Tests.csproj" />
+    </Folder>
+
+    <Folder Name="/NeHive.Generator/src/">
+        <Project Path="NeHive.Generator/src/NeHive.Generator.csproj" />
+    </Folder>
+    <Folder Name="/NeHive.Generator/tests/">
+        <Project Path="NeHive.Generator/tests/NeHive.Generator.Tests.csproj" />
+    </Folder>
+
+    <Folder Name="/NeHive.UI.Avalonia/src/">
+        <Project Path="NeHive.UI.Avalonia/src/NeHive.UI.Avalonia.csproj" />
+    </Folder>
+</Solution>
