@@ -676,7 +676,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var text = new MutSignal<string?>("");
 
-        return scope.RootElement(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Window & Dialog Management", strStyle: SectionTitleStyle),
             HTextBlock("Open a modal dialog to input text; result reflects back here",
@@ -734,12 +734,12 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         dialog.Closed += (_, _) =>
         {
-            if(parentIsLock is null) return;
+            if (parentIsLock is null) return;
             parentIsLock.RxValue = parentIsLock.Value - 1;
         };
         dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         dialog.ShowDialog(parentWindow);
-        if(parentIsLock is null) return;
+        if (parentIsLock is null) return;
         parentIsLock.RxValue = parentIsLock.Value + 1;
         return;
 
@@ -988,7 +988,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 return user;
             }, initValue: new User(0, "Unknown User"));
 
-        var rootElement = uiScope.RootElement(new(strStyle: DemoCardBase + VerticalStackBase)
+        var rootElement = HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Loading – Asynchronous State Management", strStyle: SectionTitleStyle),
             HTextBlock("Debounced ID changes trigger async fetch; shows loading/error/success",
@@ -1008,12 +1008,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
             Loading<User>(new(userMemo)
             {
-                Success = user => HChildren(
+                Success = user => HStackPanel(new()
+                {
                     HTextBlock($"User ID: {user.Id}",
                         strStyle: "mt-2 text-lg fw-medium fg-matcha-800"),
                     HTextBlock($"Welcome, {user.Name}",
                         strStyle: "text-xl fw-semibold fg-matcha-600")
-                ), // Loading<User>.Success
+                }), // Loading<User>.Success
                 Loading = _ =>
                     HStackPanel(new(strStyle: HorizontalRowBase + " p-3 bg-matcha-50 rounded-lg w-full justify-center")
                     {
@@ -1046,7 +1047,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         AddLog("Root component initialized");
 
-        var root = uiScope.RootElement(new(strStyle: DemoCardBase + VerticalStackBase)
+        var root = HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Component Lifecycle Tracking Demo", strStyle: SectionTitleStyle),
 
@@ -1060,7 +1061,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 {
                     AddLog("Dynamic child component initialized");
 
-                    var childRootElement = childScope.RootElement(
+                    var childRootElement = HStackPanel(
                         new(strStyle: "p-3 bg-amber-50 border border-amber-200 rounded-lg")
                         {
                             HTextBlock(
@@ -1884,7 +1885,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             HContext(ctx => ctx
                     .SetContext(Theme, theme)
                     .SetContext(ToggleTheme, Toggle),
-                () => HStackPanel(new(strStyle: "gap-6 vertical w-full")
+                HStackPanel(new(strStyle: "gap-6 vertical w-full")
                 {
                     UseContextDemo1(),
                     UseContextDemo2()
@@ -1902,30 +1903,27 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             var theme = uiScope.GetContext(Theme);
             var toggleTheme = uiScope.GetContext(ToggleTheme);
             if (theme is null || toggleTheme is null) throw new ArgumentNullException();
-            return uiScope.RootElement(new()
+            return HStackPanel(new()
             {
                 HContentButton(new(strStyle: new(() =>
                         $"""
-                         px-4 py-2 horizontal rounded-lg
-                         {(theme.RxValue is "dark" ? "fg-matcha-100 bg-matcha-900 border-matcha-700" : "fg-coffee-700 bg-coffee-50 border-matcha-200")} 
+                         {(theme.RxValue is "dark" ? "fg-matcha-100 bg-matcha-900 border-matcha-700" : "fg-coffee-700 bg-coffee-50 border-matcha-200")}
+                         rounded-lg
                          transition-colors duration-300 border-w-1 focus:ring-w-2 focus:ring-matcha-300
                          """),
                     onClick: _ => toggleTheme())
                 {
-                    Content = HStackPanel(new()
+                    Content = HStackPanel(new(strStyle:"px-4 py-2 horizontal")
                     {
                         Switch<string>(new(theme)
                         {
                             Cases = new()
                             {
                                 ["dark"] = () => HSvgImage("~/Assets/sun.svg",
-                                    strStyle: new(() =>
-                                        $"w-4 h-4 fw-extralight fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
+                                    strStyle: "w-4 h-4 fw-extralight fg-matcha-200")
                             }, // Switch<string>.Cases
                             Default = () => HSvgImage("~/Assets/moon.svg",
-                                strStyle:
-                                new(() =>
-                                    $"w-4 h-4 fw-extralight fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
+                                strStyle:"w-4 h-4 fw-extralight fg-coffee-700")
                         }), // Switch<string>
                         HTextBlock(new(() => $"Switch To {(theme.RxValue is "dark" ? "Light" : "Dark")} Theme Mode"),
                             strStyle: new(() => $"ml-2 fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
@@ -1943,7 +1941,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             var toggleTheme = uiScope.GetContext(ToggleTheme);
             if (theme is null || toggleTheme is null) throw new ArgumentNullException();
 
-            return uiScope.RootElement(new(strStyle: new(() =>
+            return HStackPanel(new(strStyle: new(() =>
                 $"""
                  mt-2 mx-auto max-w-md overflow-hidden rounded-xl shadow-md border-w-1
                  {(theme.RxValue is "dark" ? "bg-matcha-900 border-matcha-700" : "bg-coffee-50 border-matcha-200")} 
@@ -2144,7 +2142,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     : "w-9999 h-9999 bg-black/40 visible"
             );
 
-            return scope.RootElement(new(strStyle: "w-full h-full")
+            return HStackPanel(new(strStyle: "w-full h-full")
             {
                 HPanel(new(strStyle: "w-full h-full")
                 {

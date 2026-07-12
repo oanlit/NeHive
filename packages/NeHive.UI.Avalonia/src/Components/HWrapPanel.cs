@@ -45,65 +45,67 @@ public static partial class BaseComponent
 {
     public static IElement<WrapPanel> HWrapPanel(HWrapPanelProp prop)
     {
-        var uiScope = new UiScope();
-        var wrapPanel = new WrapPanel();
-        var border = new Border
+        return Element<WrapPanel>.WithScope(uiScope =>
         {
-            Child = wrapPanel
-        };
-
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-
-        state.ApplyAccessorStyle(prop.Style, wrapPanel, border, ApplyStyle);
-        state.ApplyVariantsStyle(wrapPanel, border, ApplyStyle);
-
-        if (prop.ItemWidth is not null)
-        {
-            uiScope.CreateEffect(scope =>
+            var wrapPanel = new WrapPanel();
+            var border = new Border
             {
-                var itemWidth = scope.Track(prop.ItemWidth);
-                wrapPanel.ItemWidth = itemWidth;
-            });
-        }
+                Child = wrapPanel
+            };
 
-        if (prop.ItemHeight is not null)
-        {
-            uiScope.CreateEffect(scope =>
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
             {
-                var itemHeight = scope.Track(prop.ItemHeight);
-                wrapPanel.ItemHeight = itemHeight;
-            });
-        }
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
 
-        // 添加子元素
-        foreach (var child in prop)
-        {
-            wrapPanel.Children.Add(child.Content);
-        }
+            state.ApplyAccessorStyle(prop.Style, wrapPanel, border, ApplyStyle);
+            state.ApplyVariantsStyle(wrapPanel, border, ApplyStyle);
 
-        return new Element<WrapPanel>(uiScope, border, wrapPanel);
-
-        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
-        {
-            StyleUtil.ApplyStyle(styleValue, layout, bord);
-
-            var orientation = styleValue.Orientation;
-            if (orientation is null) return;
-
-            if (orientation is Orientation.Horizontal)
+            if (prop.ItemWidth is not null)
             {
-                if (styleValue.RowSpacing is not null) wrapPanel.ItemSpacing = styleValue.RowSpacing.Value;
-                if (styleValue.ColumnSpacing is not null) wrapPanel.LineSpacing = styleValue.ColumnSpacing.Value;
+                uiScope.CreateEffect(scope =>
+                {
+                    var itemWidth = scope.Track(prop.ItemWidth);
+                    wrapPanel.ItemWidth = itemWidth;
+                });
             }
-            else
+
+            if (prop.ItemHeight is not null)
             {
-                if (styleValue.ColumnSpacing is not null) wrapPanel.ItemSpacing = styleValue.ColumnSpacing.Value;
-                if (styleValue.RowSpacing is not null) wrapPanel.LineSpacing = styleValue.RowSpacing.Value;
+                uiScope.CreateEffect(scope =>
+                {
+                    var itemHeight = scope.Track(prop.ItemHeight);
+                    wrapPanel.ItemHeight = itemHeight;
+                });
             }
-        }
+
+            // 添加子元素
+            foreach (var child in prop)
+            {
+                wrapPanel.Children.Add(child.Content);
+            }
+
+            return (wrapPanel, border);
+
+            void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
+            {
+                StyleUtil.ApplyStyle(styleValue, layout, bord);
+
+                var orientation = styleValue.Orientation;
+                if (orientation is null) return;
+
+                if (orientation is Orientation.Horizontal)
+                {
+                    if (styleValue.RowSpacing is not null) wrapPanel.ItemSpacing = styleValue.RowSpacing.Value;
+                    if (styleValue.ColumnSpacing is not null) wrapPanel.LineSpacing = styleValue.ColumnSpacing.Value;
+                }
+                else
+                {
+                    if (styleValue.ColumnSpacing is not null) wrapPanel.ItemSpacing = styleValue.ColumnSpacing.Value;
+                    if (styleValue.RowSpacing is not null) wrapPanel.LineSpacing = styleValue.RowSpacing.Value;
+                }
+            }
+        });
     }
 }

@@ -43,138 +43,139 @@ public static partial class BaseComponent
 {
     public static IElement<Flyout> HFlyout(HFlyoutProp prop)
     {
-        var uiScope = new UiScope();
-
-        var theme = new ControlTheme(typeof(FlyoutPresenter));
-        theme.Setters.Add(new Setter(
-            TemplatedControl.BorderThicknessProperty, new Thickness(0)));
-        theme.Setters.Add(new Setter(
-            TemplatedControl.BackgroundProperty, Brushes.Transparent));
-        theme.Setters.Add(new Setter(
-            TemplatedControl.PaddingProperty, new Thickness(8)));
-
-        var flyout = new Flyout
+        return Element<Flyout>.WithScope(uiScope =>
         {
-            FlyoutPresenterTheme = theme
-        };
+            var theme = new ControlTheme(typeof(FlyoutPresenter));
+            theme.Setters.Add(new Setter(
+                TemplatedControl.BorderThicknessProperty, new Thickness(0)));
+            theme.Setters.Add(new Setter(
+                TemplatedControl.BackgroundProperty, Brushes.Transparent));
+            theme.Setters.Add(new Setter(
+                TemplatedControl.PaddingProperty, new Thickness(8)));
 
-        if (prop.Content is not null)
-        {
-            var content = prop.Content(flyout).Content;
-            flyout.Content = content;
-        }
-
-        // var flyoutPresenter = new FlyoutPresenter();
-        // var presenter = flyout.FlyoutPresenterClasses;
-
-        var horizontalOffset = prop.HorizontalOffset;
-        if (horizontalOffset is not null)
-        {
-            flyout.HorizontalOffset = horizontalOffset.Value;
-            if (horizontalOffset.IsReactive)
+            var flyout = new Flyout
             {
-                uiScope.CreateEffect(scope => flyout.HorizontalOffset = scope.Track(horizontalOffset));
-            }
-        }
+                FlyoutPresenterTheme = theme
+            };
 
-        var verticalOffset = prop.VerticalOffset;
-        if (verticalOffset is not null)
-        {
-            flyout.VerticalOffset = verticalOffset.Value;
-            if (verticalOffset.IsReactive)
+            if (prop.Content is not null)
             {
-                uiScope.CreateEffect(scope => flyout.HorizontalOffset = scope.Track(verticalOffset));
+                var content = prop.Content(flyout).Content;
+                flyout.Content = content;
             }
-        }
 
-        var showMode = prop.ShowMode;
-        if (showMode is not null)
-        {
-            flyout.ShowMode = showMode.Value;
-            if (showMode.IsReactive)
+            // var flyoutPresenter = new FlyoutPresenter();
+            // var presenter = flyout.FlyoutPresenterClasses;
+
+            var horizontalOffset = prop.HorizontalOffset;
+            if (horizontalOffset is not null)
             {
-                uiScope.CreateEffect(scope => flyout.ShowMode = scope.Track(showMode));
+                flyout.HorizontalOffset = horizontalOffset.Value;
+                if (horizontalOffset.IsReactive)
+                {
+                    uiScope.CreateEffect(scope => flyout.HorizontalOffset = scope.Track(horizontalOffset));
+                }
             }
-        }
 
-        var placement = prop.Placement;
-        if (placement is not null)
-        {
-            flyout.Placement = placement.Value;
-            if (placement.IsReactive)
+            var verticalOffset = prop.VerticalOffset;
+            if (verticalOffset is not null)
             {
-                uiScope.CreateEffect(scope => flyout.Placement = scope.Track(placement));
+                flyout.VerticalOffset = verticalOffset.Value;
+                if (verticalOffset.IsReactive)
+                {
+                    uiScope.CreateEffect(scope => flyout.HorizontalOffset = scope.Track(verticalOffset));
+                }
             }
-        }
 
-        var placementGravity = prop.PlacementGravity;
-        if (placementGravity is not null)
-        {
-            flyout.PlacementGravity = placementGravity.Value;
-            if (placementGravity.IsReactive)
+            var showMode = prop.ShowMode;
+            if (showMode is not null)
             {
-                uiScope.CreateEffect(scope => flyout.PlacementGravity = scope.Track(placementGravity));
+                flyout.ShowMode = showMode.Value;
+                if (showMode.IsReactive)
+                {
+                    uiScope.CreateEffect(scope => flyout.ShowMode = scope.Track(showMode));
+                }
             }
-        }
 
-        var placementAnchor = prop.PlacementAnchor;
-        if (placementAnchor is not null)
-        {
-            flyout.PlacementAnchor = placementAnchor.Value;
-            if (placementAnchor.IsReactive)
+            var placement = prop.Placement;
+            if (placement is not null)
             {
-                uiScope.CreateEffect(scope => flyout.PlacementAnchor = scope.Track(placementAnchor));
+                flyout.Placement = placement.Value;
+                if (placement.IsReactive)
+                {
+                    uiScope.CreateEffect(scope => flyout.Placement = scope.Track(placement));
+                }
             }
-        }
 
-        var customPopupPlacementCallback = prop.CustomPopupPlacementCallback;
-        if (customPopupPlacementCallback is not null)
-        {
-            flyout.CustomPopupPlacementCallback = customPopupPlacementCallback.Value;
-            if (customPopupPlacementCallback.IsReactive)
+            var placementGravity = prop.PlacementGravity;
+            if (placementGravity is not null)
             {
-                uiScope.CreateEffect(scope =>
-                    flyout.CustomPopupPlacementCallback = scope.Track(customPopupPlacementCallback));
+                flyout.PlacementGravity = placementGravity.Value;
+                if (placementGravity.IsReactive)
+                {
+                    uiScope.CreateEffect(scope => flyout.PlacementGravity = scope.Track(placementGravity));
+                }
             }
-        }
 
-        var overlayDismissEventPassThrough = prop.OverlayDismissEventPassThrough;
-        if (overlayDismissEventPassThrough is not null)
-        {
-            flyout.OverlayDismissEventPassThrough = overlayDismissEventPassThrough.Value;
-            if (overlayDismissEventPassThrough.IsReactive)
+            var placementAnchor = prop.PlacementAnchor;
+            if (placementAnchor is not null)
             {
-                uiScope.CreateEffect(scope =>
-                    flyout.OverlayDismissEventPassThrough = scope.Track(overlayDismissEventPassThrough));
+                flyout.PlacementAnchor = placementAnchor.Value;
+                if (placementAnchor.IsReactive)
+                {
+                    uiScope.CreateEffect(scope => flyout.PlacementAnchor = scope.Track(placementAnchor));
+                }
             }
-        }
 
-        var overlayInputPassThroughElement = prop.OverlayInputPassThroughElement;
-        if (overlayInputPassThroughElement is not null)
-        {
-            flyout.OverlayInputPassThroughElement = overlayInputPassThroughElement.Value;
-            if (overlayInputPassThroughElement.IsReactive)
+            var customPopupPlacementCallback = prop.CustomPopupPlacementCallback;
+            if (customPopupPlacementCallback is not null)
             {
-                uiScope.CreateEffect(scope =>
-                    flyout.OverlayInputPassThroughElement = scope.Track(overlayInputPassThroughElement));
+                flyout.CustomPopupPlacementCallback = customPopupPlacementCallback.Value;
+                if (customPopupPlacementCallback.IsReactive)
+                {
+                    uiScope.CreateEffect(scope =>
+                        flyout.CustomPopupPlacementCallback = scope.Track(customPopupPlacementCallback));
+                }
             }
-        }
 
-        var placementConstraintAdjustment = prop.PlacementConstraintAdjustment;
-        if (placementConstraintAdjustment is not null)
-        {
-            flyout.PlacementConstraintAdjustment = placementConstraintAdjustment.Value;
-            if (placementConstraintAdjustment.IsReactive)
+            var overlayDismissEventPassThrough = prop.OverlayDismissEventPassThrough;
+            if (overlayDismissEventPassThrough is not null)
             {
-                uiScope.CreateEffect(scope =>
-                    flyout.PlacementConstraintAdjustment = scope.Track(placementConstraintAdjustment));
+                flyout.OverlayDismissEventPassThrough = overlayDismissEventPassThrough.Value;
+                if (overlayDismissEventPassThrough.IsReactive)
+                {
+                    uiScope.CreateEffect(scope =>
+                        flyout.OverlayDismissEventPassThrough = scope.Track(overlayDismissEventPassThrough));
+                }
             }
-        }
 
-        var host = new Border();
-        var hostContent = prop.Host(host, flyout).Content;
-        host.Child = hostContent;
+            var overlayInputPassThroughElement = prop.OverlayInputPassThroughElement;
+            if (overlayInputPassThroughElement is not null)
+            {
+                flyout.OverlayInputPassThroughElement = overlayInputPassThroughElement.Value;
+                if (overlayInputPassThroughElement.IsReactive)
+                {
+                    uiScope.CreateEffect(scope =>
+                        flyout.OverlayInputPassThroughElement = scope.Track(overlayInputPassThroughElement));
+                }
+            }
 
-        return new Element<Flyout>(uiScope, host, flyout);
+            var placementConstraintAdjustment = prop.PlacementConstraintAdjustment;
+            if (placementConstraintAdjustment is not null)
+            {
+                flyout.PlacementConstraintAdjustment = placementConstraintAdjustment.Value;
+                if (placementConstraintAdjustment.IsReactive)
+                {
+                    uiScope.CreateEffect(scope =>
+                        flyout.PlacementConstraintAdjustment = scope.Track(placementConstraintAdjustment));
+                }
+            }
+
+            var host = new Border();
+            var hostContent = prop.Host(host, flyout).Content;
+            host.Child = hostContent;
+
+            return (flyout, host);
+        });
     }
 }

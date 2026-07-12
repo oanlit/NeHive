@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices.ComTypes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Controls;
@@ -63,44 +62,46 @@ public static partial class BaseComponent
 {
     public static IElement HBlock(HBlockProp prop)
     {
-        var uiScope = new UiScope();
-
-        var border = new Border
+        return Element.WithScope(uiScope =>
         {
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Child = prop.Child?.Content
-        };
+            var border = new Border
+            {
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Child = prop.Child?.Content
+            };
 
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            {
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
 
-        state.ApplyAccessorStyle(prop.Style, border, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(border, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(prop.Style, border, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(border, border, StyleUtil.ApplyStyle);
 
-        if (prop.OnPointerEntered is not null) border.PointerEntered += (_, e) => prop.OnPointerEntered(e);
-        if (prop.OnPointerExited is not null) border.PointerExited += (_, e) => prop.OnPointerExited(e);
-        if (prop.OnPointerMoved is not null) border.PointerMoved += (_, e) => prop.OnPointerMoved(e);
+            if (prop.OnPointerEntered is not null) border.PointerEntered += (_, e) => prop.OnPointerEntered(e);
+            if (prop.OnPointerExited is not null) border.PointerExited += (_, e) => prop.OnPointerExited(e);
+            if (prop.OnPointerMoved is not null) border.PointerMoved += (_, e) => prop.OnPointerMoved(e);
 
-        if (prop.OnPointerPressed is not null) border.PointerPressed += (_, e) => prop.OnPointerPressed(e);
-        if (prop.OnPointerReleased is not null) border.PointerReleased += (_, e) => prop.OnPointerReleased(e);
-        if (prop.OnPointerCaptureLost is not null) border.PointerCaptureLost += (_, e) => prop.OnPointerCaptureLost(e);
-        if (prop.OnPointerWheelChanged is not null)
-            border.PointerWheelChanged += (_, e) => prop.OnPointerWheelChanged(e);
+            if (prop.OnPointerPressed is not null) border.PointerPressed += (_, e) => prop.OnPointerPressed(e);
+            if (prop.OnPointerReleased is not null) border.PointerReleased += (_, e) => prop.OnPointerReleased(e);
+            if (prop.OnPointerCaptureLost is not null)
+                border.PointerCaptureLost += (_, e) => prop.OnPointerCaptureLost(e);
+            if (prop.OnPointerWheelChanged is not null)
+                border.PointerWheelChanged += (_, e) => prop.OnPointerWheelChanged(e);
 
-        if (prop.OnGotFocus is not null) border.GotFocus += (_, e) => prop.OnGotFocus(e);
-        if (prop.OnGettingFocus is not null) border.GettingFocus += (_, e) => prop.OnGettingFocus(e);
-        if (prop.OnLostFocus is not null) border.LostFocus += (_, e) => prop.OnLostFocus(e);
-        if (prop.OnLosingFocus is not null) border.LosingFocus += (_, e) => prop.OnLosingFocus(e);
+            if (prop.OnGotFocus is not null) border.GotFocus += (_, e) => prop.OnGotFocus(e);
+            if (prop.OnGettingFocus is not null) border.GettingFocus += (_, e) => prop.OnGettingFocus(e);
+            if (prop.OnLostFocus is not null) border.LostFocus += (_, e) => prop.OnLostFocus(e);
+            if (prop.OnLosingFocus is not null) border.LosingFocus += (_, e) => prop.OnLosingFocus(e);
 
-        if (prop.OnKeyDown is not null) border.KeyDown += (_, e) => prop.OnKeyDown(e);
-        if (prop.OnKeyUp is not null) border.KeyUp += (_, e) => prop.OnKeyUp(e);
-        if (prop.OnTextInput is not null) border.TextInput += (_, e) => prop.OnTextInput(e);
-        if (prop.OnTextInputMethodClientRequested is not null)
-            border.TextInputMethodClientRequested += (_, e) => prop.OnTextInputMethodClientRequested(e);
+            if (prop.OnKeyDown is not null) border.KeyDown += (_, e) => prop.OnKeyDown(e);
+            if (prop.OnKeyUp is not null) border.KeyUp += (_, e) => prop.OnKeyUp(e);
+            if (prop.OnTextInput is not null) border.TextInput += (_, e) => prop.OnTextInput(e);
+            if (prop.OnTextInputMethodClientRequested is not null)
+                border.TextInputMethodClientRequested += (_, e) => prop.OnTextInputMethodClientRequested(e);
 
-        return new Element(uiScope, border);
+            return border;
+        });
     }
 }

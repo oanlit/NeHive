@@ -34,25 +34,27 @@ public static partial class BaseComponent
 {
     public static IElement<Panel> HPanel(HPanelProp prop)
     {
-        var uiScope = new UiScope();
-        var panel = new Panel();
-        var border = new Border
+        return Element<Panel>.WithScope(uiScope =>
         {
-            Child = panel
-        };
+            var panel = new Panel();
+            var border = new Border
+            {
+                Child = panel
+            };
 
-        foreach (var child in prop)
-            panel.Children.Add(child.Content);
-        
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
+            foreach (var child in prop)
+                panel.Children.Add(child.Content);
 
-        state.ApplyAccessorStyle(prop.Style, panel, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(panel, border, StyleUtil.ApplyStyle);
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            {
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
 
-        return new Element<Panel>(uiScope, border, panel);
+            state.ApplyAccessorStyle(prop.Style, panel, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(panel, border, StyleUtil.ApplyStyle);
+
+            return (panel, border);
+        });
     }
 }

@@ -24,68 +24,65 @@ public class HContentButtonProp(
 public static partial class BaseComponent
 {
     public static IElement<HButtonExpose> HContentButton(
+        out HButtonExpose exp,
         HContentButtonProp prop)
     {
-        UiScope uiScope = new();
-        // 创建基础视觉元素
-
-        var content = prop.Content?.Content ?? new Control();
-        var border = new Border
-        {
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Child = content
-        };
-
-        if (prop.Flyout is not null)
-        {
-            var flyout = new Flyout
-            {
-                Content = prop.Flyout
-            };
-            border.ContextFlyout = flyout;
-        }
-
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-
-        state.ApplyAccessorStyle(prop.Style, content, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(content, border, StyleUtil.ApplyStyle);
-
         var expose = new HButtonExpose();
-        // 事件挂载
-        uiScope.OnMount += () =>
+        exp = expose;
+        return Element<HButtonExpose>.WithScope(uiScope =>
         {
-            border.PointerReleased += (_, e) =>
+            // 创建基础视觉元素
+            var content = prop.Content?.Content ?? new Control();
+            var border = new Border
             {
-                if (border.IsPointerOver)
-                {
-                    RaiseClick();
-                }
-
-                e.Handled = true;
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Child = content
             };
-        };
 
-        return new Element<HButtonExpose>(uiScope, border, expose);
+            if (prop.Flyout is not null)
+            {
+                var flyout = new Flyout
+                {
+                    Content = prop.Flyout
+                };
+                border.ContextFlyout = flyout;
+            }
 
-        // 统一触发点击的方法
-        void RaiseClick()
-        {
-            var args = new RoutedEventArgs(Button.ClickEvent);
-            prop.OnClick?.Invoke(args);
-            expose.Click.Invoke(args);
-        }
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            {
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
+
+            state.ApplyAccessorStyle(prop.Style, content, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(content, border, StyleUtil.ApplyStyle);
+
+            // 事件挂载
+            uiScope.OnMount += () =>
+            {
+                border.PointerReleased += (_, e) =>
+                {
+                    if (border.IsPointerOver)
+                    {
+                        RaiseClick();
+                    }
+
+                    e.Handled = true;
+                };
+            };
+
+            return (expose, border);
+
+            // 统一触发点击的方法
+            void RaiseClick()
+            {
+                var args = new RoutedEventArgs(Button.ClickEvent);
+                prop.OnClick?.Invoke(args);
+                expose.Click.Invoke(args);
+            }
+        });
     }
 
-    public static IElement<HButtonExpose> HContentButton(
-        out HButtonExpose expose,
-        HContentButtonProp prop)
-    {
-        var el = HContentButton(prop);
-        expose = el.Expose;
-        return el;
-    }
+    public static IElement<HButtonExpose> HContentButton(HContentButtonProp prop)
+        => HContentButton(out _, prop);
 }

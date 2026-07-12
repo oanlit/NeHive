@@ -72,113 +72,106 @@ public static partial class BaseComponent
 {
     public static IElement HGrid(HGridProp prop)
     {
-        var uiScope = new UiScope();
-
-        var grid = new Grid();
-
-        var border = new Border
+        return Element.WithScope(uiScope =>
         {
-            Child = grid
-        };
+            var grid = new Grid();
 
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-
-        state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
-        state.ApplyVariantsStyle(grid, border, ApplyStyle);
-
-        // 应用响应式属性
-        var showGridLines= prop.ShowGridLines;
-        if (showGridLines is not null)
-        {
-            grid.ShowGridLines = showGridLines.Value;
-            if (showGridLines.IsReactive)
+            var border = new Border
             {
-                uiScope.CreateEffect(epochScope =>
-                {
-                    grid.ShowGridLines = epochScope.Track(showGridLines);
-                });
-            }
-        }
+                Child = grid
+            };
 
-        var rowDefinitions = prop.RowDefinitions;
-        if (rowDefinitions is not null)
-        {
-            ApplyRowDefinitions(rowDefinitions.Value);
-            if (rowDefinitions.IsReactive)
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
             {
-                uiScope.CreateEffect(epochScope =>
-                {
-                    ApplyRowDefinitions(epochScope.Track(rowDefinitions));
-                });
-            }
-        }
-        var columnDefinitions = prop.ColumnDefinitions;
-        if (columnDefinitions is not null)
-        {
-            ApplyColumnDefinitions(columnDefinitions.Value);
-            if (columnDefinitions.IsReactive)
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
+
+            state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
+            state.ApplyVariantsStyle(grid, border, ApplyStyle);
+
+            // 应用响应式属性
+            var showGridLines = prop.ShowGridLines;
+            if (showGridLines is not null)
             {
-                uiScope.CreateEffect(epochScope =>
+                grid.ShowGridLines = showGridLines.Value;
+                if (showGridLines.IsReactive)
                 {
-                    ApplyRowDefinitions(epochScope.Track(columnDefinitions));
-                });
+                    uiScope.CreateEffect(epochScope => { grid.ShowGridLines = epochScope.Track(showGridLines); });
+                }
             }
-        }
-        
-        // 添加子元素并应用附加属性
-        foreach (var (position, childElement) in prop)
-        {
-            var child = childElement.Content; // 获取控件的根元素
-            Grid.SetRow(child, position.row);
-            Grid.SetColumn(child, position.column);
-            Grid.SetRowSpan(child, position.rowSpan);
-            Grid.SetColumnSpan(child, position.colSpan);
-            grid.Children.Add(child);
-        }
 
-        return new Element(uiScope, border);
+            var rowDefinitions = prop.RowDefinitions;
+            if (rowDefinitions is not null)
+            {
+                ApplyRowDefinitions(rowDefinitions.Value);
+                if (rowDefinitions.IsReactive)
+                {
+                    uiScope.CreateEffect(epochScope => { ApplyRowDefinitions(epochScope.Track(rowDefinitions)); });
+                }
+            }
 
-        void ApplyStyle(StyleSet style, Layoutable layout, Border bord)
-        {
-            StyleUtil.ApplyStyle(style, layout, bord);
-            if (style.Width is not null)
-                grid.Width = style.Width.Value;
+            var columnDefinitions = prop.ColumnDefinitions;
+            if (columnDefinitions is not null)
+            {
+                ApplyColumnDefinitions(columnDefinitions.Value);
+                if (columnDefinitions.IsReactive)
+                {
+                    uiScope.CreateEffect(epochScope => { ApplyRowDefinitions(epochScope.Track(columnDefinitions)); });
+                }
+            }
 
-            if (style.Height is not null)
-                grid.Height = style.Height.Value;
+            // 添加子元素并应用附加属性
+            foreach (var (position, childElement) in prop)
+            {
+                var child = childElement.Content; // 获取控件的根元素
+                Grid.SetRow(child, position.row);
+                Grid.SetColumn(child, position.column);
+                Grid.SetRowSpan(child, position.rowSpan);
+                Grid.SetColumnSpan(child, position.colSpan);
+                grid.Children.Add(child);
+            }
 
-            if (style.MinWidth is not null)
-                grid.MinWidth = style.MinWidth.Value;
+            return border;
 
-            if (style.MaxWidth is not null)
-                grid.MaxWidth = style.MaxWidth.Value;
+            void ApplyStyle(StyleSet style, Layoutable layout, Border bord)
+            {
+                StyleUtil.ApplyStyle(style, layout, bord);
+                if (style.Width is not null)
+                    grid.Width = style.Width.Value;
 
-            if (style.MinHeight is not null)
-                grid.MinHeight = style.MinHeight.Value;
+                if (style.Height is not null)
+                    grid.Height = style.Height.Value;
 
-            if (style.MaxHeight is not null)
-                grid.MaxHeight = style.MaxHeight.Value;
+                if (style.MinWidth is not null)
+                    grid.MinWidth = style.MinWidth.Value;
 
-            if (style.ColumnSpacing is not null) grid.ColumnSpacing = style.ColumnSpacing.Value;
-            if (style.RowSpacing is not null) grid.RowSpacing = style.RowSpacing.Value;
-        }
+                if (style.MaxWidth is not null)
+                    grid.MaxWidth = style.MaxWidth.Value;
 
-        void ApplyColumnDefinitions(IEnumerable<HgLen> lens)
-        {
-            grid.ColumnDefinitions.Clear();
-            foreach (var len in lens)
-                grid.ColumnDefinitions.Add(new ColumnDefinition(len.Value));
-        }
-        
-        void ApplyRowDefinitions(IEnumerable<HgLen> lens)
-        {
-            grid.RowDefinitions.Clear();
-            foreach (var len in lens)
-                grid.RowDefinitions.Add(new RowDefinition(len.Value));
-        }
+                if (style.MinHeight is not null)
+                    grid.MinHeight = style.MinHeight.Value;
+
+                if (style.MaxHeight is not null)
+                    grid.MaxHeight = style.MaxHeight.Value;
+
+                if (style.ColumnSpacing is not null) grid.ColumnSpacing = style.ColumnSpacing.Value;
+                if (style.RowSpacing is not null) grid.RowSpacing = style.RowSpacing.Value;
+            }
+
+            void ApplyColumnDefinitions(IEnumerable<HgLen> lens)
+            {
+                grid.ColumnDefinitions.Clear();
+                foreach (var len in lens)
+                    grid.ColumnDefinitions.Add(new ColumnDefinition(len.Value));
+            }
+
+            void ApplyRowDefinitions(IEnumerable<HgLen> lens)
+            {
+                grid.RowDefinitions.Clear();
+                foreach (var len in lens)
+                    grid.RowDefinitions.Add(new RowDefinition(len.Value));
+            }
+        });
     }
 }

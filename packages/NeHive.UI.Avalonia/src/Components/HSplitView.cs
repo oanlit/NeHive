@@ -40,58 +40,62 @@ public static partial class BaseComponent
     /// </summary>
     public static IElement<SplitView> HSplitView(HSplitViewProp prop)
     {
-        var uiScope = new UiScope();
-        var splitView = new SplitView();
-        var border = new Border
+        return Element<SplitView>.WithScope(uiScope =>
         {
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Child = splitView
-        };
+            var splitView = new SplitView();
+            var border = new Border
+            {
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Child = splitView
+            };
 
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            {
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
 
-        state.ApplyAccessorStyle(prop.Style, splitView, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(splitView, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(prop.Style, splitView, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(splitView, border, StyleUtil.ApplyStyle);
 
-        // 绑定属性
-        if (prop.IsPaneOpen is not null)
-        {
-            splitView.IsPaneOpen = prop.IsPaneOpen.Value;
-            if(prop.IsPaneOpen.IsReactive)
-                uiScope.CreateEffect(epochScope => splitView.IsPaneOpen = epochScope.Track(prop.IsPaneOpen));
-        }
-        
-        if (prop.DisplayMode is not null)
-        {
-            splitView.DisplayMode = prop.DisplayMode.Value;
-            if(prop.DisplayMode.IsReactive)
-                uiScope.CreateEffect(epochScope => splitView.DisplayMode = epochScope.Track(prop.DisplayMode));
-        }
-        
-        if (prop.OpenPaneLength is not null)
-        {
-            splitView.OpenPaneLength = prop.OpenPaneLength.Value;
-            if(prop.OpenPaneLength.IsReactive)
-                uiScope.CreateEffect(epochScope => splitView.OpenPaneLength = epochScope.Track(prop.OpenPaneLength));
-        }
-        
-        if (prop.CompactPaneLength is not null)
-        {
-            splitView.CompactPaneLength = prop.CompactPaneLength.Value;
-            if(prop.CompactPaneLength.IsReactive)
-                uiScope.CreateEffect(epochScope => splitView.CompactPaneLength = epochScope.Track(prop.CompactPaneLength));
-        }
+            // 绑定属性
+            if (prop.IsPaneOpen is not null)
+            {
+                splitView.IsPaneOpen = prop.IsPaneOpen.Value;
+                if (prop.IsPaneOpen.IsReactive)
+                    uiScope.CreateEffect(epochScope => splitView.IsPaneOpen = epochScope.Track(prop.IsPaneOpen));
+            }
 
-        // 设置 Pane 和 Content
-        if (prop.Pane is not null)
-            splitView.Pane = prop.Pane.Content;
-        if (prop.Content is not null)
-            splitView.Content = prop.Content.Content;
+            if (prop.DisplayMode is not null)
+            {
+                splitView.DisplayMode = prop.DisplayMode.Value;
+                if (prop.DisplayMode.IsReactive)
+                    uiScope.CreateEffect(epochScope => splitView.DisplayMode = epochScope.Track(prop.DisplayMode));
+            }
 
-        return new Element<SplitView>(uiScope, border, splitView);
+            if (prop.OpenPaneLength is not null)
+            {
+                splitView.OpenPaneLength = prop.OpenPaneLength.Value;
+                if (prop.OpenPaneLength.IsReactive)
+                    uiScope.CreateEffect(epochScope =>
+                        splitView.OpenPaneLength = epochScope.Track(prop.OpenPaneLength));
+            }
+
+            if (prop.CompactPaneLength is not null)
+            {
+                splitView.CompactPaneLength = prop.CompactPaneLength.Value;
+                if (prop.CompactPaneLength.IsReactive)
+                    uiScope.CreateEffect(epochScope =>
+                        splitView.CompactPaneLength = epochScope.Track(prop.CompactPaneLength));
+            }
+
+            // 设置 Pane 和 Content
+            if (prop.Pane is not null)
+                splitView.Pane = prop.Pane.Content;
+            if (prop.Content is not null)
+                splitView.Content = prop.Content.Content;
+
+            return (splitView, border);
+        });
     }
 }
