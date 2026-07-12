@@ -103,7 +103,12 @@ public static class MusicPlayerDemo
             {
                 Loading<SongInfo?>(new(songInfo)
                 {
-                    Success = user => HContext(Theme, "light", Audio(user)),
+                    Success = user =>
+                        HContext(new(ctx => ctx.SetContext(Theme, "light"))
+                        {
+                            Audio(user)
+                        }), // HContext
+                    // // Loading<SongInfo?>.Success
                     Loading = Audio,
                     Error = _ => Audio(null),
                 }) // Loading<SongInfo?>

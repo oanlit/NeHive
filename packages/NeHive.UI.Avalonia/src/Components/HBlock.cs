@@ -1,3 +1,5 @@
+using System.Collections;
+
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Controls;
@@ -6,6 +8,7 @@ using Avalonia.Layout;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -28,8 +31,9 @@ public class HBlockProp(
     Action<KeyEventArgs>? onKeyUp = null,
     Action<TextInputEventArgs>? onTextInput = null,
     Action<TextInputMethodClientRequestedEventArgs>? onTextInputMethodClientRequested = null
-)
+) : ISingleChildrenProp
 {
+    private readonly List<IElement> _children = [];
     public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
     public readonly Dictionary<string, StyleSet>? Variants = variants;
 
@@ -55,7 +59,17 @@ public class HBlockProp(
     public readonly Action<TextInputMethodClientRequestedEventArgs>? OnTextInputMethodClientRequested =
         onTextInputMethodClientRequested;
 
-    public IElement? Child { get; init; }
+    
+    public IEnumerator<IElement> GetEnumerator()
+        => _children.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => GetEnumerator();
+
+    public void Add(IElement element)
+    {
+        _children.Add(element);
+    }
 }
 
 public static partial class BaseComponent
@@ -64,10 +78,12 @@ public static partial class BaseComponent
     {
         return Element.WithScope(uiScope =>
         {
+            var child = ElementUtil.WrapSingleContainerContent(prop);
+            
             var border = new Border
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
-                Child = prop.Child?.Content
+                Child = child.Content
             };
 
             var state = new CommonState(uiScope, prop.Style.Value.Normal)
