@@ -538,7 +538,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 strStyle: "mt-2 text-sm fg-coffee-700"),
             HBlock(new(strStyle: new(() => $"mt-2 w-64 h-64 overflow-hidden {MaskColor()} border rounded-xl"))
             {
-                Child = HUriImage(selectedFile,
+                HUriImage(selectedFile,
                     stretch: Stretch.UniformToFill,
                     strStyle:
                     "mask-gradient-b mask-from-50 mask-to-20 transition-transform ease-in-out duration-500 hover:scale-110"
@@ -1882,16 +1882,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
         return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Context Scope Theme Dependency Injection Demo", strStyle: SectionTitleStyle),
-            HContext(ctx => ctx
-                    .SetContext(Theme, theme)
-                    .SetContext(ToggleTheme, Toggle),
-                HStackPanel(new(strStyle: "gap-6 vertical w-full")
-                {
-                    UseContextDemo1(),
-                    UseContextDemo2()
-                }) // HStackPanel
-            ) // HContext
-        });
+            HContext(new(ctx => ctx
+                .SetContext(Theme, theme)
+                .SetContext(ToggleTheme, Toggle))
+            {
+                UseContextDemo1(),
+                UseContextDemo2()
+            }) // HContext
+        }); // HStackPanel
 
         void Toggle() => theme.RxValue = theme.Value is "dark" ? "light" : "dark";
     }
@@ -1913,7 +1911,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                          """),
                     onClick: _ => toggleTheme())
                 {
-                    Content = HStackPanel(new(strStyle:"px-4 py-2 horizontal")
+                    Content = HStackPanel(new(strStyle: "px-4 py-2 horizontal")
                     {
                         Switch<string>(new(theme)
                         {
@@ -1923,7 +1921,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                     strStyle: "w-4 h-4 fw-extralight fg-matcha-200")
                             }, // Switch<string>.Cases
                             Default = () => HSvgImage("~/Assets/moon.svg",
-                                strStyle:"w-4 h-4 fw-extralight fg-coffee-700")
+                                strStyle: "w-4 h-4 fw-extralight fg-coffee-700")
                         }), // Switch<string>
                         HTextBlock(new(() => $"Switch To {(theme.RxValue is "dark" ? "Light" : "Dark")} Theme Mode"),
                             strStyle: new(() => $"ml-2 fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
