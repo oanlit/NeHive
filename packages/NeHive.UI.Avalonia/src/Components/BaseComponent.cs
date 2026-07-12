@@ -22,8 +22,3 @@ public readonly struct SingleChildrenProp() : ISingleChildrenProp
         _children.Add(element);
     }
 }
-
-public static partial class BaseComponent
-{
-    public static readonly Component Empty = new(() => Element.Empty);
-}

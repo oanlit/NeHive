@@ -18,39 +18,40 @@ public static partial class BaseComponent
         Dictionary<string, StyleSet>? variants = null
     )
     {
-        var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
-
-        var uiScope = new UiScope();
-
-        var image = new Image();
-
-        var border = new Border
+        return Element.WithScope(uiScope =>
         {
-            Child = image,
-            ClipToBounds = true
-        };
-        var state = new CommonState(uiScope, styleAccessor.Value.Normal)
-        {
-            StrVariants = styleAccessor.Value.Variants,
-            Variants = variants
-        };
+            var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
 
-        state.ApplyAccessorStyle(styleAccessor, image, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(image, border, StyleUtil.ApplyStyle);
+            var image = new Image();
 
-        // 绑定 Source
-        image.Source = source.Value;
-        if (source.IsReactive)
-            uiScope.CreateEffect(() => image.Source = source.RxValue);
+            var border = new Border
+            {
+                Child = image,
+                ClipToBounds = true
+            };
+            var state = new CommonState(uiScope, styleAccessor.Value.Normal)
+            {
+                StrVariants = styleAccessor.Value.Variants,
+                Variants = variants
+            };
 
-        if (stretch is not null)
-        {
-            image.Stretch = stretch.Value;
-            if (stretch.IsReactive)
-                uiScope.CreateEffect(epochScope => image.Stretch = epochScope.Track(stretch));
-        }
+            state.ApplyAccessorStyle(styleAccessor, image, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(image, border, StyleUtil.ApplyStyle);
 
-        return new Element(uiScope, border);
+            // 绑定 Source
+            image.Source = source.Value;
+            if (source.IsReactive)
+                uiScope.CreateEffect(() => image.Source = source.RxValue);
+
+            if (stretch is not null)
+            {
+                image.Stretch = stretch.Value;
+                if (stretch.IsReactive)
+                    uiScope.CreateEffect(epochScope => image.Stretch = epochScope.Track(stretch));
+            }
+
+            return border;
+        });
     }
 
     // 可选：支持从 Uri 或字符串路径加载图像的重载版本

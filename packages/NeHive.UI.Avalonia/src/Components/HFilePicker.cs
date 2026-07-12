@@ -35,51 +35,50 @@ public static partial class BaseComponent
         Dictionary<string, StyleSet>? variants = null
     )
     {
-        text ??= "Select File";
-
-        // 按钮实例（需要获取点击事件并调用对话框）
-        var uiScope = new UiScope();
-
-        IElement button;
-
-        using (new ScopeFrame(uiScope))
+        return Element.WithScope(uiScope =>
         {
-            button = HButton(text, strStyle, style, variants);
-        }
+            text ??= "Select File";
+            IElement button;
 
-        // 点击时打开文件对话框
-        button.Content.PointerPressed += async (_, _) =>
-        {
-            // 获取顶层窗口
-            var topLevel = TopLevel.GetTopLevel(button.Content);
-            if (topLevel == null) return;
-
-            // 构建文件选择选项
-            var options = new FilePickerOpenOptions
+            using (new ScopeFrame(uiScope))
             {
-                Title = title ?? "Select a file",
-                AllowMultiple = allowMultiple,
-                FileTypeFilter = filters?.Select(f => new FilePickerFileType(f.Name)
+                button = HButton(text, strStyle, style, variants);
+            }
+
+            // 点击时打开文件对话框
+            button.Content.PointerPressed += async (_, _) =>
+            {
+                // 获取顶层窗口
+                var topLevel = TopLevel.GetTopLevel(button.Content);
+                if (topLevel == null) return;
+
+                // 构建文件选择选项
+                var options = new FilePickerOpenOptions
                 {
-                    Patterns = f.Patterns
-                }).ToList()
+                    Title = title ?? "Select a file",
+                    AllowMultiple = allowMultiple,
+                    FileTypeFilter = filters?.Select(f => new FilePickerFileType(f.Name)
+                    {
+                        Patterns = f.Patterns
+                    }).ToList()
+                };
+
+                var result = await topLevel.StorageProvider.OpenFilePickerAsync(options);
+                if (result.Count > 0)
+                {
+                    var file = result[0];
+                    bindSelectedPath.RxValue = file.Path.LocalPath;
+                    // 如果允许多选，可以通过额外的多选事件输出，但为简化，只输出第一个路径
+                    onFileSelected?.Invoke(result.Select(f => f.Path.LocalPath).ToArray());
+                }
+                else
+                {
+                    bindSelectedPath.RxValue = null;
+                    onFileSelected?.Invoke([]);
+                }
             };
 
-            var result = await topLevel.StorageProvider.OpenFilePickerAsync(options);
-            if (result.Count > 0)
-            {
-                var file = result[0];
-                bindSelectedPath.RxValue = file.Path.LocalPath;
-                // 如果允许多选，可以通过额外的多选事件输出，但为简化，只输出第一个路径
-                onFileSelected?.Invoke(result.Select(f => f.Path.LocalPath).ToArray());
-            }
-            else
-            {
-                bindSelectedPath.RxValue = null;
-                onFileSelected?.Invoke([]);
-            }
-        };
-
-        return new Element(uiScope, button);
+            return button;
+        });
     }
 }

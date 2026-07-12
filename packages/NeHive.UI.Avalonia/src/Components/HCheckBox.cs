@@ -50,83 +50,85 @@ public static partial class BaseComponent
 {
     public static IElement<CheckBox> HCheckBox(HCheckBoxProp prop)
     {
-        var uiScope = new UiScope();
-        var checkBox = new CheckBox();
-        var border = new Border
+        return Element<CheckBox>.WithScope(uiScope =>
         {
-            Child = checkBox
-        };
-
-        // 应用样式
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-        StyleUtil.ApplyStyle(state.CurrentStyle, checkBox, border);
-        if (prop.Style.IsReactive)
-        {
-            uiScope.CreateEffect(epochScope =>
+            var checkBox = new CheckBox();
+            var border = new Border
             {
-                var styleValue = epochScope.Track(prop.Style);
-                state.BaseStyle = styleValue.Normal;
-                state.StrVariants = styleValue.Variants;
-                state.CurrentStyle = state.BaseStyle.Copy();
-                StyleUtil.ApplyStyle(state.CurrentStyle, checkBox, border);
-            });
-        }
-        
-        state.ApplyAccessorStyle(prop.Style, checkBox, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(checkBox, border, StyleUtil.ApplyStyle);
-
-        // 绑定启用状态
-        if (prop.IsEnabled != null)
-        {
-            checkBox.IsEnabled = prop.IsEnabled.Value;
-            if (prop.IsEnabled.IsReactive)
-                uiScope.CreateEffect(() => checkBox.IsEnabled = prop.IsEnabled.RxValue);
-        }
-
-        // 绑定三态支持
-        if (prop.IsThreeState != null)
-        {
-            checkBox.IsThreeState = prop.IsThreeState.Value;
-            if (prop.IsThreeState.IsReactive)
-                uiScope.CreateEffect(() => checkBox.IsThreeState = prop.IsThreeState.RxValue);
-        }
-
-        // 双向绑定 BindIsChecked + 点击回调
-        // 信号 -> 控件
-        if (prop.BindIsChecked is not null)
-        {
-            uiScope.CreateEffect(() => checkBox.IsChecked = prop.BindIsChecked.RxValue);
-            // 控件 -> 信号
-            checkBox.Click += (_, _) =>
-            {
-                var newValue = checkBox.IsChecked;
-                if (prop.BindIsChecked.Value != newValue)
-                    prop.BindIsChecked.RxValue = newValue;
-
-                prop.Click?.Invoke(newValue);
+                Child = checkBox
             };
-        }
-        else if (prop.IsChecked is not null)
-        {
-            checkBox.IsChecked = prop.IsChecked.Value;
-            checkBox.Click += (_, _) => prop.Click?.Invoke(prop.IsChecked.Value);
-            if (prop.IsChecked.IsReactive)
-                uiScope.CreateEffect(() => checkBox.IsChecked = prop.IsChecked.RxValue);
-        }
-        else if (prop.Click is not null)
-        {
-            checkBox.Click += (_, _) => { prop.Click(false); };
-        }
 
-        // 设置子内容（通常只有一个子元素作为 Content）
-        var firstChild = prop.FirstOrDefault();
-        if (firstChild != null)
-            checkBox.Content = firstChild.Content;
+            // 应用样式
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            {
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
+            StyleUtil.ApplyStyle(state.CurrentStyle, checkBox, border);
+            if (prop.Style.IsReactive)
+            {
+                uiScope.CreateEffect(epochScope =>
+                {
+                    var styleValue = epochScope.Track(prop.Style);
+                    state.BaseStyle = styleValue.Normal;
+                    state.StrVariants = styleValue.Variants;
+                    state.CurrentStyle = state.BaseStyle.Copy();
+                    StyleUtil.ApplyStyle(state.CurrentStyle, checkBox, border);
+                });
+            }
 
-        return new Element<CheckBox>(uiScope, border, checkBox);
+            state.ApplyAccessorStyle(prop.Style, checkBox, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(checkBox, border, StyleUtil.ApplyStyle);
+
+            // 绑定启用状态
+            if (prop.IsEnabled != null)
+            {
+                checkBox.IsEnabled = prop.IsEnabled.Value;
+                if (prop.IsEnabled.IsReactive)
+                    uiScope.CreateEffect(() => checkBox.IsEnabled = prop.IsEnabled.RxValue);
+            }
+
+            // 绑定三态支持
+            if (prop.IsThreeState != null)
+            {
+                checkBox.IsThreeState = prop.IsThreeState.Value;
+                if (prop.IsThreeState.IsReactive)
+                    uiScope.CreateEffect(() => checkBox.IsThreeState = prop.IsThreeState.RxValue);
+            }
+
+            // 双向绑定 BindIsChecked + 点击回调
+            // 信号 -> 控件
+            if (prop.BindIsChecked is not null)
+            {
+                uiScope.CreateEffect(() => checkBox.IsChecked = prop.BindIsChecked.RxValue);
+                // 控件 -> 信号
+                checkBox.Click += (_, _) =>
+                {
+                    var newValue = checkBox.IsChecked;
+                    if (prop.BindIsChecked.Value != newValue)
+                        prop.BindIsChecked.RxValue = newValue;
+
+                    prop.Click?.Invoke(newValue);
+                };
+            }
+            else if (prop.IsChecked is not null)
+            {
+                checkBox.IsChecked = prop.IsChecked.Value;
+                checkBox.Click += (_, _) => prop.Click?.Invoke(prop.IsChecked.Value);
+                if (prop.IsChecked.IsReactive)
+                    uiScope.CreateEffect(() => checkBox.IsChecked = prop.IsChecked.RxValue);
+            }
+            else if (prop.Click is not null)
+            {
+                checkBox.Click += (_, _) => { prop.Click(false); };
+            }
+
+            // 设置子内容（通常只有一个子元素作为 Content）
+            var firstChild = prop.FirstOrDefault();
+            if (firstChild != null)
+                checkBox.Content = firstChild.Content;
+
+            return (checkBox, border);
+        });
     }
 }

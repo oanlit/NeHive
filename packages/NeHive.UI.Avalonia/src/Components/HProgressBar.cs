@@ -16,47 +16,49 @@ public static partial class BaseComponent
         Accessor<StyleSet>? style = null,
         Dictionary<string, StyleSet>? variants = null)
     {
-        value ??= 0;
-        minimum ??= 0;
-        maximum ??= 100;
-        isIndeterminate ??= false;
-
-        // 样式合并
-        var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
-
-        var uiScope = new UiScope();
-        var progressBar = new ProgressBar();
-        var border = new Border
+        return Element.WithScope(uiScope =>
         {
-            Child = progressBar
-        };
-        
-        var state = new CommonState(uiScope, styleAccessor.Value.Normal)
-        {
-            StrVariants = styleAccessor.Value.Variants,
-            Variants = variants
-        };
+            value ??= 0;
+            minimum ??= 0;
+            maximum ??= 100;
+            isIndeterminate ??= false;
 
-        state.ApplyAccessorStyle(styleAccessor, progressBar, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(progressBar, border, StyleUtil.ApplyStyle);
+            // 样式合并
+            var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
 
-        // 绑定属性
-        progressBar.Value = value.Value;
-        if(value.IsReactive)
-            uiScope.CreateEffect(epochScope => progressBar.Value = epochScope.Track(value));
+            var progressBar = new ProgressBar();
+            var border = new Border
+            {
+                Child = progressBar
+            };
 
-        progressBar.Minimum = minimum.Value;
-        if(minimum.IsReactive)
-            uiScope.CreateEffect(epochScope => progressBar.Minimum = epochScope.Track(minimum));
-        
-        progressBar.Maximum = maximum.Value;
-        if(maximum.IsReactive)
-            uiScope.CreateEffect(epochScope => progressBar.Maximum = epochScope.Track(maximum));
+            var state = new CommonState(uiScope, styleAccessor.Value.Normal)
+            {
+                StrVariants = styleAccessor.Value.Variants,
+                Variants = variants
+            };
 
-        progressBar.IsIndeterminate = isIndeterminate.Value;
-        if(isIndeterminate.IsReactive)
-            uiScope.CreateEffect(epochScope => progressBar.IsIndeterminate = epochScope.Track(isIndeterminate));
+            state.ApplyAccessorStyle(styleAccessor, progressBar, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(progressBar, border, StyleUtil.ApplyStyle);
 
-        return new Element(uiScope, border);
+            // 绑定属性
+            progressBar.Value = value.Value;
+            if (value.IsReactive)
+                uiScope.CreateEffect(epochScope => progressBar.Value = epochScope.Track(value));
+
+            progressBar.Minimum = minimum.Value;
+            if (minimum.IsReactive)
+                uiScope.CreateEffect(epochScope => progressBar.Minimum = epochScope.Track(minimum));
+
+            progressBar.Maximum = maximum.Value;
+            if (maximum.IsReactive)
+                uiScope.CreateEffect(epochScope => progressBar.Maximum = epochScope.Track(maximum));
+
+            progressBar.IsIndeterminate = isIndeterminate.Value;
+            if (isIndeterminate.IsReactive)
+                uiScope.CreateEffect(epochScope => progressBar.IsIndeterminate = epochScope.Track(isIndeterminate));
+
+            return border;
+        });
     }
 }

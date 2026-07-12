@@ -36,56 +36,58 @@ public static partial class BaseComponent
 {
     public static IElement<ToggleSwitch> HToggleSwitch(HToggleSwitchProp prop)
     {
-        var uiScope = new UiScope();
-        var toggle = new ToggleSwitch();
-        var border = new Border
+        return Element<ToggleSwitch>.WithScope(uiScope =>
         {
-            Child = toggle
-        };
-
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-
-        state.ApplyAccessorStyle(prop.Style, toggle, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(toggle, border, StyleUtil.ApplyStyle);
-
-        // 启用状态
-        if (prop.IsEnabled is not null)
-            uiScope.CreateEffect(() => toggle.IsEnabled = prop.IsEnabled.RxValue);
-
-        // 双向绑定 BindIsChecked
-        if (prop.BindIsChecked is not null)
-        {
-            uiScope.CreateEffect(epochScope => toggle.IsChecked = epochScope.Pull(prop.BindIsChecked));
-            toggle.IsCheckedChanged += (_, _) =>
+            var toggle = new ToggleSwitch();
+            var border = new Border
             {
-                var newValue = toggle.IsChecked == true;
-                if (prop.BindIsChecked.RxValue != newValue)
-                    prop.BindIsChecked.RxValue = newValue;
-                prop.OnCheckedChanged?.Invoke(newValue);
+                Child = toggle
             };
-        }
-        else if (prop.IsChecked is not null)
-        {
-            toggle.IsChecked = prop.IsChecked.Value;
-            if(prop.IsChecked.IsReactive)
-                uiScope.CreateEffect(epochScope => toggle.IsChecked = epochScope.Track(prop.IsChecked));
-            
-            toggle.Click += (_, _) => prop.OnCheckedChanged?.Invoke(toggle.IsChecked);
-        }
-        else if (prop.OnCheckedChanged is not null)
-        {
-            toggle.IsCheckedChanged += (_, _) => prop.OnCheckedChanged?.Invoke(toggle.IsChecked == true);
-        }
 
-        // 设置内容（通常是 TextBlock 或 StackPanel）
-        var firstChild = prop.FirstOrDefault();
-        if (firstChild is not null)
-            toggle.Content = firstChild.Content;
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            {
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
 
-        return new Element<ToggleSwitch>(uiScope, border, toggle);
+            state.ApplyAccessorStyle(prop.Style, toggle, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(toggle, border, StyleUtil.ApplyStyle);
+
+            // 启用状态
+            if (prop.IsEnabled is not null)
+                uiScope.CreateEffect(() => toggle.IsEnabled = prop.IsEnabled.RxValue);
+
+            // 双向绑定 BindIsChecked
+            if (prop.BindIsChecked is not null)
+            {
+                uiScope.CreateEffect(epochScope => toggle.IsChecked = epochScope.Pull(prop.BindIsChecked));
+                toggle.IsCheckedChanged += (_, _) =>
+                {
+                    var newValue = toggle.IsChecked == true;
+                    if (prop.BindIsChecked.RxValue != newValue)
+                        prop.BindIsChecked.RxValue = newValue;
+                    prop.OnCheckedChanged?.Invoke(newValue);
+                };
+            }
+            else if (prop.IsChecked is not null)
+            {
+                toggle.IsChecked = prop.IsChecked.Value;
+                if (prop.IsChecked.IsReactive)
+                    uiScope.CreateEffect(epochScope => toggle.IsChecked = epochScope.Track(prop.IsChecked));
+
+                toggle.Click += (_, _) => prop.OnCheckedChanged?.Invoke(toggle.IsChecked);
+            }
+            else if (prop.OnCheckedChanged is not null)
+            {
+                toggle.IsCheckedChanged += (_, _) => prop.OnCheckedChanged?.Invoke(toggle.IsChecked == true);
+            }
+
+            // 设置内容（通常是 TextBlock 或 StackPanel）
+            var firstChild = prop.FirstOrDefault();
+            if (firstChild is not null)
+                toggle.Content = firstChild.Content;
+
+            return (toggle, border);
+        });
     }
 }

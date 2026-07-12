@@ -94,7 +94,7 @@ public static class MusicPlayerDemo
         });
 
         // ---------- UI ----------
-        var rootElement = uiScope.RootElement(new(strStyle: "m-6 w-full gap-5 vertical bg-gray-50 rounded-2xl p-6")
+        var rootElement = HStackPanel(new(strStyle: "m-6 w-full gap-5 vertical bg-gray-50 rounded-2xl p-6")
         {
             HTextBlock("🎵 NeHive Music Player", strStyle: "text-xl fw-bold fg-sky-800 mb-2"),
 
@@ -103,7 +103,7 @@ public static class MusicPlayerDemo
             {
                 Loading<SongInfo?>(new(songInfo)
                 {
-                    Success = user => HContext(Theme, "light", () => Audio(user)),
+                    Success = user => HContext(Theme, "light", Audio(user)),
                     Loading = Audio,
                     Error = _ => Audio(null),
                 }) // Loading<SongInfo?>

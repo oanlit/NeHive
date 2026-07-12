@@ -61,156 +61,158 @@ public static partial class BaseComponent
     /// </summary>
     public static IElement<Grid> HSplitPanel(HSplitPanelProp prop)
     {
-        var uiScope = new UiScope();
-        var grid = new Grid();
-        var border = new Border
+        return Element<Grid>.WithScope(uiScope =>
         {
-            Child = grid
-        };
-
-        // 应用样式
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-
-        state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
-        state.ApplyVariantsStyle(grid, border, ApplyStyle);
-
-        var children = prop.ToList();
-        if (children.Count < 2)
-            throw new InvalidOperationException("The SplitPanel requires at least two child elements.");
-
-        Accessor<bool> accessorIsHorizontal = prop.Style.Value.Normal.Orientation is not Orientation.Vertical;
-        if (prop.Style.IsReactive)
-        {
-            accessorIsHorizontal = uiScope.CreateComputed(() =>
+            var grid = new Grid();
+            var border = new Border
             {
-                var style = prop.Style.RxValue;
-                return style.Normal.Orientation is not Orientation.Vertical;
+                Child = grid
+            };
+
+            // 应用样式
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            {
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
+
+            state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
+            state.ApplyVariantsStyle(grid, border, ApplyStyle);
+
+            var children = prop.ToList();
+            if (children.Count < 2)
+                throw new InvalidOperationException("The SplitPanel requires at least two child elements.");
+
+            Accessor<bool> accessorIsHorizontal = prop.Style.Value.Normal.Orientation is not Orientation.Vertical;
+            if (prop.Style.IsReactive)
+            {
+                accessorIsHorizontal = uiScope.CreateComputed(() =>
+                {
+                    var style = prop.Style.RxValue;
+                    return style.Normal.Orientation is not Orientation.Vertical;
+                });
+            }
+
+            uiScope.CreateEffect(epochScope =>
+            {
+                var isHorizontal = epochScope.Track(accessorIsHorizontal);
+                double? splitPos = prop.SplitPosition is null ? null : epochScope.Track(prop.SplitPosition);
+                double? splitFrac = prop.SplitFraction is null ? null : epochScope.Track(prop.SplitFraction);
+
+                // 动态构建列/行定义
+                grid.RowDefinitions.Clear();
+                grid.ColumnDefinitions.Clear();
+
+                if (isHorizontal)
+                {
+                    // 水平分割：列定义
+                    if (splitPos.HasValue)
+                    {
+                        // 绝对像素分割
+                        grid.ColumnDefinitions.Add(new ColumnDefinition(splitPos.Value, GridUnitType.Pixel));
+                        grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+                    }
+                    else if (splitFrac.HasValue)
+                    {
+                        var frac = Math.Clamp(splitFrac.Value, 0.05, 0.95);
+                        grid.ColumnDefinitions.Add(new ColumnDefinition(frac, GridUnitType.Star));
+                        grid.ColumnDefinitions.Add(new ColumnDefinition(1 - frac, GridUnitType.Star));
+                    }
+                    else
+                    {
+                        // 默认各占一半
+                        grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+                        grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+                    }
+                }
+                else
+                {
+                    // 垂直分割：行定义
+                    if (splitPos.HasValue)
+                    {
+                        grid.RowDefinitions.Add(new RowDefinition(splitPos.Value, GridUnitType.Pixel));
+                        grid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
+                    }
+                    else if (splitFrac.HasValue)
+                    {
+                        var frac = Math.Clamp(splitFrac.Value, 0.05, 0.95);
+                        grid.RowDefinitions.Add(new RowDefinition(frac, GridUnitType.Star));
+                        grid.RowDefinitions.Add(new RowDefinition(1 - frac, GridUnitType.Star));
+                    }
+                    else
+                    {
+                        grid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
+                        grid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
+                    }
+                }
+
+                // 添加内容和分割条
+                for (var i = 0; i < children.Count; i++)
+                {
+                    var child = children[i];
+
+                    var control = child.Content;
+                    if (isHorizontal)
+                        Grid.SetColumn(control, i * 2); // 每个面板占一列，中间留一列给分割条
+                    else
+                        Grid.SetRow(control, i * 2);
+
+                    grid.Children.Add(control);
+
+                    // 不是最后一个，添加 GridSplitter
+                    if (i >= children.Count - 1) continue;
+
+                    var splitter = new GridSplitter
+                    {
+                        Background = global::Avalonia.Media.Brushes.Gray,
+                        ResizeDirection = isHorizontal ? GridResizeDirection.Columns : GridResizeDirection.Rows,
+                        Width = isHorizontal ? 4 : double.NaN,
+                        Height = isHorizontal ? double.NaN : 4,
+                        HorizontalAlignment = isHorizontal ? HorizontalAlignment.Left : HorizontalAlignment.Stretch,
+                        VerticalAlignment = isHorizontal ? VerticalAlignment.Stretch : VerticalAlignment.Top
+                    };
+
+                    if (isHorizontal)
+                    {
+                        Grid.SetColumn(splitter, i * 2 + 1);
+                        splitter.Width = 4;
+                    }
+                    else
+                    {
+                        Grid.SetRow(splitter, i * 2 + 1);
+                        splitter.Height = 4;
+                    }
+
+                    grid.Children.Add(splitter);
+                }
             });
-        }
 
-        uiScope.CreateEffect(epochScope =>
-        {
-            var isHorizontal = epochScope.Track(accessorIsHorizontal);
-            double? splitPos = prop.SplitPosition is null ? null : epochScope.Track(prop.SplitPosition);
-            double? splitFrac = prop.SplitFraction is null ? null : epochScope.Track(prop.SplitFraction);
+            return (grid, border);
 
-            // 动态构建列/行定义
-            grid.RowDefinitions.Clear();
-            grid.ColumnDefinitions.Clear();
-
-            if (isHorizontal)
+            void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
             {
-                // 水平分割：列定义
-                if (splitPos.HasValue)
-                {
-                    // 绝对像素分割
-                    grid.ColumnDefinitions.Add(new ColumnDefinition(splitPos.Value, GridUnitType.Pixel));
-                    grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
-                }
-                else if (splitFrac.HasValue)
-                {
-                    var frac = Math.Clamp(splitFrac.Value, 0.05, 0.95);
-                    grid.ColumnDefinitions.Add(new ColumnDefinition(frac, GridUnitType.Star));
-                    grid.ColumnDefinitions.Add(new ColumnDefinition(1 - frac, GridUnitType.Star));
-                }
-                else
-                {
-                    // 默认各占一半
-                    grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
-                    grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
-                }
-            }
-            else
-            {
-                // 垂直分割：行定义
-                if (splitPos.HasValue)
-                {
-                    grid.RowDefinitions.Add(new RowDefinition(splitPos.Value, GridUnitType.Pixel));
-                    grid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
-                }
-                else if (splitFrac.HasValue)
-                {
-                    var frac = Math.Clamp(splitFrac.Value, 0.05, 0.95);
-                    grid.RowDefinitions.Add(new RowDefinition(frac, GridUnitType.Star));
-                    grid.RowDefinitions.Add(new RowDefinition(1 - frac, GridUnitType.Star));
-                }
-                else
-                {
-                    grid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
-                    grid.RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
-                }
-            }
-            
-            // 添加内容和分割条
-            for (var i = 0; i < children.Count; i++)
-            {
-                var child = children[i];
+                StyleUtil.ApplyStyle(styleValue, layout, bord);
+                if (styleValue.Width is not null)
+                    grid.Width = styleValue.Width.Value;
 
-                var control = child.Content;
-                if (isHorizontal)
-                    Grid.SetColumn(control, i * 2); // 每个面板占一列，中间留一列给分割条
-                else
-                    Grid.SetRow(control, i * 2);
+                if (styleValue.Height is not null)
+                    grid.Height = styleValue.Height.Value;
 
-                grid.Children.Add(control);
+                if (styleValue.MinWidth is not null)
+                    grid.MinWidth = styleValue.MinWidth.Value;
 
-                // 不是最后一个，添加 GridSplitter
-                if (i >= children.Count - 1) continue;
+                if (styleValue.MaxWidth is not null)
+                    grid.MaxWidth = styleValue.MaxWidth.Value;
 
-                var splitter = new GridSplitter
-                {
-                    Background = global::Avalonia.Media.Brushes.Gray,
-                    ResizeDirection = isHorizontal ? GridResizeDirection.Columns : GridResizeDirection.Rows,
-                    Width = isHorizontal ? 4 : double.NaN,
-                    Height = isHorizontal ? double.NaN : 4,
-                    HorizontalAlignment = isHorizontal ? HorizontalAlignment.Left : HorizontalAlignment.Stretch,
-                    VerticalAlignment = isHorizontal ? VerticalAlignment.Stretch : VerticalAlignment.Top
-                };
+                if (styleValue.MinHeight is not null)
+                    grid.MinHeight = styleValue.MinHeight.Value;
 
-                if (isHorizontal)
-                {
-                    Grid.SetColumn(splitter, i * 2 + 1);
-                    splitter.Width = 4;
-                }
-                else
-                {
-                    Grid.SetRow(splitter, i * 2 + 1);
-                    splitter.Height = 4;
-                }
+                if (styleValue.MaxHeight is not null)
+                    grid.MaxHeight = styleValue.MaxHeight.Value;
 
-                grid.Children.Add(splitter);
+                if (styleValue.ColumnSpacing is not null) grid.ColumnSpacing = styleValue.ColumnSpacing.Value;
+                if (styleValue.RowSpacing is not null) grid.RowSpacing = styleValue.RowSpacing.Value;
             }
         });
-
-        return new Element<Grid>(uiScope, border, grid);
-        
-        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
-        {
-            StyleUtil.ApplyStyle(styleValue, layout, bord);
-            if (styleValue.Width is not null)
-                grid.Width = styleValue.Width.Value;
-
-            if (styleValue.Height is not null)
-                grid.Height = styleValue.Height.Value;
-
-            if (styleValue.MinWidth is not null)
-                grid.MinWidth = styleValue.MinWidth.Value;
-
-            if (styleValue.MaxWidth is not null)
-                grid.MaxWidth = styleValue.MaxWidth.Value;
-
-            if (styleValue.MinHeight is not null)
-                grid.MinHeight = styleValue.MinHeight.Value;
-
-            if (styleValue.MaxHeight is not null)
-                grid.MaxHeight = styleValue.MaxHeight.Value;
-            
-            if (styleValue.ColumnSpacing is not null) grid.ColumnSpacing = styleValue.ColumnSpacing.Value;
-            if (styleValue.RowSpacing is not null) grid.RowSpacing = styleValue.RowSpacing.Value;
-        }
     }
 }

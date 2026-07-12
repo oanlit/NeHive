@@ -19,76 +19,77 @@ public static partial class BaseComponent
         Dictionary<string, StyleSet>? variants = null
     )
     {
-        var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
-
-        var uiScope = new UiScope();
-
-        var image = new Path
+        return Element.WithScope(uiScope =>
         {
-            Stroke = new SolidColorBrush(Color.FromRgb(0, 0, 0)),
-            Stretch = Stretch.Uniform,
-            StrokeThickness = 2
-        };
+            var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
 
-        var panel = new Panel
-        {
-            Children = { image },
-            Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)),
-        };
 
-        var border = new Border
-        {
-            Child = panel
-        };
-
-        var state = new CommonState(uiScope, styleAccessor.Value.Normal)
-        {
-            StrVariants = styleAccessor.Value.Variants,
-            Variants = variants
-        };
-
-        state.ApplyAccessorStyle(styleAccessor, image, border, ApplyStyle);
-        state.ApplyVariantsStyle(image, border, ApplyStyle);
-
-        // 绑定 Data
-        image.Data = SvgUtil.ParseGeometry(SvgUtil.LoadSvgString(uri.Value));
-        if (uri.IsReactive)
-        {
-            uiScope.CreateEffect(() =>
+            var image = new Path
             {
-                var svg = SvgUtil.LoadSvgString(uri.RxValue);
-                var data = SvgUtil.ParseGeometry(svg);
-                image.Data = data;
-            });
-        }
+                Stroke = new SolidColorBrush(Color.FromRgb(0, 0, 0)),
+                Stretch = Stretch.Uniform,
+                StrokeThickness = 2
+            };
 
-        if (stretch is not null)
-        {
-            image.Stretch =  stretch.Value;
-            if(stretch.IsReactive)
+            var panel = new Panel
             {
-                uiScope.CreateEffect(epochScope =>
+                Children = { image },
+                Background = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)),
+            };
+
+            var border = new Border
+            {
+                Child = panel
+            };
+
+            var state = new CommonState(uiScope, styleAccessor.Value.Normal)
+            {
+                StrVariants = styleAccessor.Value.Variants,
+                Variants = variants
+            };
+
+            state.ApplyAccessorStyle(styleAccessor, image, border, ApplyStyle);
+            state.ApplyVariantsStyle(image, border, ApplyStyle);
+
+            // 绑定 Data
+            image.Data = SvgUtil.ParseGeometry(SvgUtil.LoadSvgString(uri.Value));
+            if (uri.IsReactive)
+            {
+                uiScope.CreateEffect(() =>
                 {
-                    var stretchValue = epochScope.Track(stretch);
-                    image.Stretch = stretchValue;
+                    var svg = SvgUtil.LoadSvgString(uri.RxValue);
+                    var data = SvgUtil.ParseGeometry(svg);
+                    image.Data = data;
                 });
             }
-        }
 
-
-        return new Element(uiScope, border);
-
-        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
-        {
-            StyleUtil.ApplyStyle(styleValue, layout, bord);
-            var fg = styleValue.Foreground;
-            if (fg is not null) image.Stroke = fg;
-            var fontWeight = styleValue.FontWeight;
-            if (fontWeight is not null)
+            if (stretch is not null)
             {
-                var weight = (int)fontWeight.Value / 100;
-                image.StrokeThickness = weight;
+                image.Stretch = stretch.Value;
+                if (stretch.IsReactive)
+                {
+                    uiScope.CreateEffect(epochScope =>
+                    {
+                        var stretchValue = epochScope.Track(stretch);
+                        image.Stretch = stretchValue;
+                    });
+                }
             }
-        }
+            
+            return border;
+
+            void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
+            {
+                StyleUtil.ApplyStyle(styleValue, layout, bord);
+                var fg = styleValue.Foreground;
+                if (fg is not null) image.Stroke = fg;
+                var fontWeight = styleValue.FontWeight;
+                if (fontWeight is not null)
+                {
+                    var weight = (int)fontWeight.Value / 100;
+                    image.StrokeThickness = weight;
+                }
+            }
+        });
     }
 }

@@ -38,66 +38,68 @@ public static partial class BaseComponent
     /// </summary>
     public static IElement<DockPanel> HDockPanel(HDockPanelProp prop)
     {
-        var uiScope = new UiScope();
-        var dockPanel = new DockPanel();
-        var border = new Border
+        return Element<DockPanel>.WithScope(uiScope =>
         {
-            Child = dockPanel
-        };
-
-        // 应用样式
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-
-        state.ApplyAccessorStyle(prop.Style, dockPanel, border, ApplyStyle);
-        state.ApplyVariantsStyle(dockPanel, border, ApplyStyle);
-
-        // 添加子元素并设置 Dock 附加属性
-        Control? lastItem = null;
-        foreach (var (dock, element) in prop)
-        {
-            var control = element.Content;
-            if (dock is null)
+            var dockPanel = new DockPanel();
+            var border = new Border
             {
-                lastItem = control;
-                continue;
+                Child = dockPanel
+            };
+
+            // 应用样式
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            {
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
+
+            state.ApplyAccessorStyle(prop.Style, dockPanel, border, ApplyStyle);
+            state.ApplyVariantsStyle(dockPanel, border, ApplyStyle);
+
+            // 添加子元素并设置 Dock 附加属性
+            Control? lastItem = null;
+            foreach (var (dock, element) in prop)
+            {
+                var control = element.Content;
+                if (dock is null)
+                {
+                    lastItem = control;
+                    continue;
+                }
+
+                DockPanel.SetDock(control, dock.Value);
+                dockPanel.Children.Add(control);
             }
 
-            DockPanel.SetDock(control, dock.Value);
-            dockPanel.Children.Add(control);
-        }
+            dockPanel.LastChildFill = prop.LastChildFill;
+            if (lastItem is not null) dockPanel.Children.Add(lastItem);
 
-        dockPanel.LastChildFill = prop.LastChildFill;
-        if(lastItem is not null) dockPanel.Children.Add(lastItem);
+            return (dockPanel, border);
 
-        return new Element<DockPanel>(uiScope, border, dockPanel);
+            void ApplyStyle(StyleSet style, Layoutable layout, Border bord)
+            {
+                StyleUtil.ApplyStyle(style, layout, bord);
+                if (style.Width is not null)
+                    dockPanel.Width = style.Width.Value;
 
-        void ApplyStyle(StyleSet style, Layoutable layout, Border bord)
-        {
-            StyleUtil.ApplyStyle(style, layout, bord);
-            if (style.Width is not null)
-                dockPanel.Width = style.Width.Value;
+                if (style.Height is not null)
+                    dockPanel.Height = style.Height.Value;
 
-            if (style.Height is not null)
-                dockPanel.Height = style.Height.Value;
+                if (style.MinWidth is not null)
+                    dockPanel.MinWidth = style.MinWidth.Value;
 
-            if (style.MinWidth is not null)
-                dockPanel.MinWidth = style.MinWidth.Value;
+                if (style.MaxWidth is not null)
+                    dockPanel.MaxWidth = style.MaxWidth.Value;
 
-            if (style.MaxWidth is not null)
-                dockPanel.MaxWidth = style.MaxWidth.Value;
+                if (style.MinHeight is not null)
+                    dockPanel.MinHeight = style.MinHeight.Value;
 
-            if (style.MinHeight is not null)
-                dockPanel.MinHeight = style.MinHeight.Value;
+                if (style.MaxHeight is not null)
+                    dockPanel.MaxHeight = style.MaxHeight.Value;
 
-            if (style.MaxHeight is not null)
-                dockPanel.MaxHeight = style.MaxHeight.Value;
-
-            if (style.RowSpacing is not null) dockPanel.HorizontalSpacing = style.RowSpacing.Value;
-            if (style.ColumnSpacing is not null) dockPanel.VerticalSpacing = style.ColumnSpacing.Value;
-        }
+                if (style.RowSpacing is not null) dockPanel.HorizontalSpacing = style.RowSpacing.Value;
+                if (style.ColumnSpacing is not null) dockPanel.VerticalSpacing = style.ColumnSpacing.Value;
+            }
+        });
     }
 }

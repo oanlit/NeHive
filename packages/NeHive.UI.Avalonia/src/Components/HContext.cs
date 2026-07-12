@@ -4,19 +4,21 @@ namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
-    public static IElement HContext<T>(ContextKey<T> contextKey, T value, Func<IElement> child) where T : notnull
+    public static IElement HContext<T>(ContextKey<T> contextKey, T value, IElement child) where T : notnull
     {
-        var uiScope = new UiScope();
-        uiScope.SetContext(contextKey, value);
-        var element = uiScope.RunInScope(child);
-        return new Element(uiScope, element);
+        return Element.WithScope(uiScope =>
+        {
+            uiScope.SetContext(contextKey, value);
+            return child;
+        });
     }
 
-    public static IElement HContext(Action<IContextSetter> buildContext, Func<IElement> child)
+    public static IElement HContext(Action<IContextSetter> contextSetter, IElement child)
     {
-        var uiScope = new UiScope();
-        buildContext(uiScope);
-        var element = uiScope.RunInScope(child);
-        return new Element(uiScope, element);
+        return Element.WithScope(uiScope =>
+        {
+            contextSetter(uiScope);
+            return child;
+        });
     }
 }

@@ -44,76 +44,77 @@ public static partial class BaseComponent
 {
     public static IElement HTabControl(HTabViewProp prop)
     {
-        var uiScope = new UiScope();
-
-        var tabControl = new TabControl();
-        var border = new Border
+        return Element.WithScope(uiScope =>
         {
-            Child = tabControl
-        };
-
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-
-        state.ApplyAccessorStyle(prop.Style, tabControl, border, ApplyStyle);
-        state.ApplyVariantsStyle(tabControl, border, ApplyStyle);
-
-        // tabControl.ItemTemplate = 
-
-        // 构建 TabItems
-        var tabItems = new List<TabItem>();
-        foreach (var (headerAccessor, contentElement) in prop)
-        {
-            var tabItem = new TabItem();
-            
-            tabItem.Header = headerAccessor.Value;
-            if(headerAccessor.IsReactive)
-                uiScope.CreateEffect(epochScope => tabItem.Header = epochScope.Track(headerAccessor));
-            
-            tabItem.Content = contentElement.Content;
-            tabItems.Add(tabItem);
-        }
-
-        tabControl.ItemsSource = tabItems;
-
-        if (prop.BindSelectedIndex is null)
-        {
-            if (tabItems.Count > 0) tabControl.SelectedIndex = 0;
-        }
-        else
-        {
-            // 双向绑定 selectedIndex
-            // View -> ViewModel
-            tabControl.SelectionChanged += (_, _) =>
+            var tabControl = new TabControl();
+            var border = new Border
             {
-                if (tabControl.SelectedIndex != prop.BindSelectedIndex.RxValue)
-                    prop.BindSelectedIndex.RxValue = tabControl.SelectedIndex;
+                Child = tabControl
             };
-            // ViewModel -> View
-            uiScope.CreateEffect(() =>
+
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
             {
-                var idx = prop.BindSelectedIndex.RxValue;
-                if (idx >= 0 && idx < tabItems.Count && idx != tabControl.SelectedIndex)
-                    tabControl.SelectedIndex = idx;
-            });
-        }
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
 
-        return new Element(uiScope, border);
+            state.ApplyAccessorStyle(prop.Style, tabControl, border, ApplyStyle);
+            state.ApplyVariantsStyle(tabControl, border, ApplyStyle);
 
-        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
-        {
-            StyleUtil.ApplyStyle(styleValue, layout, bord);
+            // tabControl.ItemTemplate = 
 
-            if (styleValue.VerticalTextAlignment is not null)
-                border.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
-            if (styleValue.Foreground is not null) tabControl.Foreground = styleValue.Foreground;
-            if (styleValue.FontSize is not null) tabControl.FontSize = styleValue.FontSize.Value;
-            if (styleValue.FontWeight is not null) tabControl.FontWeight = styleValue.FontWeight.Value;
-            if (styleValue.FontStyle is not null) tabControl.FontStyle = styleValue.FontStyle.Value;
-            if (styleValue.Foreground is not null) tabControl.Foreground = styleValue.Foreground;
-        }
+            // 构建 TabItems
+            var tabItems = new List<TabItem>();
+            foreach (var (headerAccessor, contentElement) in prop)
+            {
+                var tabItem = new TabItem();
+
+                tabItem.Header = headerAccessor.Value;
+                if (headerAccessor.IsReactive)
+                    uiScope.CreateEffect(epochScope => tabItem.Header = epochScope.Track(headerAccessor));
+
+                tabItem.Content = contentElement.Content;
+                tabItems.Add(tabItem);
+            }
+
+            tabControl.ItemsSource = tabItems;
+
+            if (prop.BindSelectedIndex is null)
+            {
+                if (tabItems.Count > 0) tabControl.SelectedIndex = 0;
+            }
+            else
+            {
+                // 双向绑定 selectedIndex
+                // View -> ViewModel
+                tabControl.SelectionChanged += (_, _) =>
+                {
+                    if (tabControl.SelectedIndex != prop.BindSelectedIndex.RxValue)
+                        prop.BindSelectedIndex.RxValue = tabControl.SelectedIndex;
+                };
+                // ViewModel -> View
+                uiScope.CreateEffect(() =>
+                {
+                    var idx = prop.BindSelectedIndex.RxValue;
+                    if (idx >= 0 && idx < tabItems.Count && idx != tabControl.SelectedIndex)
+                        tabControl.SelectedIndex = idx;
+                });
+            }
+
+            return border;
+
+            void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
+            {
+                StyleUtil.ApplyStyle(styleValue, layout, bord);
+
+                if (styleValue.VerticalTextAlignment is not null)
+                    border.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
+                if (styleValue.Foreground is not null) tabControl.Foreground = styleValue.Foreground;
+                if (styleValue.FontSize is not null) tabControl.FontSize = styleValue.FontSize.Value;
+                if (styleValue.FontWeight is not null) tabControl.FontWeight = styleValue.FontWeight.Value;
+                if (styleValue.FontStyle is not null) tabControl.FontStyle = styleValue.FontStyle.Value;
+                if (styleValue.Foreground is not null) tabControl.Foreground = styleValue.Foreground;
+            }
+        });
     }
 }

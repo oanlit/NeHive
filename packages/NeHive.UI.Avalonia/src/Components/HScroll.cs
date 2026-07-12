@@ -55,67 +55,68 @@ public static partial class BaseComponent
 {
     public static IElement<StackPanel> HScrollViewer(out HScrollExpose expose, HScrollProp prop)
     {
-        var uiScope = new UiScope();
         var scroll = new ScrollViewer();
-        var stack = new StackPanel();
-
-        var border = new Border
-        {
-            Child = scroll
-        };
-
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-
-        state.ApplyAccessorStyle(prop.Style, stack, border, ApplyStyle);
-        state.ApplyVariantsStyle(stack, border, ApplyStyle);
-
-        foreach (var child in prop)
-            stack.Children.Add(child.Content);
-
-        uiScope.OnMount += () =>
-        {
-            scroll.Content = stack;
-            scroll.ScrollToHome();
-        };
-
         expose = new HScrollExpose(scroll);
-
-        return new Element<StackPanel>(uiScope, border, stack);
-
-        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
+        return Element<StackPanel>.WithScope(uiScope =>
         {
-            StyleUtil.ApplyStyle(styleValue, layout, bord);
+            var stack = new StackPanel();
 
-            if (styleValue.Padding is not null)
+            var border = new Border
             {
-                border.Padding = new Thickness(0);
-                stack.Margin = styleValue.Padding.Value;
-            }
+                Child = scroll
+            };
 
-            var orientation = styleValue.Orientation ?? Orientation.Vertical;
-            stack.Orientation = orientation;
-
-            switch (orientation)
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
             {
-                case Orientation.Horizontal:
-                    if (styleValue.ColumnSpacing is not null) stack.Spacing = styleValue.ColumnSpacing.Value;
-                    scroll.HorizontalScrollBarVisibility =
-                        prop.HorizontalScrollBarVisibility.Value;
-                    scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-                    break;
+                StrVariants = prop.Style.Value.Variants,
+                Variants = prop.Variants
+            };
 
-                case Orientation.Vertical:
-                    if (styleValue.RowSpacing is not null) stack.Spacing = styleValue.RowSpacing.Value;
-                    scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-                    scroll.VerticalScrollBarVisibility =
-                        prop.VerticalScrollBarVisibility.Value;
-                    break;
+            state.ApplyAccessorStyle(prop.Style, stack, border, ApplyStyle);
+            state.ApplyVariantsStyle(stack, border, ApplyStyle);
+
+            foreach (var child in prop)
+                stack.Children.Add(child.Content);
+
+            uiScope.OnMount += () =>
+            {
+                scroll.Content = stack;
+                scroll.ScrollToHome();
+            };
+
+            return (stack, border);
+
+            void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
+            {
+                StyleUtil.ApplyStyle(styleValue, layout, bord);
+
+                if (styleValue.Padding is not null)
+                {
+                    border.Padding = new Thickness(0);
+                    stack.Margin = styleValue.Padding.Value;
+                }
+
+                var orientation = styleValue.Orientation ?? Orientation.Vertical;
+                stack.Orientation = orientation;
+
+                switch (orientation)
+                {
+                    case Orientation.Horizontal:
+                        if (styleValue.ColumnSpacing is not null) stack.Spacing = styleValue.ColumnSpacing.Value;
+                        scroll.HorizontalScrollBarVisibility =
+                            prop.HorizontalScrollBarVisibility.Value;
+                        scroll.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                        break;
+
+                    case Orientation.Vertical:
+                        if (styleValue.RowSpacing is not null) stack.Spacing = styleValue.RowSpacing.Value;
+                        scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
+                        scroll.VerticalScrollBarVisibility =
+                            prop.VerticalScrollBarVisibility.Value;
+                        break;
+                }
             }
-        }
+        });
     }
 
     public static IElement<StackPanel> HScrollViewer(HScrollProp prop)
