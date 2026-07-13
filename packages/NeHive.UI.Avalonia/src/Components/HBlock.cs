@@ -1,5 +1,4 @@
 using System.Collections;
-
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Controls;
@@ -13,6 +12,7 @@ using NeHive.UI.Avalonia.Utils;
 namespace NeHive.UI.Avalonia.Components;
 
 public class HBlockProp(
+    Accessor<bool>? isAllowDrop = null,
     Accessor<string>? strStyle = null,
     Accessor<StyleSet>? style = null,
     Dictionary<string, StyleSet>? variants = null,
@@ -30,10 +30,17 @@ public class HBlockProp(
     Action<KeyEventArgs>? onKeyDown = null,
     Action<KeyEventArgs>? onKeyUp = null,
     Action<TextInputEventArgs>? onTextInput = null,
-    Action<TextInputMethodClientRequestedEventArgs>? onTextInputMethodClientRequested = null
+    Action<TextInputMethodClientRequestedEventArgs>? onTextInputMethodClientRequested = null,
+    Action<DragEventArgs>? onDragEnter = null,
+    Action<DragEventArgs>? onDragOver = null,
+    Action<DragEventArgs>? onDragLeave = null,
+    Action<DragEventArgs>? onDrop = null
 ) : ISingleChildrenProp
 {
     private readonly List<IElement> _children = [];
+
+    public readonly Accessor<bool>? IsAllowDrop = isAllowDrop;
+
     public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
     public readonly Dictionary<string, StyleSet>? Variants = variants;
 
@@ -59,7 +66,12 @@ public class HBlockProp(
     public readonly Action<TextInputMethodClientRequestedEventArgs>? OnTextInputMethodClientRequested =
         onTextInputMethodClientRequested;
 
-    
+    public readonly Action<DragEventArgs>? OnDragEnter = onDragEnter;
+    public readonly Action<DragEventArgs>? OnDragOver = onDragOver;
+    public readonly Action<DragEventArgs>? OnDragLeave = onDragLeave;
+    public readonly Action<DragEventArgs>? OnDrop = onDrop;
+
+
     public IEnumerator<IElement> GetEnumerator()
         => _children.GetEnumerator();
 
@@ -79,7 +91,7 @@ public static partial class BaseComponent
         return Element.WithScope(uiScope =>
         {
             var child = ElementUtil.WrapSingleContainerContent(prop);
-            
+
             var border = new Border
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -116,6 +128,18 @@ public static partial class BaseComponent
             if (prop.OnTextInput is not null) border.TextInput += (_, e) => prop.OnTextInput(e);
             if (prop.OnTextInputMethodClientRequested is not null)
                 border.TextInputMethodClientRequested += (_, e) => prop.OnTextInputMethodClientRequested(e);
+
+            if (prop.IsAllowDrop is not null)
+            {
+                DragDrop.SetAllowDrop(border, prop.IsAllowDrop.Value);
+                if (prop.IsAllowDrop.IsReactive)
+                    uiScope.CreateEffect(scope => DragDrop.SetAllowDrop(border, scope.Track(prop.IsAllowDrop)));
+            }
+
+            if (prop.OnDragEnter is not null) DragDrop.AddDragEnterHandler(border, (_, e) => prop.OnDragEnter(e));
+            if (prop.OnDragOver is not null) DragDrop.AddDragOverHandler(border, (_, e) => prop.OnDragOver(e));
+            if (prop.OnDragLeave is not null) DragDrop.AddDragLeaveHandler(border, (_, e) => prop.OnDragLeave(e));
+            if (prop.OnDrop is not null) DragDrop.AddDropHandler(border, (_, e) => prop.OnDrop(e));
 
             return border;
         });

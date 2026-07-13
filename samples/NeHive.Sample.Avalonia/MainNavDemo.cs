@@ -4,6 +4,7 @@ using NeHive.Reactive;
 using NeHive.UI.Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Input;
 using Avalonia.Controls.Primitives;
 using NeHive.UI.Avalonia.Components;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
@@ -556,6 +557,60 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     #endregion
 
+    #region Drag File Drop Demo
+
+    private static IElement DragFileDemo()
+    {
+        var imgPath = new MutSignal<string?>(null);
+        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        {
+            HTextBlock("Drag Image File Demo", strStyle: SectionTitleStyle),
+
+            HBlock(new(
+                isAllowDrop: true,
+                strStyle: new(() =>
+                    $"mt-2 w-64 h-64 overflow-hidden relative {MaskColor()} border rounded-xl dragover:bg-sky-200"),
+                onDragOver: DragOver,
+                onDrop: Drop
+            )
+            {
+                Show(new(new(() => imgPath.RxValue is null))
+                {
+                    IfTrue = () => HTextBlock("Drag image files here\nSupports PNG / JPG / JPEG",
+                        strStyle: "w-full h-full text-center text-lg fg-gray-400 dragover:fg-sky-600"),
+                    IfFalse = ()=>HUriImage(imgPath,
+                        stretch: Stretch.UniformToFill,
+                        strStyle:
+                        "mask-gradient-b mask-from-50 mask-to-20 transition-transform ease-in-out duration-500 hover:scale-110"
+                    ) // HUriImage
+                }) // Show
+            }) // HBlock
+        }); // HStackPanel
+
+        string MaskColor()
+        {
+            return imgPath.RxValue is null
+                ? "bg-gray-50 border-gray-200"
+                : "gradient-b from-pink-300 to-blue-300 border-pink-200";
+        }
+
+        void DragOver(DragEventArgs e)
+        {
+            var accept = e.DataTransfer.Formats.Contains(DataFormat.File);
+            e.DragEffects = accept ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        void Drop(DragEventArgs e)
+        {
+            var files = e.DataTransfer.TryGetFile();
+            imgPath.RxValue = files?.Path.LocalPath;
+            e.Handled = true;
+        }
+    }
+
+    #endregion
+
     #region ProgressBar Progress Indicator Demo
 
     private static IElement ProgressBarDemo()
@@ -1068,6 +1123,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 "This child component is dynamically created and destroyed. Toggle the button above to trigger its construction and cleanup callback.")
                         }); // childRootElement
 
+                    childScope.OnMount += () => AddLog("Dynamic child component mounted");
                     childScope.OnCleanup += () => AddLog("Dynamic child component disposed");
 
                     return childRootElement;
@@ -1081,7 +1137,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 ForEach<string>(new(logMessages)
                 {
                     ItemsPanel = HStackPanel(new(strStyle: "gap-1 vertical")),
-                    ItemTemplate = (msg, _) => HTextBlock(msg, strStyle: "text-xs font-mono fg-gray-700")
+                    ItemTemplate = (msg, _) => HTextBlock(msg, strStyle: "text-xs fg-gray-700")
                 }) // ForEach<string>
             }) // HScrollViewer
         });
@@ -1927,7 +1983,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                             strStyle: new(() => $"ml-2 fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
                     }) // HContentButton.Content
                 }) // HContentButton
-            }); // rootElement
+            }); // HStackPanel
         });
     }
 
@@ -1957,7 +2013,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                         "The background, text and border color of this card component will automatically change according to the theme.",
                         strStyle: new(() => $"fg-{(theme.RxValue is "dark" ? "matcha-300" : "coffee-700")}")),
                 }) // HStackPanel
-            }); // rootElement
+            }); // HStackPanel
         });
     }
 
@@ -1974,7 +2030,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 DemoView.UniformGridDemo, DemoView.GridSplitterDemo, DemoView.ScrollDemo),
 
             new("🔘 Basic Input Controls", DemoView.TextBoxDemo, DemoView.CheckBoxDemo, DemoView.RadioButtonDemo,
-                DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.ProgressBarDemo,
+                DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.DragFileDemo, DemoView.ProgressBarDemo,
                 DemoView.SliderDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
 
             new("📋 Data Selection & Lists", DemoView.TreeViewDemo, DemoView.ComboBoxDemo),
@@ -2086,6 +2142,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 [DemoView.RadioButtonDemo] = RadioButtonDemo,
                                 [DemoView.ToggleSwitchDemo] = ToggleSwitchDemo,
                                 [DemoView.FilePickerDemo] = FilePickerDemo,
+                                [DemoView.DragFileDemo] = DragFileDemo,
                                 [DemoView.ProgressBarDemo] = ProgressBarDemo,
                                 [DemoView.SliderDemo] = SliderDemo,
                                 [DemoView.FlyoutDemo] = FlyoutDemo,
@@ -2180,6 +2237,7 @@ public enum DemoView
     RadioButtonDemo,
     ToggleSwitchDemo,
     FilePickerDemo,
+    DragFileDemo,
     ProgressBarDemo,
     SliderDemo,
     FlyoutDemo,

@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Input;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 
@@ -14,10 +15,10 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
 
     public Dictionary<string, StyleSet>? Variants;
 
-    // 鼠标交互状态（悬停、按下等）
     public bool IsHover;
     public bool IsClicked;
-    public bool IsFocused; // 新增：焦点状态
+    public bool IsFocused;
+    public bool IsDragOver;
 
     public void ResetSetStyle()
     {
@@ -32,6 +33,7 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         SetHoverStyle();
         SetFocusStyle();
         SetClickStyle();
+        SetDragOverStyle();
     }
 
     public void SetHoverStyle()
@@ -83,7 +85,6 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         }
     }
 
-    // 新增：焦点样式设置
     public void SetFocusStyle()
     {
         if (!IsFocused) return;
@@ -94,6 +95,22 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         }
 
         if (Variants is not null && Variants.TryGetValue("focus", out var styleSet))
+        {
+            CurrentStyle.Merge(styleSet);
+            CurrentIsBase = false;
+        }
+    }
+
+    public void SetDragOverStyle()
+    {
+        if (!IsDragOver) return;
+        if (StrVariants is not null && StrVariants.TryGetValue("dragover", out var strs))
+        {
+            StyleParser.Parse(strs, ref CurrentStyle);
+            CurrentIsBase = false;
+        }
+
+        if (Variants is not null && Variants.TryGetValue("dragover", out var styleSet))
         {
             CurrentStyle.Merge(styleSet);
             CurrentIsBase = false;
@@ -127,7 +144,6 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
     public void ApplyVariantsStyle(Layoutable layout, Border border,
         Action<StyleSet, Layoutable, Border> applyStyle)
     {
-        // 焦点事件绑定
         border.GotFocus += (_, _) =>
         {
             IsFocused = true;
@@ -171,5 +187,25 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             SetHoverStyle();
             applyStyle(CurrentStyle, layout, border);
         };
+
+        DragDrop.AddDragEnterHandler(border, (_, _) =>
+        {
+            IsDragOver = true;
+            SetDragOverStyle();
+            applyStyle(CurrentStyle, layout, border);
+        });
+
+        DragDrop.AddDragLeaveHandler(border, (_, _) => LoseDragState());
+        DragDrop.AddDropHandler(border, (_, _) => LoseDragState());
+
+        return;
+
+        void LoseDragState()
+        {
+            IsDragOver = false;
+            ResetSetStyle();
+            SetCurrentStyle();
+            applyStyle(CurrentStyle, layout, border);
+        }
     }
 }
