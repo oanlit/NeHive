@@ -166,14 +166,14 @@ public static class MusicPlayerDemo
                 // 播放按钮组
                 HStackPanel(new(strStyle: "gap-5 horizontal center")
                 {
-                    HContentButton(new(
+                    HButton(new(
                         strStyle: "my-auto w-4 h-4 hover:opacity-50",
                         onClick: _ => PlayLast())
                     {
-                        Content = HSvgImage("~/Assets/skip-back.svg",
+                        HSvgImage("~/Assets/skip-back.svg",
                             strStyle: "w-4 h-4 fw-extralight fg-black bg-black/0")
-                    }), // HContentButton
-                    HContentButton(new(strStyle:
+                    }), // HButton
+                    HButton(new(strStyle:
                         """
                         w-11 h-11 center fg-white 
                         bg-gradient-br bg-from-blue-200 bg-to-violet-800
@@ -182,7 +182,7 @@ public static class MusicPlayerDemo
                         """,
                         onClick: _ => isPlaying.RxValue = !isPlaying.Value)
                     {
-                        Content = Show(new(isPlaying)
+                        Show(new(isPlaying)
                         {
                             IfFalse = () => HSvgImage("~/Assets/play.svg",
                                 strStyle: """
@@ -197,14 +197,14 @@ public static class MusicPlayerDemo
                                           """
                             ) // IfTrue
                         }) // Show
-                    }), // HContentButton
-                    HContentButton(new(
+                    }), // HButton
+                    HButton(new(
                         strStyle: "center bg-black/0 hover:opacity-50",
                         onClick: _ => PlayNext())
                     {
-                        Content = HSvgImage("~/Assets/skip-forward.svg",
+                        HSvgImage("~/Assets/skip-forward.svg",
                             strStyle: "w-4 h-4 fw-extralight fg-black bg-black/0")
-                    }) // HContentButton
+                    }) // HButton
                 }), // HStackPanel
 
                 // 进度条

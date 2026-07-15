@@ -383,28 +383,28 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             }), // HScrollViewer
             HStackPanel(new(strStyle: HorizontalRowBase + " justify-center")
             {
-                HContentButton(new(
+                HButton(new(
                     strStyle: PrimaryBtnBase,
                     onClick: _ => scroll.ScrollToHome()
                 )
                 {
-                    Content = HStackPanel(new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
+                    HStackPanel(new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
                     {
                         HSvgImage("~/Assets/arrow-big-up-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
                         HTextBlock("Scroll To Top", strStyle: "fw-bold text-xs fg-white")
                     }) // HStackPanel
-                }), // HContentButton
-                HContentButton(new(
+                }), // HButton
+                HButton(new(
                     strStyle: SecondaryBtnBase,
                     onClick: _ => scroll.ScrollToEnd()
                 )
                 {
-                    Content = HStackPanel(new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
+                    HStackPanel(new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
                     {
                         HSvgImage("~/Assets/arrow-big-down-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
                         HTextBlock("Scroll To Bottom", strStyle: "fw-bold text-xs fg-white")
                     }) // HStackPanel
-                }) // HContentButton
+                }) // HButton
             }) // HStackPanel
         }); // HStackPanel
     }
@@ -578,7 +578,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 {
                     IfTrue = () => HTextBlock("Drag image files here\nSupports PNG / JPG / JPEG",
                         strStyle: "w-full h-full text-center text-lg fg-gray-400 dragover:fg-sky-600"),
-                    IfFalse = ()=>HUriImage(imgPath,
+                    IfFalse = () => HUriImage(imgPath,
                         stretch: Stretch.UniformToFill,
                         strStyle:
                         "mask-gradient-b mask-from-50 mask-to-20 transition-transform ease-in-out duration-500 hover:scale-110"
@@ -658,6 +658,47 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     }
 
     #endregion
+
+    private static IElement CustomSliderDemo()
+    {
+        var volume = new MutSignal<double>(50);
+
+        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        {
+            HTextBlock("Slider Continuous Value Adjustment Demo", strStyle: SectionTitleStyle),
+            HSlider(new(
+                bindValue: volume,
+                minimum: 0,
+                maximum: 100,
+                strStyle: "w-72 h-12")
+            {
+                Template = part =>
+                    part.Track(HTrack(new(
+                        value: volume,
+                        minimum: 0,
+                        maximum: 100,
+                        strStyle: "w-full h-full rounded-lg")
+                    {
+                        DecreaseButton =
+                            part.DecreaseButton(
+                                HButton(strStyle: "my-auto w-full h-1 bg-matcha-700 hover:bg-matcha-500 rounded")),
+                        IncreaseButton =
+                            part.IncreaseButton(
+                                HButton(strStyle: "my-auto w-full h-1 bg-coffee-200 hover:bg-coffee-400 rounded")),
+                        Thumb = HThumb(new(strStyle: "my-auto w-full h-full bg-transparent")
+                        {
+                            HSvgImage("~/Assets/circle-star.svg",
+                                strStyle: new(() =>
+                                    "w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full")
+                            ) // HSvgImage
+                        }) // HTrack.Thumb
+                    })), // part.Track
+                // HSlider.Template
+            }), // HSlider
+            HTextBlock(new(() => $"Audio Volume Level: {volume.RxValue:F0}"),
+                strStyle: "mt-2 text-xl fw-semibold fg-matcha-600")
+        }); // HStackPanel
+    }
 
     #region Flyout Demo
 
@@ -1959,7 +2000,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             if (theme is null || toggleTheme is null) throw new ArgumentNullException();
             return HStackPanel(new()
             {
-                HContentButton(new(strStyle: new(() =>
+                HButton(new(strStyle: new(() =>
                         $"""
                          {(theme.RxValue is "dark" ? "fg-matcha-100 bg-matcha-900 border-matcha-700" : "fg-coffee-700 bg-coffee-50 border-matcha-200")}
                          rounded-lg
@@ -1967,7 +2008,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                          """),
                     onClick: _ => toggleTheme())
                 {
-                    Content = HStackPanel(new(strStyle: "px-4 py-2 horizontal")
+                    HStackPanel(new(strStyle: "px-4 py-2 horizontal")
                     {
                         Switch<string>(new(theme)
                         {
@@ -1981,8 +2022,8 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                         }), // Switch<string>
                         HTextBlock(new(() => $"Switch To {(theme.RxValue is "dark" ? "Light" : "Dark")} Theme Mode"),
                             strStyle: new(() => $"ml-2 fg-{(theme.RxValue is "dark" ? "matcha-200" : "coffee-700")}"))
-                    }) // HContentButton.Content
-                }) // HContentButton
+                    }) // HStackPanel
+                }) // HButton
             }); // HStackPanel
         });
     }
@@ -2031,7 +2072,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
             new("🔘 Basic Input Controls", DemoView.TextBoxDemo, DemoView.CheckBoxDemo, DemoView.RadioButtonDemo,
                 DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.DragFileDemo, DemoView.ProgressBarDemo,
-                DemoView.SliderDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
+                DemoView.SliderDemo, DemoView.CustomSliderDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
 
             new("📋 Data Selection & Lists", DemoView.TreeViewDemo, DemoView.ComboBoxDemo),
 
@@ -2145,6 +2186,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 [DemoView.DragFileDemo] = DragFileDemo,
                                 [DemoView.ProgressBarDemo] = ProgressBarDemo,
                                 [DemoView.SliderDemo] = SliderDemo,
+                                [DemoView.CustomSliderDemo] = CustomSliderDemo,
                                 [DemoView.FlyoutDemo] = FlyoutDemo,
                                 [DemoView.WindowDemo] = WindowDemo,
 
@@ -2240,6 +2282,7 @@ public enum DemoView
     DragFileDemo,
     ProgressBarDemo,
     SliderDemo,
+    CustomSliderDemo,
     FlyoutDemo,
     WindowDemo,
 
