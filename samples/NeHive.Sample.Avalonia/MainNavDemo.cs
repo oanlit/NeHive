@@ -685,14 +685,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                         IncreaseButton =
                             part.IncreaseButton(
                                 HButton(strStyle: "my-auto w-full h-1 bg-coffee-200 hover:bg-coffee-400 rounded")),
-                        Thumb = HThumb(new(strStyle: "my-auto w-full h-full bg-transparent")
+                        Thumb = HThumb(new(strStyle: "my-auto")
                         {
                             HSvgImage("~/Assets/circle-star.svg",
-                                strStyle: new(() =>
-                                    "w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full")
+                                strStyle: "w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full"
                             ) // HSvgImage
                         }) // HTrack.Thumb
-                    })), // part.Track
+                    })) // part.Track
                 // HSlider.Template
             }), // HSlider
             HTextBlock(new(() => $"Audio Volume Level: {volume.RxValue:F0}"),
@@ -1944,7 +1943,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             HTextBlock("Group Unified Hover State Parent Container Demo", strStyle: SectionTitleStyle),
             HGroup(new(strStyle: "mx-auto my-auto p-6 bg-gray-50 border border-gray-200 rounded-xl")
             {
-                Child = state => HStackPanel(new(
+                Content = state => HStackPanel(new(
                     strStyle: "gap-8 horizontal justify-center items-center")
                 {
                     HSvgImage("~/Assets/play.svg",

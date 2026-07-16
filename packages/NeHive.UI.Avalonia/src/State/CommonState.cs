@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Input;
@@ -141,23 +142,33 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         });
     }
 
-    public void ApplyVariantsStyle(Layoutable layout, Border border,
+    public void ApplyVariantsStyle(InputElement layout, Border border,
         Action<StyleSet, Layoutable, Border> applyStyle)
     {
-        border.GotFocus += (_, _) =>
+        var hover = BindPointerOver(border, uiScope);
+        uiScope.CreateEffect(epoch =>
         {
-            IsFocused = true;
+            var newHover = epoch.Pull(hover);
+            if (IsHover == newHover) return;
+
+            IsHover = newHover;
             ResetSetStyle();
             SetCurrentStyle();
             applyStyle(CurrentStyle, layout, border);
-        };
-        border.LostFocus += (_, _) =>
+        });
+
+        var focus = BindFocused(layout, uiScope);
+        uiScope.CreateEffect(epoch =>
         {
-            IsFocused = false;
+            var newFocus = epoch.Pull(focus);
+            if (IsFocused == newFocus) return;
+
+            IsFocused = newFocus;
             ResetSetStyle();
             SetCurrentStyle();
             applyStyle(CurrentStyle, layout, border);
-        };
+        });
+
         border.PointerPressed += (_, e) =>
         {
             if (!e.GetCurrentPoint(border).Properties.IsLeftButtonPressed)
@@ -171,20 +182,6 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             IsClicked = false;
             ResetSetStyle();
             SetCurrentStyle();
-            applyStyle(CurrentStyle, layout, border);
-        };
-        border.PointerExited += (_, _) =>
-        {
-            IsHover = false;
-            IsClicked = false;
-            ResetSetStyle();
-            SetCurrentStyle();
-            applyStyle(CurrentStyle, layout, border);
-        };
-        border.PointerEntered += (_, _) =>
-        {
-            IsHover = true;
-            SetHoverStyle();
             applyStyle(CurrentStyle, layout, border);
         };
 
@@ -206,6 +203,38 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             ResetSetStyle();
             SetCurrentStyle();
             applyStyle(CurrentStyle, layout, border);
+        }
+    }
+
+    public static Signal<bool> BindPointerOver(InputElement target, UiScope scope)
+    {
+        var sig = new MutSignal<bool>(target.IsPointerOver);
+
+        target.PropertyChanged += OnPropUpdate;
+        scope.OnCleanup += () => target.PropertyChanged -= OnPropUpdate;
+
+        return sig;
+
+        void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+        {
+            if (args.Property == InputElement.IsPointerOverProperty)
+                sig.RxValue = (bool)args.NewValue!;
+        }
+    }
+
+    public static Signal<bool> BindFocused(InputElement target, UiScope scope)
+    {
+        var sig = new MutSignal<bool>(target.IsFocused);
+
+        target.PropertyChanged += OnPropUpdate;
+        scope.OnCleanup += () => target.PropertyChanged -= OnPropUpdate;
+
+        return sig;
+
+        void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+        {
+            if (args.Property == InputElement.IsFocusedProperty)
+                sig.RxValue = (bool)args.NewValue!;
         }
     }
 }

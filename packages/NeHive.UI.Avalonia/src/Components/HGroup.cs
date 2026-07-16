@@ -12,7 +12,7 @@ public class HGroupProp<T>(
 {
     public readonly Accessor<FullStyle>? Style = StyleParser.ParseFull(strStyle);
 
-    public required Func<T, IElement> Child { get; init; }
+    public required Func<T, IElement> Content { get; init; }
 }
 
 public static partial class BaseComponent
@@ -85,7 +85,7 @@ public static partial class BaseComponent
                 };
             };
 
-            border.Child = prop.Child(state).Content;
+            border.Child = prop.Content(state).Content;
             return border;
         });
     }
