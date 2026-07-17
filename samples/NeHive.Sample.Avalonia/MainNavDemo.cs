@@ -1,11 +1,12 @@
 using System.Text;
 using NeHive.Model;
-using NeHive.Reactive;
 using NeHive.UI.Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Input;
+using Avalonia.Input.GestureRecognizers;
 using Avalonia.Controls.Primitives;
+using NeHive.Reactive;
 using NeHive.UI.Avalonia.Components;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
 using static NeHive.UI.Avalonia.Components.ControlFlow;
@@ -423,13 +424,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             HTextBlock("TextBox Text Input Control Demo", strStyle: SectionTitleStyle),
             HTextBox(
                 bindText: textSignal,
-                // placeholderText: "Enter custom text content here...",
+                placeholderText: "Enter custom text content here...",
                 strStyle: InputBaseStyle + "text-base focus:ring-offset-2",
                 onTextInput: newText => log.RxValue = $"Input content updated: {newText}"
             ), // HTextBox
             HTextBox(
                 bindText: textSignal,
-                // placeholderText: "Type something...",
+                placeholderText: "Type something...",
                 strStyle: InputBaseStyle + "text-base selection:fg-matcha-800",
                 onTextInput: newText => log.RxValue = $"Input content updated: {newText}"
             ), // HTextBox
@@ -650,7 +651,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 isSnapToTickEnabled: true,
                 tickFrequency: 10,
                 tickPlacement: TickPlacement.Outside,
-                strStyle: "w-72 h-6"
+                strStyle: "w-72 h-6 horizontal"
             ), // HSlider
             HTextBlock(new(() => $"Audio Volume Level: {volume.RxValue:F0}"),
                 strStyle: "mt-2 text-xl fw-semibold fg-matcha-600")
@@ -658,46 +659,6 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     }
 
     #endregion
-
-    private static IElement CustomSliderDemo()
-    {
-        var volume = new MutSignal<double>(50);
-
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
-        {
-            HTextBlock("Slider Continuous Value Adjustment Demo", strStyle: SectionTitleStyle),
-            HSlider(new(
-                bindValue: volume,
-                minimum: 0,
-                maximum: 100,
-                strStyle: "w-72 h-12")
-            {
-                Template = part =>
-                    part.Track(HTrack(new(
-                        value: volume,
-                        minimum: 0,
-                        maximum: 100,
-                        strStyle: "w-full h-full rounded-lg")
-                    {
-                        DecreaseButton =
-                            part.DecreaseButton(
-                                HButton(strStyle: "my-auto w-full h-1 bg-matcha-700 hover:bg-matcha-500 rounded")),
-                        IncreaseButton =
-                            part.IncreaseButton(
-                                HButton(strStyle: "my-auto w-full h-1 bg-coffee-200 hover:bg-coffee-400 rounded")),
-                        Thumb = HThumb(new(strStyle: "my-auto")
-                        {
-                            HSvgImage("~/Assets/circle-star.svg",
-                                strStyle: "w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full"
-                            ) // HSvgImage
-                        }) // HTrack.Thumb
-                    })) // part.Track
-                // HSlider.Template
-            }), // HSlider
-            HTextBlock(new(() => $"Audio Volume Level: {volume.RxValue:F0}"),
-                strStyle: "mt-2 text-xl fw-semibold fg-matcha-600")
-        }); // HStackPanel
-    }
 
     #region Flyout Demo
 
@@ -1934,6 +1895,109 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     #endregion
 
+    private static IElement CustomSliderDemo()
+    {
+        var volume = new MutSignal<double>(50);
+
+        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        {
+            HTextBlock("Slider Continuous Value Adjustment Demo", strStyle: SectionTitleStyle),
+            HSlider(new(
+                bindValue: volume,
+                minimum: 0,
+                maximum: 100,
+                strStyle: "w-72 h-12 horizontal")
+            {
+                Template = part =>
+                    part.Track(HTrack(new(
+                        value: volume,
+                        minimum: 0,
+                        maximum: 100,
+                        strStyle: "w-full h-full rounded-lg")
+                    {
+                        DecreaseButton =
+                            part.DecreaseButton(
+                                HButton(strStyle: "my-auto w-full h-1 bg-matcha-700 hover:bg-matcha-500 rounded")),
+                        IncreaseButton =
+                            part.IncreaseButton(
+                                HButton(strStyle: "my-auto w-full h-1 bg-coffee-200 hover:bg-coffee-400 rounded")),
+                        Thumb = HThumb(new(strStyle: "my-auto")
+                        {
+                            HSvgImage("~/Assets/circle-star.svg",
+                                strStyle: "w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full"
+                            ) // HSvgImage
+                        }) // HTrack.Thumb
+                    })) // part.Track
+                // HSlider.Template
+            }), // HSlider
+            HTextBlock(new(() => $"Audio Volume Level: {volume.RxValue:F0}"),
+                strStyle: "mt-2 text-xl fw-semibold fg-matcha-600")
+        }); // HStackPanel
+    }
+
+    private static IElement CustomScrollDemo()
+    {
+        var sb = new StringBuilder();
+        for (var i = 1; i <= 40; i++)
+        {
+            sb.AppendLine(
+                $"Line {i}: Long vertical scrollable text content sample for NeHive UI framework demonstration.");
+        }
+
+        var longText = sb.ToString();
+
+        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        {
+            HTextBlock("Custom Scroll Demo", strStyle: SectionTitleStyle),
+            HScrollViewer(new(
+                verticalScrollBarVisibility: ScrollBarVisibility.Auto,
+                strStyle: "w-full h-60 p-3 vertical bg-white rounded-xl border border-matcha-200 overflow-hidden")
+            {
+                Template = (props, part) => HGrid(new(columnDefinitions: new([HgLen.Star(), HgLen.Auto]))
+                {
+                    [(0, 0)] = part.ContentPresenter(HScrollContentPresenter(
+                        isScrollInertiaEnabled: props.IsScrollInertiaEnabled,
+                        horizontalSnapPointsType: props.HorizontalSnapPointsType,
+                        verticalSnapPointsType: props.VerticalSnapPointsType,
+                        horizontalSnapPointsAlignment: props.HorizontalSnapPointsAlignment,
+                        verticalSnapPointsAlignment: props.VerticalSnapPointsAlignment,
+                        strStyle: "w-full h-60 p-3 vertical",
+                        gestureRecognizer: new()
+                        {
+                            
+                        })),
+                    [(0, 1)] = part.VerticalScrollBar(HScrollBar(new(strStyle: "w-2 h-full vertical rounded")
+                    {
+                        Template = (scrollBarProps, scrollBarPart) =>
+                            HTrack(new(
+                                bindValue: scrollBarProps.Value,
+                                viewportSize: scrollBarProps.ViewportSize,
+                                minimum: scrollBarProps.Minimum,
+                                maximum: scrollBarProps.Maximum,
+                                isDeferThumbDrag: scrollBarProps.IsDeferredScrollingEnabled,
+                                strStyle: "w-2 h-full vertical rounded")
+                            {
+                                DecreaseButton = scrollBarPart.PageDownButton(
+                                    HButton(strStyle: "w-2 bg-coffee-200 hover:bg-coffee-300")
+                                ), // HTrack.DecreaseButton
+                                Thumb = HThumb(new(strStyle: "mx-auto")
+                                {
+                                    HSvgImage("~/Assets/circle-star.svg",
+                                        strStyle: "w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full"
+                                    ) // HSvgImage
+                                }),
+                                IncreaseButton = scrollBarPart.PageUpButton(
+                                    HButton(strStyle: "w-2 bg-coffee-200 hover:bg-coffee-300")
+                                ) // HTrack.IncreaseButton
+                            }) // HTrack
+                        // HScrollBar.Template
+                    })) // part.VerticalScrollBar
+                }), // HScrollViewer.Template
+                Content = HTextBlock(longText, strStyle: "text-base leading-relaxed fg-matcha-800")
+            }), // HScrollViewer
+        }); // HStackPanel
+    }
+
     #region Group Unified Hover State Container Demo
 
     private static IElement GroupDemo()
@@ -2071,7 +2135,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
             new("🔘 Basic Input Controls", DemoView.TextBoxDemo, DemoView.CheckBoxDemo, DemoView.RadioButtonDemo,
                 DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.DragFileDemo, DemoView.ProgressBarDemo,
-                DemoView.SliderDemo, DemoView.CustomSliderDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
+                DemoView.SliderDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
 
             new("📋 Data Selection & Lists", DemoView.TreeViewDemo, DemoView.ComboBoxDemo),
 
@@ -2092,6 +2156,8 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 DemoView.CursorDemo,
                 DemoView.TransitionDemo,
                 DemoView.TransformDemo,
+                DemoView.CustomSliderDemo,
+                DemoView.CustomScrollDemo,
                 DemoView.GroupDemo,
                 DemoView.ContextDemo
             ),
@@ -2185,7 +2251,6 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 [DemoView.DragFileDemo] = DragFileDemo,
                                 [DemoView.ProgressBarDemo] = ProgressBarDemo,
                                 [DemoView.SliderDemo] = SliderDemo,
-                                [DemoView.CustomSliderDemo] = CustomSliderDemo,
                                 [DemoView.FlyoutDemo] = FlyoutDemo,
                                 [DemoView.WindowDemo] = WindowDemo,
 
@@ -2211,6 +2276,10 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 [DemoView.CursorDemo] = CursorDemo,
                                 [DemoView.TransitionDemo] = TransitionDemo,
                                 [DemoView.TransformDemo] = TransformDemo,
+
+                                [DemoView.CustomSliderDemo] = CustomSliderDemo,
+                                [DemoView.CustomScrollDemo] = CustomScrollDemo,
+
                                 [DemoView.GroupDemo] = GroupDemo,
                                 [DemoView.ContextDemo] = ContextDemo,
 
@@ -2281,7 +2350,6 @@ public enum DemoView
     DragFileDemo,
     ProgressBarDemo,
     SliderDemo,
-    CustomSliderDemo,
     FlyoutDemo,
     WindowDemo,
 
@@ -2307,6 +2375,9 @@ public enum DemoView
     CursorDemo,
     TransitionDemo,
     TransformDemo,
+
+    CustomSliderDemo,
+    CustomScrollDemo,
 
     GroupDemo,
     ContextDemo,

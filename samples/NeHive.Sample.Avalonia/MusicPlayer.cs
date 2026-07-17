@@ -254,9 +254,9 @@ public static class MusicPlayerDemo
                     minimum: 0,
                     maximum: 100,
                     strStyle: "my-auto w-24",
-                    onValueChanged: val =>
+                    onValueChanged: e =>
                     {
-                        var v = (int)val;
+                        var v = (int)e.NewValue;
                         volume.RxValue = v;
                         mediaPlayer.Volume = v;
                     }), // HSlider

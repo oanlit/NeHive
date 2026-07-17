@@ -36,7 +36,7 @@ public static partial class BaseComponent
     public static IElement<TextBox> HTextBox(
         MutSignal<string?> bindText,
         Accessor<char>? passwordChar = null,
-        // Accessor<bool>? selectable = null,
+        Accessor<string>? placeholderText = null,
         Accessor<bool>? isReadOnly = null,
         Accessor<string>? strStyle = null,
         Accessor<StyleSet>? style = null,
@@ -155,37 +155,39 @@ public static partial class BaseComponent
                 };
                 scope.Register("PART_TextPresenter", presenter);
 
-                // var placeholder = new TextBlock
-                // {
-                //     [!!TextBlock.ForegroundProperty] = control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
-                //     [!!Layoutable.HorizontalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
-                //     [!!Layoutable.VerticalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
-                //     // [!!Visual.OpacityProperty] = control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
-                //     [!!TextBlock.TextProperty] = control.GetObservable(TextBox.PlaceholderTextProperty).ToBinding(),
-                //     [!!Layoutable.VerticalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
-                //     [!!TextPresenter.TextAlignmentProperty] =
-                //         control.GetObservable(TextBox.TextAlignmentProperty).ToBinding(),
-                //     [!!TextPresenter.TextWrappingProperty] =
-                //         control.GetObservable(TextBox.TextWrappingProperty).ToBinding(),
-                //     [!Visual.IsVisibleProperty] = new MultiBinding
-                //     {
-                //         Converter = BoolConverters.And,
-                //         Bindings =
-                //         [
-                //             new Binding("PreeditText")
-                //             {
-                //                 ElementName = "PART_TextPresenter",
-                //                 Converter = StringConverters.IsNotNullOrEmpty
-                //             },
-                //             new Binding("Text")
-                //             {
-                //                 RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent),
-                //                 Converter = StringConverters.IsNotNullOrEmpty
-                //             }
-                //         ]
-                //     }
-                // };
-                // panel.Children.Add(placeholder);
+                var placeholder = new TextBlock
+                {
+                    [!!TextBlock.ForegroundProperty] = control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
+                    [!!Layoutable.HorizontalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+                    [!!Layoutable.VerticalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+                    // [!!Visual.OpacityProperty] = control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
+                    [!!TextBlock.TextProperty] = control.GetObservable(TextBox.PlaceholderTextProperty).ToBinding(),
+                    [!!Layoutable.VerticalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+                    [!!TextPresenter.TextAlignmentProperty] =
+                        control.GetObservable(TextBox.TextAlignmentProperty).ToBinding(),
+                    [!!TextPresenter.TextWrappingProperty] =
+                        control.GetObservable(TextBox.TextWrappingProperty).ToBinding(),
+                    [!Visual.IsVisibleProperty] = new MultiBinding
+                    {
+                        Converter = BoolConverters.And,
+                        Bindings =
+                        [
+                            new Binding
+                            {
+                                Source = presenter,
+                                Path = nameof(TextPresenter.PreeditText),
+                                Converter = StringConverters.IsNullOrEmpty
+                            },
+  
+                            new Binding("Text")
+                            {
+                                RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent),
+                                Converter = StringConverters.IsNullOrEmpty
+                            }
+                        ]
+                    }
+                };
+                panel.Children.Add(placeholder);
                 panel.Children.Add(presenter);
 
                 scrollViewer.Content = panel;
@@ -257,6 +259,18 @@ public static partial class BaseComponent
                     uiScope.CreateEffect(epochScope =>
                     {
                         textBox.PasswordChar = epochScope.Track(passwordChar);
+                    });
+                }
+            }
+            
+            if (placeholderText is not null)
+            {
+                textBox.PlaceholderText = placeholderText.Value;
+                if (placeholderText.IsReactive)
+                {
+                    uiScope.CreateEffect(epochScope =>
+                    {
+                        textBox.PlaceholderText = epochScope.Track(placeholderText);
                     });
                 }
             }
