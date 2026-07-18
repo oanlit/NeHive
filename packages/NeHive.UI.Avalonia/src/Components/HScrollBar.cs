@@ -281,8 +281,8 @@ public class HScrollBarArgs(
     public readonly Accessor<double>? Value = bindValue ?? value;
     public readonly MutSignal<double>? BindValue = bindValue;
 
-    public readonly Accessor<double> Minimum = minimum ?? 0.0;
-    public readonly Accessor<double> Maximum = maximum ?? 100.0;
+    public readonly Accessor<double>? Minimum = minimum;
+    public readonly Accessor<double>? Maximum = maximum;
     public readonly Accessor<double>? SmallChange = smallChange;
     public readonly Accessor<double>? LargeChange = largeChange;
     public readonly Accessor<double>? ViewportSize = viewportSize;

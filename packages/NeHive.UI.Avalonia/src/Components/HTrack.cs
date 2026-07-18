@@ -8,7 +8,7 @@ using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HTrackProp(
+public class HTrackArgs(
     Accessor<double>? value = null,
     MutSignal<double>? bindValue = null,
     Accessor<double>? minimum = null,
@@ -23,8 +23,8 @@ public class HTrackProp(
 {
     public readonly Accessor<double>? Value = bindValue ?? value;
     public readonly MutSignal<double>? BindValue = bindValue;
-    public readonly Accessor<double> Minimum = minimum ?? 0.0;
-    public readonly Accessor<double> Maximum = maximum ?? 100.0;
+    public readonly Accessor<double>? Minimum = minimum;
+    public readonly Accessor<double>? Maximum = maximum;
     public readonly Accessor<double>? ViewportSize = viewportSize;
     
     public readonly Accessor<bool>? IsDirectionReversed = isDirectionReversed;
@@ -41,7 +41,7 @@ public class HTrackProp(
 
 public static partial class BaseComponent
 {
-    public static IElement<Track> HTrack(HTrackProp prop)
+    public static IElement<Track> HTrack(HTrackArgs args)
     {
         return Element<Track>.WithScope(uiScope =>
         {
@@ -50,75 +50,79 @@ public static partial class BaseComponent
             {
                 Child = track
             };
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.Style.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants,
-                Variants = prop.Variants
+                StrVariants = args.Style.Value.Variants,
+                Variants = args.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, track, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.Style, track, border, ApplyStyle);
             state.ApplyVariantsStyle(track, border, ApplyStyle);
             
-            if (prop.BindValue is not null)
+            if (args.BindValue is not null)
             {
-                uiScope.CreateEffect(() => track.Value = prop.BindValue.RxValue);
+                uiScope.CreateEffect(() => track.Value = args.BindValue.RxValue);
                 track.PropertyChanged += (_, e) =>
                 {
                     if (e.Property != RangeBase.ValueProperty) return;
                     var newVal = track.Value;
-                    if (Math.Abs(newVal - prop.BindValue.RxValue) > 0.0001)
-                        prop.BindValue.RxValue = newVal;
+                    if (Math.Abs(newVal - args.BindValue.RxValue) > 0.0001)
+                        args.BindValue.RxValue = newVal;
                 };
             }
-            else if (prop.Value is not null)
-            {
-                uiScope.CreateEffect(() => track.Value = prop.Value.RxValue);
-            }
-            
-            track.Minimum = prop.Minimum.Value;
-            if (prop.Minimum.IsReactive)
-                uiScope.CreateEffect(epochScope => track.Minimum = epochScope.Track(prop.Minimum));
+            else if (args.Value is not null)
+                uiScope.CreateEffect(epochScope => track.Value = epochScope.Track(args.Value));
 
-            track.Maximum = prop.Maximum.Value;
-            if (prop.Maximum.IsReactive)
-                uiScope.CreateEffect(epochScope => track.Maximum = epochScope.Track(prop.Maximum));
+            if (args.Minimum is not null)
+            {
+                track.Minimum = args.Minimum.Value;
+                if (args.Minimum.IsReactive)
+                    uiScope.CreateEffect(epochScope => track.Minimum = epochScope.Track(args.Minimum));
+            }
+            
+            if (args.Maximum is not null)
+            {
+                track.Maximum = args.Maximum.Value;
+                if (args.Maximum.IsReactive)
+                    uiScope.CreateEffect(epochScope => track.Maximum = epochScope.Track(args.Maximum));
+            }
+            
+            if (args.ViewportSize is not null)
+            {
+                track.ViewportSize = args.ViewportSize.Value;
+                if (args.ViewportSize.IsReactive)
+                    uiScope.CreateEffect(epochScope => track.ViewportSize = epochScope.Track(args.ViewportSize));
+            }
+            
+            if (args.IsDirectionReversed is not null)
+            {
+                track.IsDirectionReversed = args.IsDirectionReversed.Value;
+                if (args.IsDirectionReversed.IsReactive)
+                    uiScope.CreateEffect(epochScope => track.IsDirectionReversed = epochScope.Track(args.IsDirectionReversed));
+            }
+            
+            if (args.IsDeferThumbDrag is not null)
+            {
+                track.DeferThumbDrag = args.IsDeferThumbDrag.Value;
+                if (args.IsDeferThumbDrag.IsReactive)
+                    uiScope.CreateEffect(epochScope => track.DeferThumbDrag = epochScope.Track(args.IsDeferThumbDrag));
+            }
+            
+            if (args.IsIgnoreThumbDrag is not null)
+            {
+                track.IgnoreThumbDrag = args.IsIgnoreThumbDrag.Value;
+                if (args.IsIgnoreThumbDrag.IsReactive)
+                    uiScope.CreateEffect(epochScope => track.IgnoreThumbDrag = epochScope.Track(args.IsIgnoreThumbDrag));
+            }
 
-            if (prop.ViewportSize is not null)
-            {
-                track.ViewportSize = prop.ViewportSize.Value;
-                if (prop.ViewportSize.IsReactive)
-                    uiScope.CreateEffect(epochScope => track.ViewportSize = epochScope.Track(prop.ViewportSize));
-            }
+            _ = args.IncreaseButton?.Content;
+            track.IncreaseButton = args.IncreaseButton?.Expose;
             
-            if (prop.IsDirectionReversed is not null)
-            {
-                track.IsDirectionReversed = prop.IsDirectionReversed.Value;
-                if (prop.IsDirectionReversed.IsReactive)
-                    uiScope.CreateEffect(epochScope => track.IsDirectionReversed = epochScope.Track(prop.IsDirectionReversed));
-            }
+            _ = args.DecreaseButton?.Content;
+            track.DecreaseButton = args.DecreaseButton?.Expose;
             
-            if (prop.IsDeferThumbDrag is not null)
-            {
-                track.DeferThumbDrag = prop.IsDeferThumbDrag.Value;
-                if (prop.IsDeferThumbDrag.IsReactive)
-                    uiScope.CreateEffect(epochScope => track.DeferThumbDrag = epochScope.Track(prop.IsDeferThumbDrag));
-            }
-            
-            if (prop.IsIgnoreThumbDrag is not null)
-            {
-                track.IgnoreThumbDrag = prop.IsIgnoreThumbDrag.Value;
-                if (prop.IsIgnoreThumbDrag.IsReactive)
-                    uiScope.CreateEffect(epochScope => track.IgnoreThumbDrag = epochScope.Track(prop.IsIgnoreThumbDrag));
-            }
-
-            _ = prop.IncreaseButton?.Content;
-            track.IncreaseButton = prop.IncreaseButton?.Expose;
-            
-            _ = prop.DecreaseButton?.Content;
-            track.DecreaseButton = prop.DecreaseButton?.Expose;
-            
-            _ = prop.Thumb.Content;
-            track.Thumb = prop.Thumb.Expose;
+            _ = args.Thumb.Content;
+            track.Thumb = args.Thumb.Expose;
             
             return (track, border);
 

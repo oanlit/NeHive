@@ -38,18 +38,21 @@ public static partial class BaseComponent
         return Element.WithScope(uiScope =>
         {
             text ??= "Select File";
-            IElement button;
 
+            IElement<Button> buttonElement;
+            Button button;
             using (new ScopeFrame(uiScope))
             {
-                button = HButton(text, strStyle, style, variants);
+                buttonElement = HButton(text, strStyle, style, variants);
+                _ = buttonElement.Content;
+                button = buttonElement.Expose!;
             }
 
             // 点击时打开文件对话框
-            button.Content.PointerPressed += async (_, _) =>
+            button.Click += async (_, _) =>
             {
                 // 获取顶层窗口
-                var topLevel = TopLevel.GetTopLevel(button.Content);
+                var topLevel = TopLevel.GetTopLevel(buttonElement.Content);
                 if (topLevel == null) return;
 
                 // 构建文件选择选项

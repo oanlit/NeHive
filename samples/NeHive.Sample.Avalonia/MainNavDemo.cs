@@ -4,7 +4,6 @@ using NeHive.UI.Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Input;
-using Avalonia.Input.GestureRecognizers;
 using Avalonia.Controls.Primitives;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Components;
@@ -1913,7 +1912,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                         value: volume,
                         minimum: 0,
                         maximum: 100,
-                        strStyle: "w-full h-full rounded-lg")
+                        strStyle: "w-full h-full horizontal rounded-lg")
                     {
                         DecreaseButton =
                             part.DecreaseButton(
@@ -1955,17 +1954,21 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             {
                 Template = (props, part) => HGrid(new(columnDefinitions: new([HgLen.Star(), HgLen.Auto]))
                 {
-                    [(0, 0)] = part.ContentPresenter(HScrollContentPresenter(
-                        isScrollInertiaEnabled: props.IsScrollInertiaEnabled,
-                        horizontalSnapPointsType: props.HorizontalSnapPointsType,
-                        verticalSnapPointsType: props.VerticalSnapPointsType,
-                        horizontalSnapPointsAlignment: props.HorizontalSnapPointsAlignment,
-                        verticalSnapPointsAlignment: props.VerticalSnapPointsAlignment,
-                        strStyle: "w-full h-60 p-3 vertical",
-                        gestureRecognizer: new()
-                        {
-                            
-                        })),
+                    [(0, 0)] = part.ContentPresenter(HScrollContentPresenter(presenterProps =>
+                        new HScrollContentPresenterArgs(isScrollInertiaEnabled: props.IsScrollInertiaEnabled,
+                            horizontalSnapPointsType: props.HorizontalSnapPointsType,
+                            verticalSnapPointsType: props.VerticalSnapPointsType,
+                            horizontalSnapPointsAlignment: props.HorizontalSnapPointsAlignment,
+                            verticalSnapPointsAlignment: props.VerticalSnapPointsAlignment,
+                            strStyle: "w-full h-60 p-3 vertical bg-matcha-200/50",
+                            gestureRecognizer: new(
+                                canHorizontallyScroll: presenterProps.CanHorizontallyScroll,
+                                canVerticallyScroll: presenterProps.CanVerticallyScroll,
+                                isScrollInertiaEnabled: presenterProps.IsScrollInertiaEnabled,
+                                offset: presenterProps.Offset,
+                                viewport: presenterProps.Viewport,
+                                extent: presenterProps.Extent
+                            )))),
                     [(0, 1)] = part.VerticalScrollBar(HScrollBar(new(strStyle: "w-2 h-full vertical rounded")
                     {
                         Template = (scrollBarProps, scrollBarPart) =>
@@ -1975,19 +1978,15 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 minimum: scrollBarProps.Minimum,
                                 maximum: scrollBarProps.Maximum,
                                 isDeferThumbDrag: scrollBarProps.IsDeferredScrollingEnabled,
-                                strStyle: "w-2 h-full vertical rounded")
+                                isDirectionReversed: true,
+                                strStyle: "w-2 h-full vertical bg-coffee-200 rounded")
                             {
-                                DecreaseButton = scrollBarPart.PageDownButton(
-                                    HButton(strStyle: "w-2 bg-coffee-200 hover:bg-coffee-300")
+                                DecreaseButton = scrollBarPart.PageUpButton(
+                                    HButton(strStyle: "w-2 h-full bg-transparent hover:cursor-pointer")
                                 ), // HTrack.DecreaseButton
-                                Thumb = HThumb(new(strStyle: "mx-auto")
-                                {
-                                    HSvgImage("~/Assets/circle-star.svg",
-                                        strStyle: "w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full"
-                                    ) // HSvgImage
-                                }),
-                                IncreaseButton = scrollBarPart.PageUpButton(
-                                    HButton(strStyle: "w-2 bg-coffee-200 hover:bg-coffee-300")
+                                Thumb = HThumb(new(strStyle: "mx-auto w-2 h-full bg-white/60 rounded")),
+                                IncreaseButton = scrollBarPart.PageDownButton(
+                                    HButton(strStyle: "w-2 h-full bg-transparent hover:cursor-pointer")
                                 ) // HTrack.IncreaseButton
                             }) // HTrack
                         // HScrollBar.Template

@@ -259,7 +259,7 @@ public class HScrollProps(Scope scope, ScrollViewer scrollViewer)
     }
 }
 
-public class HScrollArgs(
+public class HScrollViewerArgs(
     Accessor<bool>? isAllowAutoHide = null,
     Accessor<bool>? isBringIntoViewOnFocusChange = null,
     Accessor<bool>? isDeferredScrollingEnabled = null,
@@ -354,7 +354,7 @@ public class HScrollExpose(ScrollViewer scroll)
 
 public static partial class BaseComponent
 {
-    public static IElement<StackPanel> HScrollViewer(out HScrollExpose expose, HScrollArgs args)
+    public static IElement<StackPanel> HScrollViewer(out HScrollExpose expose, HScrollViewerArgs args)
     {
         var scroll = new ScrollViewer();
         expose = new HScrollExpose(scroll);
@@ -378,6 +378,22 @@ public static partial class BaseComponent
 
             foreach (var child in args)
                 stack.Children.Add(child.Content);
+            
+            // scroll.PointerWheelChanged += (_, e)=>
+            // {
+            //     Console.WriteLine($"Source = {e.Source}");
+            //     if (e.Source is Border b)
+            //     {
+            //         Console.WriteLine($"Child={b.Child?.GetType()}");
+            //         StyledElement? p = b;
+            //         while (p != null)
+            //         {
+            //             Console.WriteLine(p);
+            //             p = p.Parent;
+            //         }
+            //     }
+            //     Console.WriteLine($"Offset : {scroll.Offset}");
+            // };
 
             if (args.IsAllowAutoHide is not null)
             {
@@ -471,41 +487,72 @@ public static partial class BaseComponent
                 var props = new HScrollProps(uiScope, scroll);
                 var part = new HScrollPart();
                 var content = args.Template(props, part).Content;
+
+                ScrollBar? horizontalScrollBarElement = null;
+                ScrollBar? verticalScrollBarElement = null;
+                ScrollContentPresenter? scrollContentPresenter = null;
+
+                if (part.HorizontalScrollBarElement is not null)
+                {
+                    _ = part.HorizontalScrollBarElement.Content;
+                    horizontalScrollBarElement = part.HorizontalScrollBarElement.Expose!;
+                }
+
+                if (part.VerticalScrollBarElement is not null)
+                {
+                    _ = part.VerticalScrollBarElement.Content;
+                    verticalScrollBarElement = part.VerticalScrollBarElement.Expose!;
+                }
+
+                if (part.ContentPresenterElement is not null)
+                {
+                    _ = part.ContentPresenterElement.Content;
+                    scrollContentPresenter = part.ContentPresenterElement.Expose!;
+                }
+
                 scroll.Template = new FuncControlTemplate((_, s) =>
                 {
-                    if (part.HorizontalScrollBarElement is not null)
+                    if (horizontalScrollBarElement is not null)
                     {
-                        var __ = part.HorizontalScrollBarElement.Content;
-                        var trackElement = part.HorizontalScrollBarElement.Expose!;
-                        trackElement.Name = "PART_HorizontalScrollBar";
-                        s.Register("PART_HorizontalScrollBar", trackElement);
+                        horizontalScrollBarElement.Name = "PART_HorizontalScrollBar";
+                        s.Register("PART_HorizontalScrollBar", horizontalScrollBarElement);
+                        scroll.PropertyChanged += (_, e) =>
+                        {
+                            if (e.Property == ScrollViewer.OffsetProperty)
+                            {
+                                var vec = (Vector)e.NewValue!;
+                                horizontalScrollBarElement.Value = vec.X;
+                            }
+                        };
                     }
 
-                    if (part.VerticalScrollBarElement is not null)
+                    if (verticalScrollBarElement is not null)
                     {
-                        var __ = part.VerticalScrollBarElement.Content;
-                        var decreaseButtonElement = part.VerticalScrollBarElement.Expose!;
-                        decreaseButtonElement.Name = "PART_VerticalScrollBar";
-                        s.Register("PART_VerticalScrollBar", decreaseButtonElement);
+                        verticalScrollBarElement.Name = "PART_VerticalScrollBar";
+                        s.Register("PART_VerticalScrollBar", verticalScrollBarElement);
+                        scroll.PropertyChanged += (_, e) =>
+                        {
+                            if (e.Property == ScrollViewer.OffsetProperty)
+                            {
+                                var vec = (Vector)e.NewValue!;
+                                verticalScrollBarElement.Value = vec.Y;
+                            }
+                        };
                     }
 
-                    if (part.ContentPresenterElement is not null)
+                    if (scrollContentPresenter is not null)
                     {
-                        var __ = part.ContentPresenterElement.Content;
-                        var increaseButtonElement = part.ContentPresenterElement.Expose!;
-                        increaseButtonElement.Name = "PART_ContentPresenter";
-                        s.Register("PART_ContentPresenter", increaseButtonElement);
+                        scrollContentPresenter.Name = "PART_ContentPresenter";
+                        s.Register("PART_ContentPresenter", scrollContentPresenter);
                     }
 
                     return content;
                 });
             }
 
-            uiScope.OnMount += () =>
-            {
-                scroll.Content = stack;
-                scroll.ScrollToHome();
-            };
+            scroll.Content = stack;
+
+            uiScope.OnMount += () => { scroll.ScrollToHome(); };
 
             return (stack, border);
 
@@ -536,7 +583,7 @@ public static partial class BaseComponent
         });
     }
 
-    public static IElement<StackPanel> HScrollViewer(HScrollArgs args)
+    public static IElement<StackPanel> HScrollViewer(HScrollViewerArgs args)
     {
         return HScrollViewer(out _, args);
     }

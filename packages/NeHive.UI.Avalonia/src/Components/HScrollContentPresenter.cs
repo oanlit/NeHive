@@ -5,6 +5,7 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
 
@@ -12,6 +13,69 @@ namespace NeHive.UI.Avalonia.Components;
 
 public class HScrollContentPresenterProps(Scope scope, ScrollContentPresenter scrollContentPresenter)
 {
+    public Signal<Size> Extent
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<Size>(scrollContentPresenter.Extent);
+            field = sig;
+
+            scrollContentPresenter.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == ScrollContentPresenter.ExtentProperty)
+                    sig.RxValue = (Size)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<Size> Viewport
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<Size>(scrollContentPresenter.Viewport);
+            field = sig;
+
+            scrollContentPresenter.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == ScrollContentPresenter.ViewportProperty)
+                    sig.RxValue = (Size)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<Vector> Offset
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<Vector>(scrollContentPresenter.Offset);
+            field = sig;
+
+            scrollContentPresenter.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == ScrollContentPresenter.OffsetProperty)
+                    sig.RxValue = (Vector)args.NewValue!;
+            }
+        }
+    }
+
     public Signal<bool> IsScrollChainingEnabled
     {
         get
@@ -182,6 +246,7 @@ public class HScrollContentPresenterProps(Scope scope, ScrollContentPresenter sc
 }
 
 public class HScrollContentPresenterArgs(
+    Accessor<Vector>? offset = null,
     Accessor<bool>? isScrollChainingEnabled = null,
     Accessor<bool>? isScrollInertiaEnabled = null,
     Accessor<bool>? canHorizontallyScroll = null,
@@ -190,11 +255,13 @@ public class HScrollContentPresenterArgs(
     Accessor<SnapPointsType>? verticalSnapPointsType = null,
     Accessor<SnapPointsAlignment>? horizontalSnapPointsAlignment = null,
     Accessor<SnapPointsAlignment>? verticalSnapPointsAlignment = null,
-    ScrollGestureRecognizer? gestureRecognizer = null,
+    HScrollGestureRecognizer? gestureRecognizer = null,
     Accessor<string>? strStyle = null,
     Accessor<StyleSet>? style = null,
     Dictionary<string, StyleSet>? variants = null)
 {
+    public readonly Accessor<Vector>? Offset = offset;
+
     public readonly Accessor<bool>? IsScrollChainingEnabled = isScrollChainingEnabled;
     public readonly Accessor<bool>? IsScrollInertiaEnabled = isScrollInertiaEnabled;
     public readonly Accessor<bool>? CanHorizontallyScroll = canHorizontallyScroll;
@@ -203,8 +270,8 @@ public class HScrollContentPresenterArgs(
     public readonly Accessor<SnapPointsType>? VerticalSnapPointsType = verticalSnapPointsType;
     public readonly Accessor<SnapPointsAlignment>? HorizontalSnapPointsAlignment = horizontalSnapPointsAlignment;
     public readonly Accessor<SnapPointsAlignment>? VerticalSnapPointsAlignment = verticalSnapPointsAlignment;
-    
-    public readonly ScrollGestureRecognizer? GestureRecognizer = gestureRecognizer;
+
+    public readonly ScrollGestureRecognizer? GestureRecognizer = gestureRecognizer?.GestureRecognizer;
 
     public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
     public readonly Dictionary<string, StyleSet>? Variants = variants;
@@ -213,113 +280,26 @@ public class HScrollContentPresenterArgs(
 public static partial class BaseComponent
 {
     public static IElement<ScrollContentPresenter> HScrollContentPresenter(
-        Accessor<bool>? isScrollChainingEnabled = null,
-        Accessor<bool>? isScrollInertiaEnabled = null,
-        Accessor<bool>? canHorizontallyScroll = null,
-        Accessor<bool>? canVerticallyScroll = null,
-        Accessor<SnapPointsType>? horizontalSnapPointsType = null,
-        Accessor<SnapPointsType>? verticalSnapPointsType = null,
-        Accessor<SnapPointsAlignment>? horizontalSnapPointsAlignment = null,
-        Accessor<SnapPointsAlignment>? verticalSnapPointsAlignment = null,
-        ScrollGestureRecognizer? gestureRecognizer = null,
-        Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null)
+        Func<HScrollContentPresenterProps, HScrollContentPresenterArgs> fn)
     {
         return Element<ScrollContentPresenter>.WithScope(uiScope =>
         {
-            var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
-
             var scrollContentPresenter = new ScrollContentPresenter();
             var border = new Border
             {
                 Child = scrollContentPresenter
             };
 
-            var state = new CommonState(uiScope, styleAccessor.Value.Normal)
-            {
-                StrVariants = styleAccessor.Value.Variants,
-                Variants = variants
-            };
+            var props = new HScrollContentPresenterProps(uiScope, scrollContentPresenter);
+            var args = fn(props);
 
-            state.ApplyAccessorStyle(styleAccessor, scrollContentPresenter, border, StyleUtil.ApplyStyle);
-            state.ApplyVariantsStyle(scrollContentPresenter, border, StyleUtil.ApplyStyle);
-
-            if (isScrollChainingEnabled is not null)
-            {
-                scrollContentPresenter.IsScrollChainingEnabled = isScrollChainingEnabled.Value;
-                if (isScrollChainingEnabled.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.IsScrollChainingEnabled = scope.Track(isScrollChainingEnabled));
-            }
-
-            if (isScrollInertiaEnabled is not null)
-            {
-                ScrollViewer.SetIsScrollInertiaEnabled(scrollContentPresenter, isScrollInertiaEnabled.Value);
-                if (isScrollInertiaEnabled.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        ScrollViewer.SetIsScrollInertiaEnabled(scrollContentPresenter,
-                            scope.Track(isScrollInertiaEnabled)));
-            }
-
-            if (canHorizontallyScroll is not null)
-            {
-                scrollContentPresenter.CanHorizontallyScroll = canHorizontallyScroll.Value;
-                if (canHorizontallyScroll.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.CanHorizontallyScroll = scope.Track(canHorizontallyScroll));
-            }
-
-            if (canVerticallyScroll is not null)
-            {
-                scrollContentPresenter.CanVerticallyScroll = canVerticallyScroll.Value;
-                if (canVerticallyScroll.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.CanVerticallyScroll = scope.Track(canVerticallyScroll));
-            }
-
-            if (horizontalSnapPointsType is not null)
-            {
-                scrollContentPresenter.HorizontalSnapPointsType = horizontalSnapPointsType.Value;
-                if (horizontalSnapPointsType.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.HorizontalSnapPointsType = scope.Track(horizontalSnapPointsType));
-            }
-
-            if (verticalSnapPointsType is not null)
-            {
-                scrollContentPresenter.VerticalSnapPointsType = verticalSnapPointsType.Value;
-                if (verticalSnapPointsType.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.VerticalSnapPointsType = scope.Track(verticalSnapPointsType));
-            }
-
-            if (horizontalSnapPointsAlignment is not null)
-            {
-                scrollContentPresenter.HorizontalSnapPointsAlignment = horizontalSnapPointsAlignment.Value;
-                if (horizontalSnapPointsAlignment.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.HorizontalSnapPointsAlignment =
-                            scope.Track(horizontalSnapPointsAlignment));
-            }
-
-            if (verticalSnapPointsAlignment is not null)
-            {
-                scrollContentPresenter.VerticalSnapPointsAlignment = verticalSnapPointsAlignment.Value;
-                if (verticalSnapPointsAlignment.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.VerticalSnapPointsAlignment = scope.Track(verticalSnapPointsAlignment));
-            }
-
-            if (gestureRecognizer is not null)
-            {
-                scrollContentPresenter.GestureRecognizers.Add(gestureRecognizer);
-            }
+            HScrollContentPresenterCore(uiScope, scrollContentPresenter, border, args);
 
             return (scrollContentPresenter, border);
         });
     }
-    
+
+
     public static IElement<ScrollContentPresenter> HScrollContentPresenter(HScrollContentPresenterArgs args)
     {
         return Element<ScrollContentPresenter>.WithScope(uiScope =>
@@ -330,87 +310,127 @@ public static partial class BaseComponent
                 Child = scrollContentPresenter
             };
 
-            var state = new CommonState(uiScope, args.Style.Value.Normal)
-            {
-                StrVariants = args.Style.Value.Variants,
-                Variants = args.Variants
-            };
-
-            state.ApplyAccessorStyle(args.Style, scrollContentPresenter, border, StyleUtil.ApplyStyle);
-            state.ApplyVariantsStyle(scrollContentPresenter, border, StyleUtil.ApplyStyle);
-
-            if (args.IsScrollChainingEnabled is not null)
-            {
-                scrollContentPresenter.IsScrollChainingEnabled = args.IsScrollChainingEnabled.Value;
-                if (args.IsScrollChainingEnabled.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.IsScrollChainingEnabled = scope.Track(args.IsScrollChainingEnabled));
-            }
-
-            if (args.IsScrollInertiaEnabled is not null)
-            {
-                ScrollViewer.SetIsScrollInertiaEnabled(scrollContentPresenter, args.IsScrollInertiaEnabled.Value);
-                if (args.IsScrollInertiaEnabled.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        ScrollViewer.SetIsScrollInertiaEnabled(scrollContentPresenter,
-                            scope.Track(args.IsScrollInertiaEnabled)));
-            }
-
-            if (args.CanHorizontallyScroll is not null)
-            {
-                scrollContentPresenter.CanHorizontallyScroll = args.CanHorizontallyScroll.Value;
-                if (args.CanHorizontallyScroll.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.CanHorizontallyScroll = scope.Track(args.CanHorizontallyScroll));
-            }
-
-            if (args.CanVerticallyScroll is not null)
-            {
-                scrollContentPresenter.CanVerticallyScroll = args.CanVerticallyScroll.Value;
-                if (args.CanVerticallyScroll.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.CanVerticallyScroll = scope.Track(args.CanVerticallyScroll));
-            }
-
-            if (args.HorizontalSnapPointsType is not null)
-            {
-                scrollContentPresenter.HorizontalSnapPointsType = args.HorizontalSnapPointsType.Value;
-                if (args.HorizontalSnapPointsType.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.HorizontalSnapPointsType = scope.Track(args.HorizontalSnapPointsType));
-            }
-
-            if (args.VerticalSnapPointsType is not null)
-            {
-                scrollContentPresenter.VerticalSnapPointsType = args.VerticalSnapPointsType.Value;
-                if (args.VerticalSnapPointsType.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.VerticalSnapPointsType = scope.Track(args.VerticalSnapPointsType));
-            }
-
-            if (args.HorizontalSnapPointsAlignment is not null)
-            {
-                scrollContentPresenter.HorizontalSnapPointsAlignment = args.HorizontalSnapPointsAlignment.Value;
-                if (args.HorizontalSnapPointsAlignment.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.HorizontalSnapPointsAlignment =
-                            scope.Track(args.HorizontalSnapPointsAlignment));
-            }
-
-            if (args.VerticalSnapPointsAlignment is not null)
-            {
-                scrollContentPresenter.VerticalSnapPointsAlignment = args.VerticalSnapPointsAlignment.Value;
-                if (args.VerticalSnapPointsAlignment.IsReactive)
-                    uiScope.CreateEffect(scope =>
-                        scrollContentPresenter.VerticalSnapPointsAlignment = scope.Track(args.VerticalSnapPointsAlignment));
-            }
-
-            if (args.GestureRecognizer is not null)
-            {
-                scrollContentPresenter.GestureRecognizers.Add(args.GestureRecognizer);
-            }
+            HScrollContentPresenterCore(uiScope, scrollContentPresenter, border, args);
 
             return (scrollContentPresenter, border);
         });
+    }
+
+    public static IElement<ScrollContentPresenter> HScrollContentPresenter(
+        Accessor<Vector>? offset = null,
+        Accessor<bool>? isScrollChainingEnabled = null,
+        Accessor<bool>? isScrollInertiaEnabled = null,
+        Accessor<bool>? canHorizontallyScroll = null,
+        Accessor<bool>? canVerticallyScroll = null,
+        Accessor<SnapPointsType>? horizontalSnapPointsType = null,
+        Accessor<SnapPointsType>? verticalSnapPointsType = null,
+        Accessor<SnapPointsAlignment>? horizontalSnapPointsAlignment = null,
+        Accessor<SnapPointsAlignment>? verticalSnapPointsAlignment = null,
+        HScrollGestureRecognizer? gestureRecognizer = null,
+        Accessor<string>? strStyle = null,
+        Accessor<StyleSet>? style = null,
+        Dictionary<string, StyleSet>? variants = null)
+    {
+        return HScrollContentPresenter(new HScrollContentPresenterArgs(offset,
+            isScrollChainingEnabled, isScrollInertiaEnabled,
+            canHorizontallyScroll, canVerticallyScroll, horizontalSnapPointsType, verticalSnapPointsType,
+            horizontalSnapPointsAlignment, verticalSnapPointsAlignment, gestureRecognizer,
+            strStyle, style, variants));
+    }
+
+    private static void HScrollContentPresenterCore(
+        UiScope uiScope,
+        ScrollContentPresenter scrollContentPresenter,
+        Border border,
+        HScrollContentPresenterArgs args)
+    {
+        var state = new CommonState(uiScope, args.Style.Value.Normal)
+        {
+            StrVariants = args.Style.Value.Variants,
+            Variants = args.Variants
+        };
+
+        state.ApplyAccessorStyle(args.Style, scrollContentPresenter, border, StyleUtil.ApplyStyle);
+        state.ApplyVariantsStyle(scrollContentPresenter, border, StyleUtil.ApplyStyle);
+        
+        if (args.Offset is not null)
+        {
+            scrollContentPresenter.Offset = args.Offset.Value;
+            if (args.Offset.IsReactive)
+                uiScope.CreateEffect(scope =>
+                    scrollContentPresenter.Offset = scope.Track(args.Offset));
+        }
+        
+        if (args.IsScrollChainingEnabled is not null)
+        {
+            scrollContentPresenter.IsScrollChainingEnabled = args.IsScrollChainingEnabled.Value;
+            if (args.IsScrollChainingEnabled.IsReactive)
+                uiScope.CreateEffect(scope =>
+                    scrollContentPresenter.IsScrollChainingEnabled = scope.Track(args.IsScrollChainingEnabled));
+        }
+
+        if (args.IsScrollInertiaEnabled is not null)
+        {
+            ScrollViewer.SetIsScrollInertiaEnabled(scrollContentPresenter, args.IsScrollInertiaEnabled.Value);
+            if (args.IsScrollInertiaEnabled.IsReactive)
+                uiScope.CreateEffect(scope =>
+                    ScrollViewer.SetIsScrollInertiaEnabled(scrollContentPresenter,
+                        scope.Track(args.IsScrollInertiaEnabled)));
+        }
+
+        if (args.CanHorizontallyScroll is not null)
+        {
+            scrollContentPresenter.CanHorizontallyScroll = args.CanHorizontallyScroll.Value;
+            if (args.CanHorizontallyScroll.IsReactive)
+                uiScope.CreateEffect(scope =>
+                    scrollContentPresenter.CanHorizontallyScroll = scope.Track(args.CanHorizontallyScroll));
+        }
+
+        if (args.CanVerticallyScroll is not null)
+        {
+            scrollContentPresenter.CanVerticallyScroll = args.CanVerticallyScroll.Value;
+            if (args.CanVerticallyScroll.IsReactive)
+                uiScope.CreateEffect(scope =>
+                    scrollContentPresenter.CanVerticallyScroll = scope.Track(args.CanVerticallyScroll));
+        }
+
+        if (args.HorizontalSnapPointsType is not null)
+        {
+            scrollContentPresenter.HorizontalSnapPointsType = args.HorizontalSnapPointsType.Value;
+            if (args.HorizontalSnapPointsType.IsReactive)
+                uiScope.CreateEffect(scope =>
+                    scrollContentPresenter.HorizontalSnapPointsType = scope.Track(args.HorizontalSnapPointsType));
+        }
+
+        if (args.VerticalSnapPointsType is not null)
+        {
+            scrollContentPresenter.VerticalSnapPointsType = args.VerticalSnapPointsType.Value;
+            if (args.VerticalSnapPointsType.IsReactive)
+                uiScope.CreateEffect(scope =>
+                    scrollContentPresenter.VerticalSnapPointsType = scope.Track(args.VerticalSnapPointsType));
+        }
+
+        if (args.HorizontalSnapPointsAlignment is not null)
+        {
+            scrollContentPresenter.HorizontalSnapPointsAlignment = args.HorizontalSnapPointsAlignment.Value;
+            if (args.HorizontalSnapPointsAlignment.IsReactive)
+                uiScope.CreateEffect(scope =>
+                    scrollContentPresenter.HorizontalSnapPointsAlignment =
+                        scope.Track(args.HorizontalSnapPointsAlignment));
+        }
+
+        if (args.VerticalSnapPointsAlignment is not null)
+        {
+            scrollContentPresenter.VerticalSnapPointsAlignment = args.VerticalSnapPointsAlignment.Value;
+            if (args.VerticalSnapPointsAlignment.IsReactive)
+                uiScope.CreateEffect(scope =>
+                    scrollContentPresenter.VerticalSnapPointsAlignment =
+                        scope.Track(args.VerticalSnapPointsAlignment));
+        }
+
+        if (args.GestureRecognizer is not null)
+        {
+            scrollContentPresenter.GestureRecognizers.Add(args.GestureRecognizer);
+        }
     }
 }
