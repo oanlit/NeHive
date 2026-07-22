@@ -1969,28 +1969,29 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 viewport: presenterProps.Viewport,
                                 extent: presenterProps.Extent
                             )))),
-                    [(0, 1)] = part.VerticalScrollBar(HScrollBar(new(strStyle: "w-2 h-full vertical rounded")
-                    {
-                        Template = (scrollBarProps, scrollBarPart) =>
-                            HTrack(new(
-                                bindValue: scrollBarProps.Value,
-                                viewportSize: scrollBarProps.ViewportSize,
-                                minimum: scrollBarProps.Minimum,
-                                maximum: scrollBarProps.Maximum,
-                                isDeferThumbDrag: scrollBarProps.IsDeferredScrollingEnabled,
-                                isDirectionReversed: true,
-                                strStyle: "w-2 h-full vertical bg-coffee-200 rounded")
-                            {
-                                DecreaseButton = scrollBarPart.PageUpButton(
-                                    HButton(strStyle: "w-2 h-full bg-transparent hover:cursor-pointer")
-                                ), // HTrack.DecreaseButton
-                                Thumb = HThumb(new(strStyle: "mx-auto w-2 h-full bg-white/60 rounded")),
-                                IncreaseButton = scrollBarPart.PageDownButton(
-                                    HButton(strStyle: "w-2 h-full bg-transparent hover:cursor-pointer")
-                                ) // HTrack.IncreaseButton
-                            }) // HTrack
-                        // HScrollBar.Template
-                    })) // part.VerticalScrollBar
+                    [(0, 1)] = part.VerticalScrollBar(HScrollBar(scrollBarProps =>
+                        new(strStyle: "w-2 h-full vertical rounded")
+                        {
+                            Template = scrollBarPart =>
+                                HTrack(new(
+                                    bindValue: scrollBarProps.Value,
+                                    viewportSize: scrollBarProps.ViewportSize,
+                                    minimum: scrollBarProps.Minimum,
+                                    maximum: scrollBarProps.Maximum,
+                                    isDeferThumbDrag: scrollBarProps.IsDeferredScrollingEnabled,
+                                    isDirectionReversed: true,
+                                    strStyle: "w-2 h-full vertical bg-coffee-200 rounded")
+                                {
+                                    DecreaseButton = scrollBarPart.PageUpButton(
+                                        HButton(strStyle: "w-2 h-full bg-transparent hover:cursor-pointer")
+                                    ), // HTrack.DecreaseButton
+                                    Thumb = HThumb(new(strStyle: "mx-auto w-2 h-full bg-white/60 rounded")),
+                                    IncreaseButton = scrollBarPart.PageDownButton(
+                                        HButton(strStyle: "w-2 h-full bg-transparent hover:cursor-pointer")
+                                    ) // HTrack.IncreaseButton
+                                }) // HTrack
+                            // HScrollBar.Template
+                        })) // part.VerticalScrollBar
                 }), // HScrollViewer.Template
                 Content = HTextBlock(longText, strStyle: "text-base leading-relaxed fg-matcha-800")
             }), // HScrollViewer
@@ -2010,22 +2011,29 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     strStyle: "gap-8 horizontal justify-center items-center")
                 {
                     HSvgImage("~/Assets/play.svg",
-                        strStyle: new(() =>
-                            $"w-16 h-16 fg-blue-{ToValue(state.IsHover.RxValue)} transition-colors duration-300")),
+                        strStyle: "w-16 h-16",
+                        style: new(
+                            foreground: BlueColor(state.IsHover)
+                        )
+                    ), // HSvgImage
                     HSvgImage("~/Assets/skip-back.svg",
                         strStyle: new(() =>
-                            $"w-16 h-16 fg-orange-{ToValue(state.IsHover.RxValue)} transition-colors duration-300")),
+                            $"w-16 h-16 fg-orange-{ToValue(state.IsHover.RxValue)}")),
                     HSvgImage("~/Assets/skip-forward.svg",
                         strStyle: new(() =>
-                            $"w-16 h-16 fg-yellow-{ToValue(state.IsHover.RxValue)} transition-colors duration-300")),
+                            $"w-16 h-16 fg-yellow-{ToValue(state.IsHover.RxValue)}")),
                     HSvgImage("~/Assets/stretch-vertical.svg",
                         strStyle: new(() =>
-                            $"w-16 h-16 fg-red-{ToValue(state.IsHover.RxValue)} transition-colors duration-300"))
+                            $"w-16 h-16 fg-red-{ToValue(state.IsHover.RxValue)}"))
                 })
             }) // HGroup
         }); // HStackPanel
 
         string ToValue(bool isHover) => isHover ? "400" : "200";
+
+        Computed<IBrush> BlueColor(Signal<bool> isHover) => new(() => isHover.RxValue
+            ? new SolidColorBrush(Color.FromRgb(96, 165, 250))
+            : new SolidColorBrush(Color.FromRgb(191, 219, 254)));
     }
 
     #endregion

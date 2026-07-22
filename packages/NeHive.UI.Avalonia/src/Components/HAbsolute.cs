@@ -23,15 +23,13 @@ public class HAbsoluteProp(
     Accessor<string>? strStyle = null,
     Accessor<StyleSet>? style = null,
     Dictionary<string, StyleSet>? variants = null
-)
-    : IEnumerable<KeyValuePair<AbsPosition, IElement>>
+) : IEnumerable<KeyValuePair<AbsPosition, IElement>>
 {
     private readonly Dictionary<AbsPosition, IElement> _children = new();
 
     public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
     public readonly Dictionary<string, StyleSet>? Variants = variants;
 
-    // 添加子元素的便捷方法
     public IElement this[AbsPosition key]
     {
         set => _children[key] = value;
@@ -58,8 +56,7 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, prop.Style.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants,
-                Variants = prop.Variants
+                StrVariants = prop.Style.Value.Variants
             };
 
             state.ApplyAccessorStyle(prop.Style, canvas, border, StyleUtil.ApplyStyle);
@@ -77,7 +74,8 @@ public static partial class BaseComponent
                    )
                     uiScope.CreateEffect(() =>
                     {
-                        SetPos(control, pos.Left?.RxValue, pos.Top?.RxValue, pos.Right?.RxValue, pos.Bottom?.RxValue);
+                        SetPos(control, pos.Left?.RxValue, pos.Top?.RxValue, pos.Right?.RxValue,
+                            pos.Bottom?.RxValue);
                     });
 
                 canvas.Children.Add(control);

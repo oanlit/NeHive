@@ -33,8 +33,7 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
-                StrVariants = styleAccessor.Value.Variants,
-                Variants = variants
+                StrVariants = styleAccessor.Value.Variants
             };
 
             state.ApplyAccessorStyle(styleAccessor, textBlock, border, ApplyStyle);

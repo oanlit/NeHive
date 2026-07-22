@@ -1,12 +1,10 @@
 using System.Collections;
-
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Interactivity;
-
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.State;
 using NeHive.UI.Avalonia.Styles;
@@ -31,16 +29,17 @@ public static class HButtonStyle
     };
 }
 
-public class HButtonProp(
+public class HButtonArgs(
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null,
+    HStyle? style = null,
     Action<RoutedEventArgs>? onClick = null) : ISingleChildrenProp
 {
     private readonly List<IElement> _children = [];
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle, HButtonStyle.DefaultStyleSet);
+
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
+
     public readonly Action<RoutedEventArgs>? OnClick = onClick;
 
     public IEnumerator<IElement> GetEnumerator()
@@ -60,11 +59,10 @@ public static partial class BaseComponent
     public static IElement<Button> HButton(
         Accessor<string>? text = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null,
+        HStyle? style = null,
         Action<RoutedEventArgs>? onClick = null)
     {
-        var el = HButton(out _, text, strStyle, style, variants, onClick);
+        var el = HButton(out _, text, strStyle, style, onClick);
         return el;
     }
 
@@ -72,8 +70,7 @@ public static partial class BaseComponent
         out Button exp,
         Accessor<string>? text = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null,
+        HStyle? style = null,
         Action<RoutedEventArgs>? onClick = null)
     {
         var button = new Button();
@@ -81,7 +78,8 @@ public static partial class BaseComponent
         return Element<Button>.WithScope(uiScope =>
         {
             text ??= "";
-            var styleAccessor = StyleParser.ParseFull(strStyle, HButtonStyle.DefaultStyleSet, style);
+            var styleAccessor = StyleParser.ParseFull(strStyle, HButtonStyle.DefaultStyleSet);
+            var mergeStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
 
             var textBlock = new TextBlock();
             var border = new Border
@@ -94,11 +92,14 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
-                StrVariants = styleAccessor.Value.Variants,
-                Variants = variants
+                MergeStyle = mergeStyle,
+                StrVariants = styleAccessor.Value.Variants
             };
 
-            state.ApplyAccessorStyle(styleAccessor, textBlock, border, ApplyStyle);
+            state.ApplyAccessorStyle(styleAccessor,
+                textBlock, border,
+                ApplyStyle);
+
             state.ApplyVariantsStyle(textBlock, border, ApplyStyle);
 
             textBlock.Text = text.Value;
@@ -129,13 +130,13 @@ public static partial class BaseComponent
 
     public static IElement<Button> HButton(
         out Button exp,
-        HButtonProp prop)
+        HButtonArgs args)
     {
         var button = new Button();
         exp = button;
         return Element<Button>.WithScope(uiScope =>
         {
-            var content = ElementUtil.WrapSingleContainerContent(prop).Content;
+            var content = ElementUtil.WrapSingleContainerContent(args).Content;
             var border = new Border
             {
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -144,21 +145,22 @@ public static partial class BaseComponent
 
             button.Template = new FuncControlTemplate((_, _) => border);
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants,
-                Variants = prop.Variants
+                MergeStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, content, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle,
+                content, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(content, border, StyleUtil.ApplyStyle);
 
-            if (prop.OnClick is not null) button.Click += (_, e) => prop.OnClick(e);
+            if (args.OnClick is not null) button.Click += (_, e) => args.OnClick(e);
 
             return (button, button);
         });
     }
 
-    public static IElement<Button> HButton(HButtonProp prop)
-        => HButton(out _, prop);
+    public static IElement<Button> HButton(HButtonArgs args)
+        => HButton(out _, args);
 }

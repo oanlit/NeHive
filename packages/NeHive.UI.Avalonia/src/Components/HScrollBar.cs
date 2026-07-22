@@ -299,23 +299,24 @@ public class HScrollBarArgs(
     public readonly Action<RangeBaseValueChangedEventArgs>? OnValueChanged = onValueChanged;
     public readonly Action<ScrollEventArgs>? OnScroll = onScroll;
 
-    public Func<HScrollBarProps, HScrollBarPart, IElement>? Template { get; init; }
+    public Func<HScrollBarPart, IElement>? Template { get; init; }
 }
 
 public static partial class BaseComponent
 {
-    public static IElement<ScrollBar> HScrollBar(HScrollBarArgs args)
+    public static IElement<ScrollBar> HScrollBar(Func<HScrollBarProps, HScrollBarArgs> fn)
     {
         return Element<ScrollBar>.WithScope(uiScope =>
         {
             var scrollBar = new ScrollBar();
-
             var border = new Border();
+            
+            var props = new HScrollBarProps(uiScope, scrollBar);
+            var args = fn(props);
 
             var state = new CommonState(uiScope, args.Style.Value.Normal)
             {
-                StrVariants = args.Style.Value.Variants,
-                Variants = args.Variants
+                StrVariants = args.Style.Value.Variants
             };
 
             state.ApplyAccessorStyle(args.Style, scrollBar, border, ApplyStyle);
@@ -382,9 +383,8 @@ public static partial class BaseComponent
             }
             else
             {
-                var props = new HScrollBarProps(uiScope, scrollBar);
                 var part = new HScrollBarPart();
-                var content = args.Template(props, part).Content;
+                var content = args.Template(part).Content;
                 border.Child = content;
                 scrollBar.Template = new FuncControlTemplate((_, s) =>
                 {

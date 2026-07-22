@@ -15,14 +15,12 @@ public static partial class BaseComponent
         Accessor<string> uri,
         Accessor<Stretch>? stretch = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null
+        HStyle? style = null
     )
     {
         return Element.WithScope(uiScope =>
         {
-            var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
-
+            var styleAccessor = StyleParser.ParseFull(strStyle);
 
             var image = new Path
             {
@@ -44,14 +42,13 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
-                StrVariants = styleAccessor.Value.Variants,
-                Variants = variants
+                MergeStyle = style is null ? null : StyleUtil.HStyle2Signal(style),
+                StrVariants = styleAccessor.Value.Variants
             };
 
             state.ApplyAccessorStyle(styleAccessor, image, border, ApplyStyle);
             state.ApplyVariantsStyle(image, border, ApplyStyle);
 
-            // 绑定 Data
             image.Data = SvgUtil.ParseGeometry(SvgUtil.LoadSvgString(uri.Value));
             if (uri.IsReactive)
             {
@@ -75,7 +72,7 @@ public static partial class BaseComponent
                     });
                 }
             }
-            
+
             return border;
 
             void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)

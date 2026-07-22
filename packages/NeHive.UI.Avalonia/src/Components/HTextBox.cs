@@ -179,9 +179,8 @@ public static partial class BaseComponent
                                 Converter = StringConverters.IsNullOrEmpty
                             },
   
-                            new Binding("Text")
+                            new TemplateBinding(TextBox.TextProperty)
                             {
-                                RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent),
                                 Converter = StringConverters.IsNullOrEmpty
                             }
                         ]
@@ -214,8 +213,7 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
-                StrVariants = styleAccessor.Value.Variants,
-                Variants = variants
+                StrVariants = styleAccessor.Value.Variants
             };
 
             state.ApplyAccessorStyle(styleAccessor, textBox, border, ApplyStyle);

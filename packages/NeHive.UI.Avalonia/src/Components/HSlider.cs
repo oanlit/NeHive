@@ -72,8 +72,7 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, prop.Style.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants,
-                Variants = prop.Variants
+                StrVariants = prop.Style.Value.Variants
             };
 
             state.ApplyAccessorStyle(prop.Style, slider, border, ApplyStyle);

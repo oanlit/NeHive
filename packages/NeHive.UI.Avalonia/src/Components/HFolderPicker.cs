@@ -14,8 +14,7 @@ public static partial class BaseComponent
         Accessor<string>? text = null,
         string? startDirectory = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null)
+        HStyle? style = null)
     {
         return Element.WithScope(uiScope =>
         {
@@ -25,7 +24,7 @@ public static partial class BaseComponent
 
             using (new ScopeFrame(uiScope))
             {
-                button = HButton(text, strStyle, style, variants);
+                button = HButton(text, strStyle, style);
             }
 
             button.Content.PointerPressed += async (_, _) =>

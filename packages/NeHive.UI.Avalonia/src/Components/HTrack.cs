@@ -52,8 +52,7 @@ public static partial class BaseComponent
             };
             var state = new CommonState(uiScope, args.Style.Value.Normal)
             {
-                StrVariants = args.Style.Value.Variants,
-                Variants = args.Variants
+                StrVariants = args.Style.Value.Variants
             };
 
             state.ApplyAccessorStyle(args.Style, track, border, ApplyStyle);

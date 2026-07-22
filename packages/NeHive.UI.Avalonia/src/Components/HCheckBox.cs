@@ -61,8 +61,7 @@ public static partial class BaseComponent
             // 应用样式
             var state = new CommonState(uiScope, prop.Style.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants,
-                Variants = prop.Variants
+                StrVariants = prop.Style.Value.Variants
             };
             StyleUtil.ApplyStyle(state.CurrentStyle, checkBox, border);
             if (prop.Style.IsReactive)

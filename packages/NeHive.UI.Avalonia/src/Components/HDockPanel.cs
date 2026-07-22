@@ -49,8 +49,7 @@ public static partial class BaseComponent
             // 应用样式
             var state = new CommonState(uiScope, prop.Style.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants,
-                Variants = prop.Variants
+                StrVariants = prop.Style.Value.Variants
             };
 
             state.ApplyAccessorStyle(prop.Style, dockPanel, border, ApplyStyle);

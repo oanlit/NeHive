@@ -11,10 +11,9 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
 {
     public StyleSet BaseStyle = baseStyle;
     public StyleSet CurrentStyle = baseStyle.Copy();
+    public Signal<StyleSet>? MergeStyle { get; init; }
     public bool CurrentIsBase { get; private set; } = true;
     public Dictionary<string, List<string>>? StrVariants;
-
-    public Dictionary<string, StyleSet>? Variants;
 
     public bool IsHover;
     public bool IsClicked;
@@ -30,11 +29,13 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
 
     public void SetCurrentStyle()
     {
-        if (StrVariants is null && Variants is null) return;
+        if (StrVariants is null) return;
         SetHoverStyle();
         SetFocusStyle();
         SetClickStyle();
         SetDragOverStyle();
+        if (MergeStyle is null) return;
+        CurrentStyle.Merge(MergeStyle.Value);
     }
 
     public void SetHoverStyle()
@@ -47,24 +48,12 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
                 StyleParser.Parse(strs, ref CurrentStyle);
                 CurrentIsBase = false;
             }
-
-            if (Variants is not null && Variants.TryGetValue("focus:hover", out var styleSet))
-            {
-                CurrentStyle.Merge(styleSet);
-                CurrentIsBase = false;
-            }
         }
         else
         {
             if (StrVariants is not null && StrVariants.TryGetValue("hover", out var strs))
             {
                 StyleParser.Parse(strs, ref CurrentStyle);
-                CurrentIsBase = false;
-            }
-
-            if (Variants is not null && Variants.TryGetValue("hover", out var styleSet))
-            {
-                CurrentStyle.Merge(styleSet);
                 CurrentIsBase = false;
             }
         }
@@ -78,12 +67,6 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             StyleParser.Parse(strs, ref CurrentStyle);
             CurrentIsBase = false;
         }
-
-        if (Variants is not null && Variants.TryGetValue("click", out var styleSet))
-        {
-            CurrentStyle.Merge(styleSet);
-            CurrentIsBase = false;
-        }
     }
 
     public void SetFocusStyle()
@@ -92,12 +75,6 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         if (StrVariants is not null && StrVariants.TryGetValue("focus", out var strs))
         {
             StyleParser.Parse(strs, ref CurrentStyle);
-            CurrentIsBase = false;
-        }
-
-        if (Variants is not null && Variants.TryGetValue("focus", out var styleSet))
-        {
-            CurrentStyle.Merge(styleSet);
             CurrentIsBase = false;
         }
     }
@@ -110,36 +87,55 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             StyleParser.Parse(strs, ref CurrentStyle);
             CurrentIsBase = false;
         }
-
-        if (Variants is not null && Variants.TryGetValue("dragover", out var styleSet))
-        {
-            CurrentStyle.Merge(styleSet);
-            CurrentIsBase = false;
-        }
     }
 
     public void ApplyAccessorStyle(
-        Accessor<FullStyle> accessorStyle,
+        Accessor<FullStyle> strStyle,
         Layoutable layout, Border border,
         Action<StyleSet, Layoutable, Border> applyStyle)
     {
-        applyStyle(CurrentStyle, layout, border);
-        if (!accessorStyle.IsReactive) return;
-        var firstApply = true;
-        uiScope.CreateEffect(epochScope =>
+        if (MergeStyle is null)
         {
-            var styleValue = epochScope.Track(accessorStyle);
-            BaseStyle = styleValue.Normal;
-            StrVariants = styleValue.Variants;
-            CurrentStyle = BaseStyle.Copy();
-            if (firstApply)
-            {
-                firstApply = false;
-                return;
-            }
-
             applyStyle(CurrentStyle, layout, border);
-        });
+            if (!strStyle.IsReactive) return;
+            var firstApply = true;
+            uiScope.CreateEffect(epoch =>
+            {
+                var srtStyleValue = epoch.Track(strStyle);
+                BaseStyle = srtStyleValue.Normal;
+                StrVariants = srtStyleValue.Variants;
+                CurrentStyle = BaseStyle.Copy();
+                if (firstApply)
+                {
+                    firstApply = false;
+                    return;
+                }
+
+                applyStyle(CurrentStyle, layout, border);
+            });
+        }
+        else
+        {
+            CurrentStyle.Merge(MergeStyle.Value);
+            applyStyle(CurrentStyle, layout, border);
+            var firstApply = true;
+            uiScope.CreateEffect(epoch =>
+            {
+                var srtStyleValue = epoch.Track(strStyle);
+                var styleValue = epoch.Pull(MergeStyle);
+                BaseStyle = srtStyleValue.Normal;
+                BaseStyle.Merge(styleValue);
+                StrVariants = srtStyleValue.Variants;
+                CurrentStyle = BaseStyle.Copy();
+                if (firstApply)
+                {
+                    firstApply = false;
+                    return;
+                }
+
+                applyStyle(CurrentStyle, layout, border);
+            });
+        }
     }
 
     public void ApplyVariantsStyle(InputElement layout, Border border,

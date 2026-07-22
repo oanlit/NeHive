@@ -31,8 +31,7 @@ public static partial class BaseComponent
         Accessor<string>? text = null,
         Action<string[]>? onFileSelected = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null
+        HStyle? style = null
     )
     {
         return Element.WithScope(uiScope =>
@@ -43,7 +42,7 @@ public static partial class BaseComponent
             Button button;
             using (new ScopeFrame(uiScope))
             {
-                buttonElement = HButton(text, strStyle, style, variants);
+                buttonElement = HButton(text, strStyle, style);
                 _ = buttonElement.Content;
                 button = buttonElement.Expose!;
             }

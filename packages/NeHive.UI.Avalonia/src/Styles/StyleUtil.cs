@@ -4,6 +4,8 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
 
+using NeHive.Reactive;
+
 namespace NeHive.UI.Avalonia.Styles;
 
 public static class StyleUtil
@@ -25,6 +27,75 @@ public static class StyleUtil
         Opacity = 1.0,
         IsVisible = true
     };
+    
+    public static Signal<StyleSet> HStyle2Signal(HStyle style)
+    {
+        return new Computed<StyleSet>(() => new StyleSet
+        {
+            Margin = style.Margin?.RxValue,
+            ZIndex = style.ZIndex?.RxValue,
+
+            Width = style.Width?.RxValue,
+            Height = style.Height?.RxValue,
+            MinWidth = style.MinWidth?.RxValue,
+            MaxWidth = style.MaxWidth?.RxValue,
+            MinHeight = style.MinHeight?.RxValue,
+            MaxHeight = style.MaxHeight?.RxValue,
+
+            Padding = style.Padding?.RxValue,
+
+            HorizontalAlignment = style.HorizontalAlignment?.RxValue,
+            VerticalAlignment = style.VerticalAlignment?.RxValue,
+
+            Background = style.Background?.RxValue,
+            OpacityMask = style.OpacityMask?.RxValue,
+            BorderBrush = style.BorderBrush?.RxValue,
+            BorderThickness = style.BorderThickness?.RxValue,
+            BackgroundSizing = style.BackgroundSizing?.RxValue,
+            CornerRadius = style.CornerRadius?.RxValue,
+
+            Opacity = style.Opacity?.RxValue,
+            IsVisible = style.IsVisible?.RxValue,
+
+            ClipToBounds = style.ClipToBounds?.RxValue,
+            Clip = style.Clip?.RxValue,
+            Effect = style.Effect?.RxValue,
+            BoxShadows = style.BoxShadows?.RxValue,
+            Cursor = style.Cursor?.RxValue,
+            FlowDirection = style.FlowDirection?.RxValue,
+
+            RenderTransformOrigin = style.RenderTransformOrigin?.RxValue,
+            RenderTransform = style.RenderTransform?.RxValue,
+            Transitions = style.Transitions?.RxValue,
+
+            RowSpacing = style.RowSpacing?.RxValue,
+            ColumnSpacing = style.ColumnSpacing?.RxValue,
+
+            Orientation = style.Orientation?.RxValue,
+
+            LetterSpacing = style.LetterSpacing?.RxValue,
+            LineHeight = style.LineHeight?.RxValue,
+            LineSpacing = style.LineSpacing?.RxValue,
+
+            MaxLines = style.MaxLines?.RxValue,
+            TextTrimming = style.TextTrimming?.RxValue,
+
+            TextAlignment = style.TextAlignment?.RxValue,
+            VerticalTextAlignment = style.VerticalTextAlignment?.RxValue,
+
+            TextWrapping = style.TextWrapping?.RxValue,
+            TextDecorations = style.TextDecorations?.RxValue,
+            Inlines = style.Inlines?.RxValue,
+
+            FontSize = style.FontSize?.RxValue,
+            FontWeight = style.FontWeight?.RxValue,
+            FontFamily = style.FontFamily?.RxValue,
+            FontStretch = style.FontStretch?.RxValue,
+            FontFeatures = style.FontFeatures?.RxValue,
+            FontStyle = style.FontStyle?.RxValue,
+            Foreground = style.Foreground?.RxValue
+        });
+    }
 
     public static void ApplyStyle(BaseStyle style, Layoutable layout, Border border)
     {
