@@ -18,6 +18,8 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
     public bool IsHover;
     public bool IsClicked;
     public bool IsFocused;
+    public bool IsFocusWithin;
+    public bool IsDisabled;
     public bool IsDragOver;
 
     public void ResetSetStyle()
@@ -30,8 +32,10 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
     public void SetCurrentStyle()
     {
         if (StrVariants is null) return;
+        SetDisableStyle();
         SetHoverStyle();
         SetFocusStyle();
+        SetKeyboardFocusWithinStyle();
         SetClickStyle();
         SetDragOverStyle();
         if (PriorityStyle is null) return;
@@ -73,6 +77,26 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
     {
         if (!IsFocused) return;
         if (StrVariants is not null && StrVariants.TryGetValue("focus", out var strs))
+        {
+            StyleParser.Parse(strs, ref CurrentStyle);
+            CurrentIsBase = false;
+        }
+    }
+    
+    public void SetKeyboardFocusWithinStyle()
+    {
+        if (!IsFocusWithin) return;
+        if (StrVariants is not null && StrVariants.TryGetValue("focus-within", out var strs))
+        {
+            StyleParser.Parse(strs, ref CurrentStyle);
+            CurrentIsBase = false;
+        }
+    }
+    
+    public void SetDisableStyle()
+    {
+        if (!IsDisabled) return;
+        if (StrVariants is not null && StrVariants.TryGetValue("disabled", out var strs))
         {
             StyleParser.Parse(strs, ref CurrentStyle);
             CurrentIsBase = false;
@@ -164,6 +188,30 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             SetCurrentStyle();
             applyStyle(CurrentStyle, layout, border);
         });
+        
+        var focusWithin = BindFocusWithin(layout, uiScope);
+        uiScope.CreateEffect(epoch =>
+        {
+            var newFocusWithin = epoch.Pull(focusWithin);
+            if (IsFocusWithin == newFocusWithin) return;
+
+            IsFocusWithin = newFocusWithin;
+            ResetSetStyle();
+            SetCurrentStyle();
+            applyStyle(CurrentStyle, layout, border);
+        });
+
+        var disabled = BindDisabled(layout, uiScope);
+        uiScope.CreateEffect(epoch =>
+        {
+            var newDisabled = epoch.Pull(disabled);
+            if (IsDisabled == newDisabled) return;
+
+            IsDisabled = newDisabled;
+            ResetSetStyle();
+            SetCurrentStyle();
+            applyStyle(CurrentStyle, layout, border);
+        });
 
         border.PointerPressed += (_, e) =>
         {
@@ -231,6 +279,38 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         {
             if (args.Property == InputElement.IsFocusedProperty)
                 sig.RxValue = (bool)args.NewValue!;
+        }
+    }
+    
+    public static Signal<bool> BindFocusWithin(InputElement target, UiScope scope)
+    {
+        var sig = new MutSignal<bool>(target.IsKeyboardFocusWithin);
+
+        target.PropertyChanged += OnPropUpdate;
+        scope.OnCleanup += () => target.PropertyChanged -= OnPropUpdate;
+
+        return sig;
+
+        void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+        {
+            if (args.Property == InputElement.IsKeyboardFocusWithinProperty)
+                sig.RxValue = (bool)args.NewValue!;
+        }
+    }
+    
+    public static Signal<bool> BindDisabled(InputElement target, UiScope scope)
+    {
+        var sig = new MutSignal<bool>(!target.IsEffectivelyEnabled);
+
+        target.PropertyChanged += OnPropUpdate;
+        scope.OnCleanup += () => target.PropertyChanged -= OnPropUpdate;
+
+        return sig;
+
+        void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+        {
+            if (args.Property == InputElement.IsEffectivelyEnabledProperty)
+                sig.RxValue = !(bool)args.NewValue!;
         }
     }
 }

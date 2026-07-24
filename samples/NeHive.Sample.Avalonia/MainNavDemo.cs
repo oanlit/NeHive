@@ -538,14 +538,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             ), // HFilePicker
             HTextBlock(new(() => $"Selected File Path: {selectedFile.RxValue ?? "No file selected"}"),
                 strStyle: "mt-2 text-sm fg-coffee-700"),
-            HBlock(new(strStyle: new(() => $"mt-2 w-64 h-64 overflow-hidden {MaskColor()} border rounded-xl"))
+            HBorder(new(strStyle: new(() => $"mt-2 w-64 h-64 overflow-hidden {MaskColor()} border rounded-xl"))
             {
                 HUriImage(selectedFile,
                     stretch: Stretch.UniformToFill,
                     strStyle:
                     "mask-gradient-b mask-from-50 mask-to-20 transition-transform ease-in-out duration-500 hover:scale-110"
                 ), // HUriImage
-            }) // HBlock
+            }) // HBorder
         }); // HStackPanel
 
         string MaskColor()
@@ -567,7 +567,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
         {
             HTextBlock("Drag Image File Demo", strStyle: SectionTitleStyle),
 
-            HBlock(new(
+            HBorder(new(
                 isAllowDrop: true,
                 strStyle: new(() =>
                     $"mt-2 w-64 h-64 overflow-hidden relative {MaskColor()} border rounded-xl dragover:bg-sky-200"),
@@ -585,7 +585,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                         "mask-gradient-b mask-from-50 mask-to-20 transition-transform ease-in-out duration-500 hover:scale-110"
                     ) // HUriImage
                 }) // Show
-            }) // HBlock
+            }) // HBorder
         }); // HStackPanel
 
         string MaskColor()
@@ -655,6 +655,37 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             ), // HSlider
             HTextBlock(new(() => $"Audio Volume Level: {volume.RxValue:F0}"),
                 strStyle: "mt-2 text-xl fw-semibold fg-matcha-600")
+        }); // HStackPanel
+    }
+
+    #endregion
+
+    #region Popup Demo
+
+    private static IElement PopupDemo()
+    {
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
+        {
+            HTextBlock("Popup Demo", strStyle: SectionTitleStyle),
+            HStackPanel(prop => new(strStyle: HorizontalRowBase+"p-2 bg-matcha-200")
+            {
+                Children =
+                [
+                    HButton("File", strStyle: PrimaryBtnBase),
+                    HButton("Edit", strStyle: PrimaryBtnBase)
+                ],
+                Popups =
+                [
+                    HPopup(new(
+                        isOpen: prop.IsPointerOver,
+                        placement: PlacementMode.Top,
+                        verticalOffset:-10
+                    )
+                    {
+                        HTextBlock("Help", strStyle: "px-2 py-1 fg-white text-base bg-matcha-200 border rounded-lg")
+                    }) // HPopup
+                ] // HStackPanel.HPopup
+            }) // HStackPanel
         }); // HStackPanel
     }
 
@@ -2141,7 +2172,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
             new("🔘 Basic Input Controls", DemoView.TextBoxDemo, DemoView.CheckBoxDemo, DemoView.RadioButtonDemo,
                 DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.DragFileDemo, DemoView.ProgressBarDemo,
-                DemoView.SliderDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
+                DemoView.SliderDemo, DemoView.PopupDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
 
             new("📋 Data Selection & Lists", DemoView.TreeViewDemo, DemoView.ComboBoxDemo),
 
@@ -2257,6 +2288,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 [DemoView.DragFileDemo] = DragFileDemo,
                                 [DemoView.ProgressBarDemo] = ProgressBarDemo,
                                 [DemoView.SliderDemo] = SliderDemo,
+                                [DemoView.PopupDemo] = PopupDemo,
                                 [DemoView.FlyoutDemo] = FlyoutDemo,
                                 [DemoView.WindowDemo] = WindowDemo,
 
@@ -2318,7 +2350,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 HPanel(_ => new(strStyle: "w-full h-full")
                 {
                     MainNavDemo(),
-                    HBlock(new(strStyle: lockStyle))
+                    HBorder(new(strStyle: lockStyle))
                 }) // HPanel
             }); // RootElement
         });
@@ -2356,6 +2388,7 @@ public enum DemoView
     DragFileDemo,
     ProgressBarDemo,
     SliderDemo,
+    PopupDemo,
     FlyoutDemo,
     WindowDemo,
 

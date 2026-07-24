@@ -1,6 +1,6 @@
 using System.Collections;
-
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
@@ -14,26 +14,27 @@ public class HPanelArgs(
     Accessor<string>? strStyle = null,
     HStyle? style = null) : ISingleChildrenArgs
 {
-    private readonly List<IElement> _children = [];
-
     public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
     public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
+    public List<IElement> Children { private get; init; } = [];
+    public List<IElement<Popup>>? Popups { internal get; init; }
+
     public IEnumerator<IElement> GetEnumerator()
-        => _children.GetEnumerator();
+        => Children.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator()
         => GetEnumerator();
 
     public void Add(IElement element)
     {
-        _children.Add(element);
+        Children.Add(element);
     }
 }
 
 public static partial class BaseComponent
 {
-    public static IElement<Panel> HPanel(Func<HPanelProps,HPanelArgs> fn)
+    public static IElement<Panel> HPanel(Func<HPanelProps, HPanelArgs> fn)
     {
         return Element<Panel>.WithScope(uiScope =>
         {
@@ -57,6 +58,16 @@ public static partial class BaseComponent
 
             state.ApplyAccessorStyle(args.StrStyle, panel, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(panel, border, StyleUtil.ApplyStyle);
+
+            if (args.Popups is not null)
+            {
+                foreach (var popupEl in args.Popups)
+                {
+                    _ = popupEl.Content;
+                    var popup = popupEl.Expose!;
+                    popup.PlacementTarget = border;
+                }
+            }
 
             return (panel, border);
         });

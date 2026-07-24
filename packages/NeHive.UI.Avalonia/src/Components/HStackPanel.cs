@@ -30,6 +30,16 @@ public static partial class BaseComponent
 
             state.ApplyAccessorStyle(args.StrStyle, stack, border, ApplyStyle);
             state.ApplyVariantsStyle(stack, border, ApplyStyle);
+            
+            if (args.Popups is not null)
+            {
+                foreach (var popupEl in args.Popups)
+                {
+                    _ = popupEl.Content;
+                    var popup = popupEl.Expose!;
+                    popup.PlacementTarget = border;
+                }
+            }
 
             return (stack, border);
 

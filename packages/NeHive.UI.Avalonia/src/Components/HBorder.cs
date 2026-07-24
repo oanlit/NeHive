@@ -85,7 +85,7 @@ public class HBorderArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement HBlock(HBorderArgs args)
+    public static IElement HBorder(HBorderArgs args)
     {
         return Element.WithScope(uiScope =>
         {
