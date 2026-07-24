@@ -18,8 +18,7 @@ public class HTrackArgs(
     Accessor<bool>? isDeferThumbDrag = null,
     Accessor<bool>? isIgnoreThumbDrag = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null)
+    HStyle? style = null)
 {
     public readonly Accessor<double>? Value = bindValue ?? value;
     public readonly MutSignal<double>? BindValue = bindValue;
@@ -31,8 +30,8 @@ public class HTrackArgs(
     public readonly Accessor<bool>? IsDeferThumbDrag = isDeferThumbDrag;
     public readonly Accessor<bool>? IsIgnoreThumbDrag = isIgnoreThumbDrag;
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public IElement<Button>? IncreaseButton;
     public IElement<Button>? DecreaseButton;
@@ -50,12 +49,13 @@ public static partial class BaseComponent
             {
                 Child = track
             };
-            var state = new CommonState(uiScope, args.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = args.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(args.Style, track, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, track, border, ApplyStyle);
             state.ApplyVariantsStyle(track, border, ApplyStyle);
             
             if (args.BindValue is not null)

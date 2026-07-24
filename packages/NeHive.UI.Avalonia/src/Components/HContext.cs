@@ -4,7 +4,7 @@ using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HContextProp(Action<IContextSetter> contextSetter) : ISingleChildrenProp
+public class HContextProp(Action<IContextSetter> contextSetter) : ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
     internal readonly Action<IContextSetter> ContextSetter = contextSetter;

@@ -7,17 +7,12 @@ namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
-    /// <summary>
-    /// 创建 GridSplitter 控件
-    /// </summary>
-    /// <param name="strStyle">样式字符串</param>
     public static IElement HGridSplitter(Accessor<string>? strStyle = null)
     {
         return Element.WithScope(uiScope =>
         {
             var splitter = new GridSplitter();
 
-            // 应用样式字符串（可复用 StyleParser）
             if (strStyle is not null)
             {
                 uiScope.CreateEffect(scope =>
@@ -64,7 +59,6 @@ public static partial class BaseComponent
 
                 if (result.Background is not null)
                     splitter.Background = result.Background;
-                // 其他样式属性可扩展
             }
         });
     }

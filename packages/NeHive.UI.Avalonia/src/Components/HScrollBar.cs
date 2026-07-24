@@ -24,7 +24,8 @@ public class HScrollBarPart
     public IElement<Button> PageUpButton(IElement<Button> element) => PageUpButtonElement = element;
 }
 
-public class HScrollBarProps(Scope scope, ScrollBar scrollBar)
+public class HScrollBarProps(Scope scope, Border border, ScrollBar scrollBar)
+    : BaseComponentProps(scope, border, scrollBar)
 {
     public MutSignal<double> Value
     {
@@ -273,8 +274,7 @@ public class HScrollBarArgs(
     Accessor<TimeSpan>? showDelay = null,
     Accessor<TimeSpan>? hideDelay = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null,
+    HStyle? style = null,
     Action<RangeBaseValueChangedEventArgs>? onValueChanged = null,
     Action<ScrollEventArgs>? onScroll = null)
 {
@@ -293,8 +293,8 @@ public class HScrollBarArgs(
     public readonly Accessor<TimeSpan>? HideDelay = hideDelay;
     public readonly Accessor<TimeSpan>? ShowDelay = showDelay;
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public readonly Action<RangeBaseValueChangedEventArgs>? OnValueChanged = onValueChanged;
     public readonly Action<ScrollEventArgs>? OnScroll = onScroll;
@@ -310,16 +310,17 @@ public static partial class BaseComponent
         {
             var scrollBar = new ScrollBar();
             var border = new Border();
-            
-            var props = new HScrollBarProps(uiScope, scrollBar);
+
+            var props = new HScrollBarProps(uiScope, border, scrollBar);
             var args = fn(props);
 
-            var state = new CommonState(uiScope, args.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = args.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(args.Style, scrollBar, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, scrollBar, border, ApplyStyle);
             state.ApplyVariantsStyle(scrollBar, border, ApplyStyle);
 
             RangeBaseUtil.BindAccessor(uiScope, scrollBar, args.Value, args.BindValue, args.Minimum, args.Maximum,

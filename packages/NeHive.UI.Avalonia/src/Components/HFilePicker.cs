@@ -47,7 +47,6 @@ public static partial class BaseComponent
                 button = buttonElement.Expose!;
             }
 
-            // 点击时打开文件对话框
             button.Click += async (_, _) =>
             {
                 // 获取顶层窗口

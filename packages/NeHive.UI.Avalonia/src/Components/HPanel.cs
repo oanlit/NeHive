@@ -1,22 +1,23 @@
 using System.Collections;
 
 using Avalonia.Controls;
-
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HPanelProp(
+public class HPanelProps(Scope scope, Border border, Panel content) : BaseComponentProps(scope, border, content);
+
+public class HPanelArgs(
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null) : ISingleChildrenProp
+    HStyle? style = null) : ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public IEnumerator<IElement> GetEnumerator()
         => _children.GetEnumerator();
@@ -32,7 +33,7 @@ public class HPanelProp(
 
 public static partial class BaseComponent
 {
-    public static IElement<Panel> HPanel(HPanelProp prop)
+    public static IElement<Panel> HPanel(Func<HPanelProps,HPanelArgs> fn)
     {
         return Element<Panel>.WithScope(uiScope =>
         {
@@ -42,15 +43,19 @@ public static partial class BaseComponent
                 Child = panel
             };
 
-            foreach (var child in prop)
+            var props = new HPanelProps(uiScope, border, panel);
+            var args = fn(props);
+
+            foreach (var child in args)
                 panel.Children.Add(child.Content);
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, panel, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, panel, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(panel, border, StyleUtil.ApplyStyle);
 
             return (panel, border);

@@ -6,14 +6,13 @@ using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HRadioButtonProp(
+public class HRadioButtonArgs(
     Accessor<bool?>? isChecked = null,
     MutSignal<bool?>? bindIsChecked = null,
     Accessor<string>? groupName = null,
     Accessor<bool>? isEnabled = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null,
+    HStyle? style = null,
     Action<bool?>? onClick = null) : IEnumerable<IElement>
 {
     private readonly List<IElement> _children = [];
@@ -24,8 +23,8 @@ public class HRadioButtonProp(
     public readonly Accessor<bool>? IsEnabled = isEnabled;
     public readonly Action<bool?>? OnClick = onClick;
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public void Add(IElement element) => _children.Add(element);
     public IEnumerator<IElement> GetEnumerator() => _children.GetEnumerator();
@@ -34,7 +33,7 @@ public class HRadioButtonProp(
 
 public static partial class BaseComponent
 {
-    public static IElement<RadioButton> HRadioButton(HRadioButtonProp prop)
+    public static IElement<RadioButton> HRadioButton(HRadioButtonArgs args)
     {
         return Element<RadioButton>.WithScope(uiScope =>
         {
@@ -44,48 +43,49 @@ public static partial class BaseComponent
                 Child = radio
             };
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, radio, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, radio, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(radio, border, StyleUtil.ApplyStyle);
 
-            if (prop.IsEnabled is not null)
+            if (args.IsEnabled is not null)
             {
-                radio.IsEnabled = prop.IsEnabled.Value;
-                if (prop.IsEnabled.IsReactive)
-                    uiScope.CreateEffect(epochScope => radio.IsEnabled = epochScope.Track(prop.IsEnabled));
+                radio.IsEnabled = args.IsEnabled.Value;
+                if (args.IsEnabled.IsReactive)
+                    uiScope.CreateEffect(epochScope => radio.IsEnabled = epochScope.Track(args.IsEnabled));
             }
 
-            if (prop.GroupName is not null)
+            if (args.GroupName is not null)
             {
-                radio.GroupName = prop.GroupName.Value;
-                if (prop.GroupName.IsReactive)
-                    uiScope.CreateEffect(epochScope => radio.GroupName = epochScope.Track(prop.GroupName));
+                radio.GroupName = args.GroupName.Value;
+                if (args.GroupName.IsReactive)
+                    uiScope.CreateEffect(epochScope => radio.GroupName = epochScope.Track(args.GroupName));
             }
 
-            if (prop.BindIsChecked is not null)
+            if (args.BindIsChecked is not null)
             {
-                uiScope.CreateEffect(() => radio.IsChecked = prop.BindIsChecked.RxValue);
+                uiScope.CreateEffect(() => radio.IsChecked = args.BindIsChecked.RxValue);
                 radio.Click += (_, _) =>
                 {
-                    prop.BindIsChecked.NotifySet(prev => prev is not true);
-                    prop.OnClick?.Invoke(prop.BindIsChecked.Value);
+                    args.BindIsChecked.NotifySet(prev => prev is not true);
+                    args.OnClick?.Invoke(args.BindIsChecked.Value);
                 };
             }
-            else if (prop.IsChecked is not null)
+            else if (args.IsChecked is not null)
             {
-                uiScope.CreateEffect(() => radio.IsChecked = prop.IsChecked.RxValue);
-                radio.Click += (_, _) => prop.OnClick?.Invoke(radio.IsChecked);
+                uiScope.CreateEffect(() => radio.IsChecked = args.IsChecked.RxValue);
+                radio.Click += (_, _) => args.OnClick?.Invoke(radio.IsChecked);
             }
-            else if (prop.OnClick is not null)
+            else if (args.OnClick is not null)
             {
-                radio.Click += (_, _) => prop.OnClick?.Invoke(radio.IsChecked);
+                radio.Click += (_, _) => args.OnClick?.Invoke(radio.IsChecked);
             }
 
-            var firstChild = prop.FirstOrDefault();
+            var firstChild = args.FirstOrDefault();
             if (firstChild is not null)
                 radio.Content = firstChild.Content;
 

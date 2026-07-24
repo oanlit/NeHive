@@ -8,29 +8,23 @@ using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-/// <summary>
-/// TabControl 配置类，支持索引器添加标签页
-/// </summary>
-public class HTabViewProp(
+public class HTabViewArgs(
     MutSignal<int>? bindSelectedIndex = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null)
+    HStyle? style = null)
     : IEnumerable<(Accessor<string> Header, IElement Content)>
 {
     private readonly List<(Accessor<string> Header, IElement Content)> _items = [];
 
     public readonly MutSignal<int>? BindSelectedIndex = bindSelectedIndex;
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
     
-    // 索引器：支持 Accessor<string> 标题（响应式）
     public IElement this[Accessor<string> header]
     {
         set => _items.Add((header, value));
     }
 
-    // 可选：传统 Add 方法（配合集合初始化器）
     public void Add(Accessor<string> header, IElement content) => _items.Add((header, content));
     public void Add(string header, IElement content) => _items.Add((header, content));
 
@@ -42,7 +36,7 @@ public class HTabViewProp(
 
 public static partial class BaseComponent
 {
-    public static IElement HTabControl(HTabViewProp prop)
+    public static IElement HTabControl(HTabViewArgs args)
     {
         return Element.WithScope(uiScope =>
         {
@@ -52,19 +46,19 @@ public static partial class BaseComponent
                 Child = tabControl
             };
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, tabControl, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, tabControl, border, ApplyStyle);
             state.ApplyVariantsStyle(tabControl, border, ApplyStyle);
 
             // tabControl.ItemTemplate = 
 
-            // 构建 TabItems
             var tabItems = new List<TabItem>();
-            foreach (var (headerAccessor, contentElement) in prop)
+            foreach (var (headerAccessor, contentElement) in args)
             {
                 var tabItem = new TabItem();
 
@@ -78,23 +72,21 @@ public static partial class BaseComponent
 
             tabControl.ItemsSource = tabItems;
 
-            if (prop.BindSelectedIndex is null)
+            if (args.BindSelectedIndex is null)
             {
                 if (tabItems.Count > 0) tabControl.SelectedIndex = 0;
             }
             else
             {
-                // 双向绑定 selectedIndex
-                // View -> ViewModel
                 tabControl.SelectionChanged += (_, _) =>
                 {
-                    if (tabControl.SelectedIndex != prop.BindSelectedIndex.RxValue)
-                        prop.BindSelectedIndex.RxValue = tabControl.SelectedIndex;
+                    if (tabControl.SelectedIndex != args.BindSelectedIndex.RxValue)
+                        args.BindSelectedIndex.RxValue = tabControl.SelectedIndex;
                 };
-                // ViewModel -> View
-                uiScope.CreateEffect(() =>
+
+                uiScope.CreateEffect(epoch =>
                 {
-                    var idx = prop.BindSelectedIndex.RxValue;
+                    var idx = epoch.Pull(args.BindSelectedIndex);
                     if (idx >= 0 && idx < tabItems.Count && idx != tabControl.SelectedIndex)
                         tabControl.SelectedIndex = idx;
                 });

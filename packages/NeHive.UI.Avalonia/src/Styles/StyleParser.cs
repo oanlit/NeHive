@@ -20,7 +20,7 @@ public static class StyleParser
     {
         if (_finalAtomHandlers is not null)
             throw new InvalidOperationException(
-                "Style engine has already been initialized.");
+                "StrStyle engine has already been initialized.");
         var styleDefinitions = new StyleDefinitions
         {
             Handlers = AtomHandler.DefaultHandlers,

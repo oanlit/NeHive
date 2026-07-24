@@ -1,8 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
-
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
@@ -21,19 +22,212 @@ public class HSliderPart
     public IElement<Button> IncreaseButton(IElement<Button> element) => IncreaseButtonElement = element;
 }
 
-public class HSliderProp(
+public class HSliderProps(Scope scope, Border border, Slider slider) : BaseComponentProps(scope, border, slider)
+{
+    public MutSignal<double> Value
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<double>(slider.Value);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+            scope.CreateEffect(epoch => slider.Value = epoch.Pull(sig));
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == RangeBase.ValueProperty)
+                    sig.RxValue = (double)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<double> Minimum
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<double>(slider.Minimum);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == RangeBase.MinimumProperty)
+                    sig.RxValue = (double)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<double> Maximum
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<double>(slider.Maximum);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == RangeBase.MaximumProperty)
+                    sig.RxValue = (double)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<double> SmallChange
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<double>(slider.SmallChange);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == RangeBase.SmallChangeProperty)
+                    sig.RxValue = (double)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<double> LargeChange
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<double>(slider.SmallChange);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == RangeBase.LargeChangeProperty)
+                    sig.RxValue = (double)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<bool> IsDirectionReversed
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<bool>(slider.IsDirectionReversed);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == Slider.IsDirectionReversedProperty)
+                    sig.RxValue = (bool)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<bool> IsSnapToTickEnabled
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<bool>(slider.IsSnapToTickEnabled);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == Slider.IsSnapToTickEnabledProperty)
+                    sig.RxValue = (bool)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<double> TickFrequency
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<double>(slider.TickFrequency);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == Slider.TickFrequencyProperty)
+                    sig.RxValue = (double)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<TickPlacement> TickPlacement
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<TickPlacement>(slider.TickPlacement);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == Slider.TickPlacementProperty)
+                    sig.RxValue = (TickPlacement)args.NewValue!;
+            }
+        }
+    }
+}
+
+public class HSliderArgs(
     Accessor<double>? value = null,
     MutSignal<double>? bindValue = null,
     Accessor<double>? minimum = null,
     Accessor<double>? maximum = null,
     Accessor<double>? smallChange = null,
     Accessor<double>? largeChange = null,
+    Accessor<bool>? isDirectionReversed = null,
     Accessor<bool>? isSnapToTickEnabled = null,
     Accessor<double>? tickFrequency = null,
     Accessor<TickPlacement>? tickPlacement = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null,
+    HStyle? style = null,
     Action<RangeBaseValueChangedEventArgs>? onValueChanged = null)
 {
     public readonly Accessor<double>? Value = bindValue ?? value;
@@ -44,14 +238,15 @@ public class HSliderProp(
     public readonly Accessor<double>? SmallChange = smallChange;
     public readonly Accessor<double>? LargeChange = largeChange;
 
+    public readonly Accessor<bool> IsDirectionReversed = isDirectionReversed ?? false;
     public readonly Accessor<bool> IsSnapToTickEnabled = isSnapToTickEnabled ?? false;
     public readonly Accessor<double> TickFrequency = tickFrequency ?? 1.0;
 
     public readonly Accessor<TickPlacement> TickPlacement =
         tickPlacement ?? global::Avalonia.Controls.TickPlacement.None;
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public readonly Action<RangeBaseValueChangedEventArgs>? OnValueChanged = onValueChanged;
 
@@ -60,7 +255,7 @@ public class HSliderProp(
 
 public static partial class BaseComponent
 {
-    public static IElement<Slider> HSlider(HSliderProp prop)
+    public static IElement<Slider> HSlider(Func<HSliderProps, HSliderArgs> fn)
     {
         return Element<Slider>.WithScope(uiScope =>
         {
@@ -70,34 +265,43 @@ public static partial class BaseComponent
                 Child = slider
             };
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var props = new HSliderProps(uiScope, border, slider);
+            var args = fn(props);
+
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, slider, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, slider, border, ApplyStyle);
             state.ApplyVariantsStyle(slider, border, ApplyStyle);
 
-            RangeBaseUtil.BindAccessor(uiScope, slider, prop.Value, prop.BindValue, prop.Minimum, prop.Maximum,
-                prop.SmallChange, prop.LargeChange, prop.OnValueChanged);
+            RangeBaseUtil.BindAccessor(uiScope, slider, args.Value, args.BindValue, args.Minimum, args.Maximum,
+                args.SmallChange, args.LargeChange, args.OnValueChanged);
 
-            slider.IsSnapToTickEnabled = prop.IsSnapToTickEnabled.Value;
-            if (prop.IsSnapToTickEnabled.IsReactive)
+            slider.IsDirectionReversed = args.IsDirectionReversed.Value;
+            if (args.IsDirectionReversed.IsReactive)
                 uiScope.CreateEffect(epochScope =>
-                    slider.IsSnapToTickEnabled = epochScope.Track(prop.IsSnapToTickEnabled));
+                    slider.IsDirectionReversed = epochScope.Track(args.IsDirectionReversed));
 
-            slider.TickFrequency = prop.TickFrequency.Value;
-            if (prop.TickFrequency.IsReactive)
-                uiScope.CreateEffect(epochScope => slider.TickFrequency = epochScope.Track(prop.TickFrequency));
+            slider.IsSnapToTickEnabled = args.IsSnapToTickEnabled.Value;
+            if (args.IsSnapToTickEnabled.IsReactive)
+                uiScope.CreateEffect(epochScope =>
+                    slider.IsSnapToTickEnabled = epochScope.Track(args.IsSnapToTickEnabled));
 
-            slider.TickPlacement = prop.TickPlacement.Value;
-            if (prop.TickPlacement.IsReactive)
-                uiScope.CreateEffect(epochScope => slider.TickPlacement = epochScope.Track(prop.TickPlacement));
+            slider.TickFrequency = args.TickFrequency.Value;
+            if (args.TickFrequency.IsReactive)
+                uiScope.CreateEffect(epochScope => slider.TickFrequency = epochScope.Track(args.TickFrequency));
 
-            if (prop.Template is not null)
+            slider.TickPlacement = args.TickPlacement.Value;
+            if (args.TickPlacement.IsReactive)
+                uiScope.CreateEffect(epochScope => slider.TickPlacement = epochScope.Track(args.TickPlacement));
+
+            if (args.Template is not null)
             {
                 var part = new HSliderPart();
-                var content = prop.Template(part).Content;
+                var content = args.Template(part).Content;
                 slider.Template = new FuncControlTemplate((_, s) =>
                 {
                     if (part.TrackElement is not null)
@@ -163,13 +367,13 @@ public static partial class BaseComponent
         Accessor<double>? maximum = null,
         Accessor<double>? smallChange = null,
         Accessor<double>? largeChange = null,
+        Accessor<bool>? isDirectionReversed = null,
         Accessor<bool>? isSnapToTickEnabled = null,
         Accessor<double>? tickFrequency = null,
         Accessor<TickPlacement>? tickPlacement = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null,
+        HStyle? style = null,
         Action<RangeBaseValueChangedEventArgs>? onValueChanged = null
-    ) => HSlider(new(value, bindValue, minimum, maximum, smallChange, largeChange, isSnapToTickEnabled,
-        tickFrequency, tickPlacement, strStyle, style, variants, onValueChanged));
+    ) => HSlider(_ => new(value, bindValue, minimum, maximum, smallChange, largeChange, isDirectionReversed,
+        isSnapToTickEnabled, tickFrequency, tickPlacement, strStyle, style, onValueChanged));
 }

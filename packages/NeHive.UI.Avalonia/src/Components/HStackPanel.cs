@@ -7,7 +7,7 @@ namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
-    public static IElement<StackPanel> HStackPanel(HPanelProp prop)
+    public static IElement<StackPanel> HStackPanel(Func<HPanelProps,HPanelArgs> fn)
     {
         return Element<StackPanel>.WithScope(uiScope =>
         {
@@ -17,15 +17,18 @@ public static partial class BaseComponent
                 Child = stack
             };
 
-            foreach (var child in prop)
+            var props = new HPanelProps(uiScope, border, stack);
+            var args = fn(props);
+
+            foreach (var child in args)
                 stack.Children.Add(child.Content);
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, stack, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, stack, border, ApplyStyle);
             state.ApplyVariantsStyle(stack, border, ApplyStyle);
 
             return (stack, border);
@@ -40,10 +43,10 @@ public static partial class BaseComponent
                 switch (orientation)
                 {
                     case Orientation.Vertical:
-                        if (styleValue.RowSpacing is not null) stack.Spacing = styleValue.RowSpacing.Value;
+                        if (styleValue.GapY is not null) stack.Spacing = styleValue.GapY.Value;
                         break;
                     case Orientation.Horizontal:
-                        if (styleValue.ColumnSpacing is not null) stack.Spacing = styleValue.ColumnSpacing.Value;
+                        if (styleValue.GapX is not null) stack.Spacing = styleValue.GapX.Value;
                         break;
                 }
             }

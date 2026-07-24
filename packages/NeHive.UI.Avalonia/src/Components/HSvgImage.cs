@@ -42,7 +42,7 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
-                MergeStyle = style is null ? null : StyleUtil.HStyle2Signal(style),
+                PriorityStyle = style is null ? null : StyleUtil.HStyle2Signal(style),
                 StrVariants = styleAccessor.Value.Variants
             };
 

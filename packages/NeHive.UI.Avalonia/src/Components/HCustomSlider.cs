@@ -28,8 +28,6 @@ internal class HCustomSliderState(StyleSet baseStyle)
     internal StyleSet CurrentStyle = baseStyle.Copy();
     internal Dictionary<string, List<string>>? Variants;
 
-    // public bool IsHover;
-    // public bool IsDragging;
     internal required HCustomSliderGroup Group;
 
     internal MutSignal<double> Value = new(0);
@@ -98,26 +96,28 @@ public class HCustomSliderGroup : IGroupState
     internal void SetDragging(bool value) => _isDragging?.RxValue = value;
 }
 
-public class HCustomSliderProp(
+public class HCustomSliderArgs(
     Accessor<double>? value = null,
     MutSignal<double>? bindValue = null,
     Accessor<double>? minimum = null,
     Accessor<double>? maximum = null,
     Accessor<string>? strStyle = null,
+    HStyle? style = null,
     Action<double>? onValueChanged = null)
 {
     public readonly Accessor<double>? Value = value;
     public readonly MutSignal<double>? BindValue = bindValue;
     public readonly Accessor<double>? Minimum = minimum;
     public readonly Accessor<double>? Maximum = maximum;
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, HSliderStyle.DefaultStyleSet);
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle, HSliderStyle.DefaultStyleSet);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
     public readonly Action<double>? OnValueChanged = onValueChanged;
     public Func<HCustomSliderGroup, IElement>? Thumb { get; init; }
 }
 
 public static partial class BaseComponent
 {
-    public static IElement HCustomSlider(HCustomSliderProp prop)
+    public static IElement HCustomSlider(HCustomSliderArgs args)
     {
         return Element.WithScope(uiScope =>
         {
@@ -139,7 +139,7 @@ public static partial class BaseComponent
 
             Control thumb;
 
-            if (prop.Thumb is null)
+            if (args.Thumb is null)
             {
                 thumb = new Border
                 {
@@ -153,7 +153,7 @@ public static partial class BaseComponent
             }
             else
             {
-                thumb = prop.Thumb(group).Content;
+                thumb = args.Thumb(group).Content;
                 thumb.HorizontalAlignment = HorizontalAlignment.Stretch;
                 thumb.VerticalAlignment = VerticalAlignment.Stretch;
                 thumb = new Border
@@ -169,8 +169,8 @@ public static partial class BaseComponent
             var touch = new Border
             {
                 Background = Brushes.Transparent,
-                Width = Math.Max(thumb.Width, prop.Style.Value.Normal.Width ?? 0),
-                Height = Math.Max(thumb.Height, prop.Style.Value.Normal.Height ?? 0)
+                Width = Math.Max(thumb.Width, args.StrStyle.Value.Normal.Width ?? 0),
+                Height = Math.Max(thumb.Height, args.StrStyle.Value.Normal.Height ?? 0)
             };
 
             var panel = new Panel();
@@ -179,28 +179,28 @@ public static partial class BaseComponent
             panel.Children.Add(thumb);
             panel.Children.Add(touch);
 
-            var state = new HCustomSliderState(prop.Style.Value.Normal)
+            var state = new HCustomSliderState(args.StrStyle.Value.Normal)
             {
                 Group = group,
-                Min = prop.Minimum ?? 0,
-                Max = prop.Maximum ?? 100,
-                Value = prop.BindValue ?? new MutSignal<double>(0)
+                Min = args.Minimum ?? 0,
+                Max = args.Maximum ?? 100,
+                Value = args.BindValue ?? new MutSignal<double>(0)
             };
             ApplyStyle(state.CurrentStyle);
             uiScope.CreateEffect(epochScope =>
             {
-                var styleValue = epochScope.Track(prop.Style);
+                var styleValue = epochScope.Track(args.StrStyle);
                 state.BaseStyle = styleValue.Normal;
                 state.Variants = styleValue.Variants;
                 state.CurrentStyle = state.BaseStyle.Copy();
                 ApplyStyle(state.CurrentStyle);
             });
 
-            if (prop.Value is not null && prop.BindValue is null)
+            if (args.Value is not null && args.BindValue is null)
             {
                 uiScope.CreateEffect(scope =>
                 {
-                    var v = scope.Track(prop.Value);
+                    var v = scope.Track(args.Value);
                     state.Value.RxValue = state.Clamp(v);
                 });
             }
@@ -312,7 +312,7 @@ public static partial class BaseComponent
 
                 state.Value.RxValue = state.Min.RxValue + ratio * (state.Max.RxValue - state.Min.RxValue);
 
-                prop.OnValueChanged?.Invoke(state.Value.Value);
+                args.OnValueChanged?.Invoke(state.Value.Value);
             }
 
             void ApplyStyle(StyleSet styleSet)

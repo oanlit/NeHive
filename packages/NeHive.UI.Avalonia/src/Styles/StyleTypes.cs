@@ -92,8 +92,8 @@ internal class TempStyle
 
 public class StyleSet : BaseStyle
 {
-    public double? RowSpacing;
-    public double? ColumnSpacing;
+    public double? GapX;
+    public double? GapY;
 
     public Orientation? Orientation;
 
@@ -173,8 +173,8 @@ public class HStyle(
     Accessor<RelativePoint>? renderTransformOrigin = null,
     Accessor<ITransform>? renderTransform = null,
     Accessor<Transitions>? transitions = null,
-    Accessor<double>? rowSpacing = null,
-    Accessor<double>? columnSpacing = null,
+    Accessor<double>? gapY = null,
+    Accessor<double>? gapX = null,
     Accessor<Orientation>? orientation = null,
     Accessor<double>? letterSpacing = null,
     Accessor<double>? lineHeight = null,
@@ -231,8 +231,8 @@ public class HStyle(
     public Accessor<ITransform>? RenderTransform = renderTransform;
     public Accessor<Transitions>? Transitions = transitions;
 
-    public Accessor<double>? RowSpacing = rowSpacing;
-    public Accessor<double>? ColumnSpacing = columnSpacing;
+    public Accessor<double>? GapX = gapX;
+    public Accessor<double>? GapY = gapY;
 
     public Accessor<Orientation>? Orientation = orientation;
 
@@ -849,7 +849,7 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<double?> RowSpacing
+    public Signal<double?> GapX
     {
         get
         {
@@ -901,7 +901,7 @@ public class StyleProps(Scope scope, Border border, Control control)
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
-                    if (args.Property == Grid.RowSpacingProperty)
+                    if (args.Property == Grid.ColumnSpacingProperty)
                         sig.RxValue = (double?)args.NewValue;
                 }
             }
@@ -912,7 +912,7 @@ public class StyleProps(Scope scope, Border border, Control control)
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
-                    if (args.Property == UniformGrid.RowSpacingProperty)
+                    if (args.Property == UniformGrid.ColumnSpacingProperty)
                         sig.RxValue = (double?)args.NewValue;
                 }
             }
@@ -921,7 +921,7 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<double?> ColumnSpacing
+    public Signal<double?> GapY
     {
         get
         {
@@ -973,7 +973,7 @@ public class StyleProps(Scope scope, Border border, Control control)
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
-                    if (args.Property == Grid.ColumnSpacingProperty)
+                    if (args.Property == Grid.RowSpacingProperty)
                         sig.RxValue = (double?)args.NewValue;
                 }
             }
@@ -984,7 +984,7 @@ public class StyleProps(Scope scope, Border border, Control control)
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
-                    if (args.Property == UniformGrid.ColumnSpacingProperty)
+                    if (args.Property == UniformGrid.RowSpacingProperty)
                         sig.RxValue = (double?)args.NewValue;
                 }
             }

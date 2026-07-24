@@ -10,18 +10,17 @@ using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HThumbProp(
+public class HThumbArgs(
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null,
+    HStyle? style = null,
     Action<VectorEventArgs>? onDragStarted = null,
     Action<VectorEventArgs>? onDragDelta = null,
-    Action<VectorEventArgs>? onDragCompleted = null) : ISingleChildrenProp
+    Action<VectorEventArgs>? onDragCompleted = null) : ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public readonly Action<VectorEventArgs>? OnDragStarted = onDragStarted;
     public readonly Action<VectorEventArgs>? OnDragDelta = onDragDelta;
@@ -41,11 +40,11 @@ public class HThumbProp(
 
 public static partial class BaseComponent
 {
-    public static IElement<Thumb> HThumb(HThumbProp prop)
+    public static IElement<Thumb> HThumb(HThumbArgs args)
     {
         return Element<Thumb>.WithScope(uiScope =>
         {
-            var content = ElementUtil.WrapSingleContainerContent(prop).Content;
+            var content = ElementUtil.WrapSingleContainerContent(args).Content;
 
             var border = new Border
             {
@@ -57,17 +56,18 @@ public static partial class BaseComponent
                 Template = new FuncControlTemplate((_, _) => border)
             };
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, content, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, content, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(content, border, StyleUtil.ApplyStyle);
 
-            if (prop.OnDragStarted is not null) thumb.DragStarted += (_, e) => prop.OnDragStarted(e);
-            if (prop.OnDragDelta is not null) thumb.DragDelta += (_, e) => prop.OnDragDelta(e);
-            if (prop.OnDragCompleted is not null) thumb.DragCompleted += (_, e) => prop.OnDragCompleted(e);
+            if (args.OnDragStarted is not null) thumb.DragStarted += (_, e) => args.OnDragStarted(e);
+            if (args.OnDragDelta is not null) thumb.DragDelta += (_, e) => args.OnDragDelta(e);
+            if (args.OnDragCompleted is not null) thumb.DragCompleted += (_, e) => args.OnDragCompleted(e);
 
             return (thumb, thumb);
         });

@@ -10,32 +10,30 @@ namespace NeHive.UI.Avalonia.Components;
 /// <summary>
 /// SplitPanel 配置类
 /// </summary>
-public class HSplitPanelProp : IEnumerable<IElement>
+public class HSplitPanelArgs : IEnumerable<IElement>
 {
     private readonly List<IElement> _children = [];
     
     public Accessor<double>? SplitFraction { get; }
     public Accessor<double>? SplitPosition { get; }
-    public readonly Accessor<FullStyle> Style;
-    public readonly Dictionary<string, StyleSet>? Variants;
+    public readonly Accessor<FullStyle> StrStyle;
+    public readonly Signal<StyleSet>? Style;
 
-    public HSplitPanelProp(
+    public HSplitPanelArgs(
         Accessor<double>? splitFraction = null, // 第一个面板占比 (0-1)
         Accessor<double>? splitPosition = null, // 绝对像素位置（优先级高于 splitFraction）
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null
+        HStyle? style = null
     )
     {
         SplitFraction = splitFraction;
         SplitPosition = splitPosition;
         var baseStyle = StyleUtil.FromDefault();
         baseStyle.Orientation = Orientation.Horizontal;
-        Style = StyleParser.ParseFull(strStyle, baseStyle, style);
-        Variants = variants;
+        StrStyle = StyleParser.ParseFull(strStyle, baseStyle);
+        Style = style is null ? null : StyleUtil.HStyle2Signal(style);
     }
 
-    // 索引器：按顺序添加面板内容
     public IElement this[int index]
     {
         set
@@ -47,7 +45,6 @@ public class HSplitPanelProp : IEnumerable<IElement>
         }
     }
 
-    // 集合初始化器：直接 Add 按顺序添加
     public void Add(IElement element) => _children.Add(element);
 
     public IEnumerator<IElement> GetEnumerator() => _children.GetEnumerator();
@@ -56,10 +53,7 @@ public class HSplitPanelProp : IEnumerable<IElement>
 
 public static partial class BaseComponent
 {
-    /// <summary>
-    /// 创建可拖拽分割面板（支持两个或更多区域）
-    /// </summary>
-    public static IElement<Grid> HSplitPanel(HSplitPanelProp prop)
+    public static IElement<Grid> HSplitPanel(HSplitPanelArgs args)
     {
         return Element<Grid>.WithScope(uiScope =>
         {
@@ -69,25 +63,25 @@ public static partial class BaseComponent
                 Child = grid
             };
 
-            // 应用样式
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, grid, border, ApplyStyle);
             state.ApplyVariantsStyle(grid, border, ApplyStyle);
 
-            var children = prop.ToList();
+            var children = args.ToList();
             if (children.Count < 2)
                 throw new InvalidOperationException("The SplitPanel requires at least two child elements.");
 
-            Accessor<bool> accessorIsHorizontal = prop.Style.Value.Normal.Orientation is not Orientation.Vertical;
-            if (prop.Style.IsReactive)
+            Accessor<bool> accessorIsHorizontal = args.StrStyle.Value.Normal.Orientation is not Orientation.Vertical;
+            if (args.StrStyle.IsReactive)
             {
                 accessorIsHorizontal = uiScope.CreateComputed(() =>
                 {
-                    var style = prop.Style.RxValue;
+                    var style = args.StrStyle.RxValue;
                     return style.Normal.Orientation is not Orientation.Vertical;
                 });
             }
@@ -95,8 +89,8 @@ public static partial class BaseComponent
             uiScope.CreateEffect(epochScope =>
             {
                 var isHorizontal = epochScope.Track(accessorIsHorizontal);
-                double? splitPos = prop.SplitPosition is null ? null : epochScope.Track(prop.SplitPosition);
-                double? splitFrac = prop.SplitFraction is null ? null : epochScope.Track(prop.SplitFraction);
+                double? splitPos = args.SplitPosition is null ? null : epochScope.Track(args.SplitPosition);
+                double? splitFrac = args.SplitFraction is null ? null : epochScope.Track(args.SplitFraction);
 
                 // 动态构建列/行定义
                 grid.RowDefinitions.Clear();
@@ -209,8 +203,8 @@ public static partial class BaseComponent
                 if (styleValue.MaxHeight is not null)
                     grid.MaxHeight = styleValue.MaxHeight.Value;
 
-                if (styleValue.ColumnSpacing is not null) grid.ColumnSpacing = styleValue.ColumnSpacing.Value;
-                if (styleValue.RowSpacing is not null) grid.RowSpacing = styleValue.RowSpacing.Value;
+                if (styleValue.GapX is not null) grid.ColumnSpacing = styleValue.GapX.Value;
+                if (styleValue.GapY is not null) grid.RowSpacing = styleValue.GapY.Value;
             }
         });
     }

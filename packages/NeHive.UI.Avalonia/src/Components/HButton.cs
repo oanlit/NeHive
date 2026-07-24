@@ -32,7 +32,7 @@ public static class HButtonStyle
 public class HButtonArgs(
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    Action<RoutedEventArgs>? onClick = null) : ISingleChildrenProp
+    Action<RoutedEventArgs>? onClick = null) : ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
 
@@ -79,7 +79,7 @@ public static partial class BaseComponent
         {
             text ??= "";
             var styleAccessor = StyleParser.ParseFull(strStyle, HButtonStyle.DefaultStyleSet);
-            var mergeStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
+            var priorityStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
 
             var textBlock = new TextBlock();
             var border = new Border
@@ -92,19 +92,16 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
-                MergeStyle = mergeStyle,
+                PriorityStyle = priorityStyle,
                 StrVariants = styleAccessor.Value.Variants
             };
 
-            state.ApplyAccessorStyle(styleAccessor,
-                textBlock, border,
-                ApplyStyle);
-
+            state.ApplyAccessorStyle(styleAccessor, textBlock, border, ApplyStyle);
             state.ApplyVariantsStyle(textBlock, border, ApplyStyle);
 
             textBlock.Text = text.Value;
             if (text.IsReactive)
-                uiScope.CreateEffect(() => textBlock.Text = text.RxValue);
+                uiScope.CreateEffect(epoch=> textBlock.Text = epoch.Track(text));
 
             if (onClick is not null) button.Click += (_, e) => onClick(e);
 
@@ -147,12 +144,11 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                MergeStyle = args.Style,
+                PriorityStyle = args.Style,
                 StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(args.StrStyle,
-                content, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, content, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(content, border, StyleUtil.ApplyStyle);
 
             if (args.OnClick is not null) button.Click += (_, e) => args.OnClick(e);

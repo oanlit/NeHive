@@ -13,13 +13,13 @@ public static partial class BaseComponent
     public static IElement HTextBlock(
         Accessor<string>? text,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null)
+        HStyle? style = null)
     {
         return Element.WithScope(uiScope =>
         {
             text ??= "";
-            var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
+            var styleAccessor = StyleParser.ParseFull(strStyle);
+            var priorityStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
 
             var textBlock = new TextBlock
             {
@@ -33,6 +33,7 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
+                PriorityStyle = priorityStyle,
                 StrVariants = styleAccessor.Value.Variants
             };
 

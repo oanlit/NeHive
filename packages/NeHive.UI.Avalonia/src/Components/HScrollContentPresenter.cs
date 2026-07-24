@@ -11,7 +11,8 @@ using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HScrollContentPresenterProps(Scope scope, ScrollContentPresenter scrollContentPresenter)
+public class HScrollContentPresenterProps(Scope scope, Border border, ScrollContentPresenter scrollContentPresenter)
+    : BaseComponentProps(scope, border, scrollContentPresenter)
 {
     public Signal<Size> Extent
     {
@@ -257,8 +258,7 @@ public class HScrollContentPresenterArgs(
     Accessor<SnapPointsAlignment>? verticalSnapPointsAlignment = null,
     HScrollGestureRecognizer? gestureRecognizer = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null)
+    HStyle? style = null)
 {
     public readonly Accessor<Vector>? Offset = offset;
 
@@ -273,8 +273,8 @@ public class HScrollContentPresenterArgs(
 
     public readonly ScrollGestureRecognizer? GestureRecognizer = gestureRecognizer?.GestureRecognizer;
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 }
 
 public static partial class BaseComponent
@@ -290,7 +290,7 @@ public static partial class BaseComponent
                 Child = scrollContentPresenter
             };
 
-            var props = new HScrollContentPresenterProps(uiScope, scrollContentPresenter);
+            var props = new HScrollContentPresenterProps(uiScope, border, scrollContentPresenter);
             var args = fn(props);
 
             HScrollContentPresenterCore(uiScope, scrollContentPresenter, border, args);
@@ -328,14 +328,13 @@ public static partial class BaseComponent
         Accessor<SnapPointsAlignment>? verticalSnapPointsAlignment = null,
         HScrollGestureRecognizer? gestureRecognizer = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null)
+        HStyle? style = null)
     {
         return HScrollContentPresenter(new HScrollContentPresenterArgs(offset,
             isScrollChainingEnabled, isScrollInertiaEnabled,
             canHorizontallyScroll, canVerticallyScroll, horizontalSnapPointsType, verticalSnapPointsType,
             horizontalSnapPointsAlignment, verticalSnapPointsAlignment, gestureRecognizer,
-            strStyle, style, variants));
+            strStyle, style));
     }
 
     private static void HScrollContentPresenterCore(
@@ -344,14 +343,15 @@ public static partial class BaseComponent
         Border border,
         HScrollContentPresenterArgs args)
     {
-        var state = new CommonState(uiScope, args.Style.Value.Normal)
+        var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
         {
-            StrVariants = args.Style.Value.Variants
+            PriorityStyle = args.Style,
+            StrVariants = args.StrStyle.Value.Variants
         };
 
-        state.ApplyAccessorStyle(args.Style, scrollContentPresenter, border, StyleUtil.ApplyStyle);
+        state.ApplyAccessorStyle(args.StrStyle, scrollContentPresenter, border, StyleUtil.ApplyStyle);
         state.ApplyVariantsStyle(scrollContentPresenter, border, StyleUtil.ApplyStyle);
-        
+
         if (args.Offset is not null)
         {
             scrollContentPresenter.Offset = args.Offset.Value;
@@ -359,7 +359,7 @@ public static partial class BaseComponent
                 uiScope.CreateEffect(scope =>
                     scrollContentPresenter.Offset = scope.Track(args.Offset));
         }
-        
+
         if (args.IsScrollChainingEnabled is not null)
         {
             scrollContentPresenter.IsScrollChainingEnabled = args.IsScrollChainingEnabled.Value;

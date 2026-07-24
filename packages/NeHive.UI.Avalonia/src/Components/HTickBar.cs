@@ -19,8 +19,7 @@ public static partial class BaseComponent
         Accessor<IEnumerable<double>>? ticks = null,
         Accessor<Rect>? reservedSpace = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null
+        HStyle? style = null
     )
     {
         return Element<TickBar>.WithScope(uiScope =>
@@ -31,10 +30,12 @@ public static partial class BaseComponent
                 Child = tickBar
             };
 
-            var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
+            var styleAccessor = StyleParser.ParseFull(strStyle);
+            var priorityStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
+                PriorityStyle = priorityStyle,
                 StrVariants = styleAccessor.Value.Variants
             };
             state.ApplyAccessorStyle(styleAccessor, tickBar, border, ApplyStyle);

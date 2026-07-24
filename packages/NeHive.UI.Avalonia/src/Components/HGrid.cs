@@ -1,6 +1,7 @@
 using System.Collections;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
@@ -29,13 +30,13 @@ public readonly struct HgLen
     public static HgLen Star(double value = 1) => new(new GridLength(value, GridUnitType.Star));
 }
 
-public class HGridProp(
+public class HGridProps(Scope scope, Border border, Grid grid) : BaseComponentProps(scope, border, grid);
+public class HGridArgs(
     Accessor<bool>? showGridLines = null,
     Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
     Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null
+    HStyle? style = null
 ) : IEnumerable<KeyValuePair<GridPosition, IElement>>
 {
     private readonly Dictionary<GridPosition, IElement> _children = new();
@@ -44,9 +45,8 @@ public class HGridProp(
     public readonly Accessor<IReadOnlyList<HgLen>>? RowDefinitions = rowDefinitions;
     public readonly Accessor<IReadOnlyList<HgLen>>? ColumnDefinitions = columnDefinitions;
 
-    // 布局属性
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public IElement this[GridPosition key]
     {
@@ -70,7 +70,7 @@ public class HGridProp(
 
 public static partial class BaseComponent
 {
-    public static IElement HGrid(HGridProp prop)
+    public static IElement HGrid(Func<HGridProps,HGridArgs>  fn)
     {
         return Element.WithScope(uiScope =>
         {
@@ -81,16 +81,19 @@ public static partial class BaseComponent
                 Child = grid
             };
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var props = new HGridProps(uiScope, border, grid);
+            var args = fn(props);
+
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, grid, border, ApplyStyle);
             state.ApplyVariantsStyle(grid, border, ApplyStyle);
 
-            // 应用响应式属性
-            var showGridLines = prop.ShowGridLines;
+            var showGridLines = args.ShowGridLines;
             if (showGridLines is not null)
             {
                 grid.ShowGridLines = showGridLines.Value;
@@ -100,7 +103,7 @@ public static partial class BaseComponent
                 }
             }
 
-            var rowDefinitions = prop.RowDefinitions;
+            var rowDefinitions = args.RowDefinitions;
             if (rowDefinitions is not null)
             {
                 ApplyRowDefinitions(rowDefinitions.Value);
@@ -110,7 +113,7 @@ public static partial class BaseComponent
                 }
             }
 
-            var columnDefinitions = prop.ColumnDefinitions;
+            var columnDefinitions = args.ColumnDefinitions;
             if (columnDefinitions is not null)
             {
                 ApplyColumnDefinitions(columnDefinitions.Value);
@@ -120,10 +123,9 @@ public static partial class BaseComponent
                 }
             }
 
-            // 添加子元素并应用附加属性
-            foreach (var (position, childElement) in prop)
+            foreach (var (position, childElement) in args)
             {
-                var child = childElement.Content; // 获取控件的根元素
+                var child = childElement.Content;
                 Grid.SetRow(child, position.row);
                 Grid.SetColumn(child, position.column);
                 Grid.SetRowSpan(child, position.rowSpan);
@@ -154,8 +156,8 @@ public static partial class BaseComponent
                 if (style.MaxHeight is not null)
                     grid.MaxHeight = style.MaxHeight.Value;
 
-                if (style.ColumnSpacing is not null) grid.ColumnSpacing = style.ColumnSpacing.Value;
-                if (style.RowSpacing is not null) grid.RowSpacing = style.RowSpacing.Value;
+                if (style.GapX is not null) grid.ColumnSpacing = style.GapX.Value;
+                if (style.GapY is not null) grid.RowSpacing = style.GapY.Value;
             }
 
             void ApplyColumnDefinitions(IEnumerable<HgLen> lens)

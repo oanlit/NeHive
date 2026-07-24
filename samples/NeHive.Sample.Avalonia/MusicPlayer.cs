@@ -94,12 +94,12 @@ public static class MusicPlayerDemo
         });
 
         // ---------- UI ----------
-        var rootElement = HStackPanel(new(strStyle: "m-6 w-full gap-5 vertical bg-gray-50 rounded-2xl p-6")
+        var rootElement = HStackPanel(_=>new(strStyle: "m-6 w-full gap-5 vertical bg-gray-50 rounded-2xl p-6")
         {
             HTextBlock("🎵 NeHive Music Player", strStyle: "text-xl fw-bold fg-sky-800 mb-2"),
 
             // 播放控制区
-            HStackPanel(new(strStyle: "p-4 horizontal items-center justify-between bg-white rounded-xl shadow-sm")
+            HStackPanel(_=>new(strStyle: "p-4 horizontal items-center justify-between bg-white rounded-xl shadow-sm")
             {
                 Loading<SongInfo?>(new(songInfo)
                 {
@@ -115,9 +115,9 @@ public static class MusicPlayerDemo
             }), // HStackPanel
 
             // 播放列表操作
-            HStackPanel(new(strStyle: "w-full gap-3 vertical")
+            HStackPanel(_=>new(strStyle: "w-full gap-3 vertical")
             {
-                HStackPanel(new(strStyle: "gap-3 horizontal")
+                HStackPanel(_=>new(strStyle: "gap-3 horizontal")
                 {
                     HFilePicker(
                         bindSelectedPath: selectedPath,
@@ -144,7 +144,7 @@ public static class MusicPlayerDemo
                 {
                     ForEach<TrackInfo>(new(playlist)
                     {
-                        ItemsPanel = HStackPanel(new(strStyle: "gap-1 vertical")),
+                        ItemsPanel = HStackPanel(_=>new(strStyle: "gap-1 vertical")),
                         ItemTemplate = (track, index) =>
                             HButton(track.Title,
                                 strStyle: new(() =>
@@ -161,10 +161,10 @@ public static class MusicPlayerDemo
             }), // HStackPanel
 
             // 中间：按钮 + 进度
-            HStackPanel(new(strStyle: "gap-3 vertical center")
+            HStackPanel(_=>new(strStyle: "gap-3 vertical center")
             {
                 // 播放按钮组
-                HStackPanel(new(strStyle: "gap-5 horizontal center")
+                HStackPanel(_=>new(strStyle: "gap-5 horizontal center")
                 {
                     HButton(new(
                         strStyle: "my-auto w-4 h-4 hover:opacity-50",
@@ -208,7 +208,7 @@ public static class MusicPlayerDemo
                 }), // HStackPanel
 
                 // 进度条
-                HStackPanel(new(strStyle: "gap-2 horizontal items-center")
+                HStackPanel(_=>new(strStyle: "gap-2 horizontal items-center")
                 {
                     HTextBlock(
                         new(() => position.RxValue.ToString(@"mm\:ss")),
@@ -237,7 +237,7 @@ public static class MusicPlayerDemo
             }), // HStackPanel
 
             // 音量
-            HStackPanel(new(strStyle: "gap-x-2 horizontal")
+            HStackPanel(_=>new(strStyle: "gap-x-2 horizontal")
             {
                 Match<int>(new(volume)
                 {
@@ -366,7 +366,7 @@ public static class MusicPlayerDemo
                     return HTextBlock(new($"RxError: {ex.Message}"));
                 }
             }),
-            IfFalse = () => HStackPanel(new()
+            IfFalse = () => HStackPanel(_=>new()
             {
                 HTextBlock("请选择LibVLC路径"),
                 HFolderPicker(
@@ -380,7 +380,7 @@ public static class MusicPlayerDemo
     // 专辑封面 + 曲目信息
     private static IElement Audio(SongInfo? song)
     {
-        return HStackPanel(new(strStyle: "w-110 gap-4 horizontal items-center")
+        return HStackPanel(_=>new(strStyle: "w-110 gap-4 horizontal items-center")
         {
             Show(new(song?.CoverPath is not null)
             {
@@ -390,7 +390,7 @@ public static class MusicPlayerDemo
                     strStyle: "w-32 h-32 rounded-xl transition-transform duration-200 hover:scale-110")
             }),
 
-            HStackPanel(new(strStyle: "gap-1 vertical")
+            HStackPanel(_=>new(strStyle: "gap-1 vertical")
             {
                 HTextBlock(song?.Title ?? "未知标题", strStyle: "max-w-100 text-base fw-semibold fg-gray-800"),
                 HTextBlock(song?.Artist ?? "未知歌手", strStyle: "max-w-75 text-sm fg-gray-500"),

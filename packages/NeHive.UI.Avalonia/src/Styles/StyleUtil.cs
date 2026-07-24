@@ -68,8 +68,8 @@ public static class StyleUtil
             RenderTransform = style.RenderTransform?.RxValue,
             Transitions = style.Transitions?.RxValue,
 
-            RowSpacing = style.RowSpacing?.RxValue,
-            ColumnSpacing = style.ColumnSpacing?.RxValue,
+            GapY = style.GapY?.RxValue,
+            GapX = style.GapX?.RxValue,
 
             Orientation = style.Orientation?.RxValue,
 
@@ -305,8 +305,8 @@ public static class StyleUtil
             target.Merge((BaseStyle)source, mergeNull);
             if (mergeNull)
             {
-                target.RowSpacing = source.RowSpacing;
-                target.ColumnSpacing = source.ColumnSpacing;
+                target.GapY = source.GapY;
+                target.GapX = source.GapX;
 
                 target.Orientation = source.Orientation;
 
@@ -331,8 +331,8 @@ public static class StyleUtil
                 return;
             }
 
-            if (source.RowSpacing is not null) target.RowSpacing = source.RowSpacing;
-            if (source.ColumnSpacing is not null) target.ColumnSpacing = source.ColumnSpacing;
+            if (source.GapY is not null) target.GapY = source.GapY;
+            if (source.GapX is not null) target.GapX = source.GapX;
 
             if (source.Orientation is not null) target.Orientation = source.Orientation;
 

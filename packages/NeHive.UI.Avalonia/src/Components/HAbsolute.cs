@@ -1,5 +1,6 @@
 using System.Collections;
 using Avalonia.Controls;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
@@ -19,16 +20,18 @@ public class AbsPosition(
     public readonly Accessor<double>? Bottom = bottom;
 }
 
-public class HAbsoluteProp(
+public class HAbsoluteProps(Scope scope, Border border, Canvas canvas)
+    : BaseComponentProps(scope, border, canvas);
+
+public class HAbsoluteArgs(
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null
+    HStyle? style = null
 ) : IEnumerable<KeyValuePair<AbsPosition, IElement>>
 {
     private readonly Dictionary<AbsPosition, IElement> _children = new();
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public IElement this[AbsPosition key]
     {
@@ -43,7 +46,7 @@ public class HAbsoluteProp(
 
 public static partial class BaseComponent
 {
-    public static IElement HAbsolute(HAbsoluteProp prop)
+    public static IElement HAbsolute(Func<HAbsoluteProps,HAbsoluteArgs> fn)
     {
         return Element.WithScope(uiScope =>
         {
@@ -53,16 +56,20 @@ public static partial class BaseComponent
             {
                 Child = canvas
             };
+            
+            var props = new HAbsoluteProps(uiScope, border, canvas);
+            var args = fn(props);
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, canvas, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, canvas, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(canvas, border, StyleUtil.ApplyStyle);
 
-            foreach (var (pos, element) in prop)
+            foreach (var (pos, element) in args)
             {
                 var control = element.Content;
                 SetPos(control, pos.Left?.Value, pos.Top?.Value, pos.Right?.Value, pos.Bottom?.Value);

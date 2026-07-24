@@ -417,8 +417,8 @@ public class AtomHandler
         if (val is null) return;
         val *= UnitScale;
         if (isNegative) val = -val;
-        set.RowSpacing = val.Value;
-        set.ColumnSpacing = val.Value;
+        set.GapY = val.Value;
+        set.GapX = val.Value;
     }
 
     private static void ApplyGapX(string[] v, bool isNegative, StyleSet set)
@@ -428,7 +428,7 @@ public class AtomHandler
         if (val is null) return;
         val *= UnitScale;
         if (isNegative) val = -val;
-        set.ColumnSpacing = val.Value;
+        set.GapX = val.Value;
     }
 
     private static void ApplyGapY(string[] v, bool isNegative, StyleSet set)
@@ -438,7 +438,7 @@ public class AtomHandler
         if (val is null) return;
         val *= UnitScale;
         if (isNegative) val = -val;
-        set.RowSpacing = val.Value;
+        set.GapY = val.Value;
     }
 
     private static void ApplyPadding(string[] v, bool isNegative, StyleSet set)

@@ -14,7 +14,7 @@ namespace NeHive.Sample.Avalonia;
 
 public static class DemoComponent
 {
-    #region Global Shared Style Constants
+    #region Global Shared StrStyle Constants
 
     /// <summary>Base style for all card containers</summary>
     private const string DemoCardBase = """
@@ -63,7 +63,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
         var count = new MutSignal<int>(0);
         var countText = () => $"Count: {count.RxValue}";
 
-        return HStackPanel(new(strStyle: DemoCardBase + " w-64 gap-3 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " w-64 gap-3 vertical")
         {
             HTextBlock($"Counter Instance #{id}",
                 strStyle: "text-lg fw-semibold fg-matcha-700"
@@ -71,7 +71,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             HTextBlock(countText,
                 strStyle: "text-4xl fw-bold fg-matcha-600 leading-10"
             ), // HTextBlock
-            HStackPanel(new(strStyle: HorizontalRowBase)
+            HStackPanel(_ => new(strStyle: HorizontalRowBase)
             {
                 HButton("+1",
                     strStyle: PrimaryBtnBase,
@@ -93,11 +93,11 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var gapX = new MutSignal<int>(3);
 
-        return HStackPanel(new(strStyle: DemoCardBase + " vertical gap-4")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HTextBlock("Grid Responsive Layout", strStyle: DemoTitle),
             HTextBlock("Define rows/columns with auto and star sizing", strStyle: DemoDesc),
-            HGrid(new(
+            HGrid(_ => new(
                 showGridLines: true,
                 rowDefinitions: new([HgLen.Auto, HgLen.Star()]),
                 columnDefinitions: new([120, HgLen.Star()]),
@@ -127,11 +127,11 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement AbsoluteDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + " vertical gap-4")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HTextBlock("Absolute Positioning Layout", strStyle: DemoTitle),
             HTextBlock("Fixed Left/Top offset positioning inside a relative container", strStyle: DemoDesc),
-            HAbsolute(new(
+            HAbsolute(_ => new(
                 strStyle: "w-full h-80 bg-matcha-50 rounded-xl border border-matcha-200 relative overflow-hidden")
             {
                 [new(left: 10, top: 10)] =
@@ -145,7 +145,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     ), // HButton
 
                 [new(left: 120, top: 120)] =
-                    HStackPanel(new(
+                    HStackPanel(_ => new(
                         strStyle: "gap-2 vertical bg-white p-4 rounded-xl shadow-md border border-matcha-100 w-48")
                     {
                         HTextBlock("Center Floating Panel", strStyle: "text-base fw-bold fg-matcha-800"),
@@ -159,7 +159,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     ), // HButton
 
                 [new(left: 20, top: 250)] =
-                    HStackPanel(new(
+                    HStackPanel(_ => new(
                         strStyle: "gap-2 horizontal bg-matcha-900/80 p-3 rounded-xl shadow-md")
                     {
                         HTextBlock("Overlay Floating Panel", strStyle: "fg-matcha-50 fw-medium"),
@@ -179,7 +179,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var isPaneOpen = new MutSignal<bool>(true);
 
-        return HStackPanel(new(strStyle: DemoCardBase + " vertical gap-4")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HTextBlock("SplitView Collapsible Sidebar", strStyle: DemoTitle),
             HTextBlock("Compact inline mode with expand/collapse support", strStyle: DemoDesc),
@@ -190,12 +190,12 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 compactPaneLength: 48,
                 strStyle: "w-full h-40 rounded-xl overflow-hidden border border-matcha-200")
             {
-                Pane = HStackPanel(new HPanelProp(strStyle: "gap-2 p-4 bg-matcha-50 vertical h-full")
+                Pane = HStackPanel(_ => new(strStyle: "gap-2 p-4 bg-matcha-50 vertical h-full")
                 {
                     HButton("Home Dashboard", strStyle: SecondaryBtnBase + " w-full text-left"),
                     HButton("Application Settings", strStyle: SecondaryBtnBase + " w-full text-left")
                 }), // HSplitView.Pane
-                Content = HStackPanel(new(strStyle: "h-full gap-2 p-6 vertical bg-matcha-300")
+                Content = HStackPanel(_ => new(strStyle: "h-full gap-2 p-6 vertical bg-matcha-300")
                 {
                     HTextBlock("Main Content Area", strStyle: "text-lg fw-bold fg-matcha-800"),
                     HTextBlock("Sidebar supports expand/collapse in compact inline mode",
@@ -214,7 +214,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement SplitPanelDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + " vertical gap-4")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HTextBlock("SplitPanel Draggable Resizable Divider", strStyle: DemoTitle),
             HTextBlock("Drag to resize regions horizontally or vertically", strStyle: DemoDesc),
@@ -227,7 +227,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     strStyle: "ml-4 p-4 w-full h-full text-center bg-matcha-50 fg-matcha-800")
             }), // HSplitPanel
             HTextBlock("Vertical Split + Fixed Offset (200px)", strStyle: "text-base fw-medium fg-matcha-700 mt-2"),
-            HStackPanel(new(strStyle: "w-full h-60 gap-x-6 horizontal")
+            HStackPanel(_ => new(strStyle: "w-full h-60 gap-x-6 horizontal")
             {
                 HSplitPanel(new(
                     splitFraction: 0.3,
@@ -253,23 +253,24 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement DockPanelDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + " vertical gap-4")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HTextBlock("DockPanel Edge Docking Layout", strStyle: DemoTitle),
             HTextBlock("Children dock to Top, Bottom, Left, Right; last fills remaining space", strStyle: DemoDesc),
-            HDockPanel(new(strStyle: "w-full h-80 bg-matcha-50 rounded-xl overflow-hidden border border-matcha-200")
-            {
-                [Dock.Top] = HTextBlock("Top Dock Region",
-                    strStyle: "p-3 bg-matcha-200 text-center fw-medium fg-matcha-800"),
-                [Dock.Bottom] = HTextBlock("Bottom Dock Region",
-                    strStyle: "p-3 bg-matcha-100 text-center fw-medium fg-matcha-800"),
-                [Dock.Left] = HTextBlock("Left Dock Region",
-                    strStyle: "p-3 bg-matcha-150 w-20 text-center fw-medium fg-matcha-800"),
-                [Dock.Right] = HTextBlock("Right Dock Region",
-                    strStyle: "p-3 bg-matcha-150 w-20 text-center fw-medium fg-matcha-800"),
-                [null] = HTextBlock("Fill Remaining Space (last child)",
-                    strStyle: "p-4 bg-white text-center fw-medium fg-matcha-800")
-            }) // HDockPanel
+            HDockPanel(_ =>
+                new(strStyle: "w-full h-80 bg-matcha-50 rounded-xl overflow-hidden border border-matcha-200")
+                {
+                    [Dock.Top] = HTextBlock("Top Dock Region",
+                        strStyle: "p-3 bg-matcha-200 text-center fw-medium fg-matcha-800"),
+                    [Dock.Bottom] = HTextBlock("Bottom Dock Region",
+                        strStyle: "p-3 bg-matcha-100 text-center fw-medium fg-matcha-800"),
+                    [Dock.Left] = HTextBlock("Left Dock Region",
+                        strStyle: "p-3 bg-matcha-150 w-20 text-center fw-medium fg-matcha-800"),
+                    [Dock.Right] = HTextBlock("Right Dock Region",
+                        strStyle: "p-3 bg-matcha-150 w-20 text-center fw-medium fg-matcha-800"),
+                    [null] = HTextBlock("Fill Remaining Space (last child)",
+                        strStyle: "p-4 bg-white text-center fw-medium fg-matcha-800")
+                }) // HDockPanel
         }); // HStackPanel
     }
 
@@ -279,11 +280,11 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement WrapPanelDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + " vertical gap-4")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HTextBlock("WrapPanel Auto‑Wrap Flow Layout", strStyle: DemoTitle),
             HTextBlock("Items automatically wrap to next line when width exceeds container", strStyle: DemoDesc),
-            HWrapPanel(new(
+            HWrapPanel(_ => new(
                 itemWidth: 120,
                 strStyle: "w-full gap-3 bg-matcha-50 p-4 rounded-xl border border-matcha-200")
             {
@@ -303,11 +304,11 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var columnsSig = new MutSignal<int>(3);
 
-        return HStackPanel(new(strStyle: DemoCardBase + " vertical gap-4")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HTextBlock("UniformGrid Equal‑Size Grid", strStyle: DemoTitle),
             HTextBlock("All cells have identical size, columns/rows adjustable", strStyle: DemoDesc),
-            HUniformGrid(new(
+            HUniformGrid(_ => new(
                 rows: 2,
                 columns: columnsSig,
                 strStyle: $"{DemoContent} gap-3 transition-colors")
@@ -319,7 +320,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 HTextBlock("Cell 5", strStyle: "p-4 text-center fw-bold bg-matcha-100 rounded fg-matcha-800"),
                 HTextBlock("Cell 6", strStyle: "p-4 text-center fw-bold bg-matcha-50 rounded fg-matcha-800")
             }), // HUniformGrid
-            HStackPanel(new(strStyle: HorizontalRowBase + "mt-2")
+            HStackPanel(_ => new(strStyle: HorizontalRowBase + "mt-2")
             {
                 HButton("Add Column", strStyle: SecondaryBtnBase, onClick: _ => columnsSig.RxValue++),
                 HButton("Remove Column", strStyle: SecondaryBtnBase, onClick: _ => columnsSig.RxValue--)
@@ -333,11 +334,11 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement GridSplitterDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + " vertical gap-4")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HTextBlock("GridSplitter Column Resizing", strStyle: DemoTitle),
             HTextBlock("Drag the divider to resize adjacent grid columns", strStyle: DemoDesc),
-            HGrid(new(
+            HGrid(_ => new(
                 rowDefinitions: new([HgLen.Auto]),
                 columnDefinitions: new([100, HgLen.Auto, HgLen.Star()]),
                 strStyle: $"{DemoContent} min-h-32")
@@ -369,7 +370,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         var longText = sb.ToString();
 
-        return HStackPanel(new(strStyle: DemoCardBase + " vertical gap-4")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HTextBlock("ScrollViewer Scrollable Container", strStyle: DemoTitle),
             HTextBlock("Scrollable area with hidden horizontal and auto vertical scrollbars", strStyle: DemoDesc),
@@ -381,14 +382,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             {
                 HTextBlock(longText, strStyle: "text-base leading-relaxed fg-matcha-800")
             }), // HScrollViewer
-            HStackPanel(new(strStyle: HorizontalRowBase + " justify-center")
+            HStackPanel(_ => new(strStyle: HorizontalRowBase + " justify-center")
             {
                 HButton(new(
                     strStyle: PrimaryBtnBase,
                     onClick: _ => scroll.ScrollToHome()
                 )
                 {
-                    HStackPanel(new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
+                    HStackPanel(_ => new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
                     {
                         HSvgImage("~/Assets/arrow-big-up-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
                         HTextBlock("Scroll To Top", strStyle: "fw-bold text-xs fg-white")
@@ -399,7 +400,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     onClick: _ => scroll.ScrollToEnd()
                 )
                 {
-                    HStackPanel(new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
+                    HStackPanel(_ => new(strStyle: "w-30 h-6 mx-auto my-auto gap-2 horizontal")
                     {
                         HSvgImage("~/Assets/arrow-big-down-dash.svg", strStyle: "w-4 h-4 fw-extralight fg-white"),
                         HTextBlock("Scroll To Bottom", strStyle: "fw-bold text-xs fg-white")
@@ -418,7 +419,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
         var textSignal = new MutSignal<string?>("Default input text value");
         var log = new MutSignal<string>("");
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("TextBox Text Input Control Demo", strStyle: SectionTitleStyle),
             HTextBox(
@@ -447,7 +448,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var threeState = new MutSignal<bool?>(null);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("CheckBox Tri-State Selection Demo", strStyle: SectionTitleStyle),
             HCheckBox(new(
@@ -471,7 +472,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var threeState = new MutSignal<bool?>(null);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("RadioButton Exclusive Single Select Demo", strStyle: SectionTitleStyle),
             HRadioButton(new(
@@ -495,7 +496,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var wifiEnabled = new MutSignal<bool?>(null);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("ToggleSwitch Boolean Switch Control Demo", strStyle: SectionTitleStyle),
             HToggleSwitch(new(
@@ -526,7 +527,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         var selectedFile = new MutSignal<string?>(null);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("FilePicker Local File Selection Dialog Demo", strStyle: SectionTitleStyle),
             HFilePicker(
@@ -562,7 +563,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     private static IElement DragFileDemo()
     {
         var imgPath = new MutSignal<string?>(null);
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Drag Image File Demo", strStyle: SectionTitleStyle),
 
@@ -617,11 +618,11 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var progress = new MutSignal<double>(0);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("ProgressBar Task Progress Indicator Demo", strStyle: SectionTitleStyle),
             HProgressBar(value: progress, strStyle: "w-full h-4 rounded-full overflow-hidden bg-gray-200"),
-            HStackPanel(new(strStyle: HorizontalRowBase + "mt-2")
+            HStackPanel(_ => new(strStyle: HorizontalRowBase + "mt-2")
             {
                 HButton("Add 10% Progress", strStyle: PrimaryBtnBase,
                     onClick: _ => progress.RxValue = Math.Min(100, progress.RxValue + 10)),
@@ -640,7 +641,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var volume = new MutSignal<double>(50);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Slider Continuous Value Adjustment Demo", strStyle: SectionTitleStyle),
             HSlider(
@@ -664,22 +665,22 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     private static IElement FlyoutDemo()
     {
         var select = new MutSignal<string>("");
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Flyout Demo", strStyle: SectionTitleStyle),
-            HStackPanel(new(strStyle: HorizontalRowBase)
+            HStackPanel(_ => new(strStyle: HorizontalRowBase)
             {
-                HFlyout(new(
+                HFlyout(flyout => new(
                     placement: PlacementMode.Right,
                     showMode: FlyoutShowMode.Transient
                 )
                 {
-                    Host = (host, flyout) =>
+                    Host = host =>
                         HButton("File",
                             strStyle: PrimaryBtnBase,
                             onClick: _ => flyout.ShowAt(host, showAtPointer: true)),
-                    Content = flyout => HStackPanel(new(strStyle: VerticalStackBase +
-                                                                  "gap-y-1 p-2 bg-matcha-50 border border-matcha-300 rounded-lg shadow")
+                    Content = HStackPanel(_ => new(strStyle: VerticalStackBase +
+                                                             "gap-y-1 p-2 bg-matcha-50 border border-matcha-300 rounded-lg shadow")
                     {
                         HButton("Open", strStyle: "text-sm fg-matcha-700 bg-matcha-200/0 hover:bg-matcha-300",
                             onClick: _ => SetSelect(flyout, "Open")),
@@ -691,17 +692,17 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     }) // HFlyout.Content
                 }), // HFlyout
 
-                HFlyout(new(
+                HFlyout(flyout => new(
                     placement: PlacementMode.Right,
                     showMode: FlyoutShowMode.Transient
                 )
                 {
-                    Host = (host, flyout) =>
+                    Host = host =>
                         HButton("Edit",
                             strStyle: PrimaryBtnBase,
                             onClick: _ => flyout.ShowAt(host, showAtPointer: true)),
-                    Content = flyout => HStackPanel(new(strStyle: VerticalStackBase +
-                                                                  "gap-y-1 p-2 bg-matcha-50 border border-matcha-300 rounded-lg shadow")
+                    Content = HStackPanel(_ => new(strStyle: VerticalStackBase +
+                                                             "gap-y-1 p-2 bg-matcha-50 border border-matcha-300 rounded-lg shadow")
                     {
                         HButton("Copy", strStyle: "text-sm fg-matcha-700 bg-matcha-200/0 hover:bg-matcha-300",
                             onClick: _ => SetSelect(flyout, "Copy")),
@@ -716,7 +717,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 strStyle: "fg-coffee-500")
         }); // HStackPanel
 
-        void SetSelect(Flyout flyout, string value)
+        void SetSelect(HFlyoutProps flyout, string value)
         {
             select.RxValue = value;
             flyout.Hide();
@@ -731,7 +732,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var text = new MutSignal<string?>("");
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Window & Dialog Management", strStyle: SectionTitleStyle),
             HTextBlock("Open a modal dialog to input text; result reflects back here",
@@ -741,7 +742,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 strStyle:
                 "text-lg fw-medium fg-matcha-800 p-3 bg-matcha-50 rounded-xl border border-matcha-200 w-full"),
 
-            HStackPanel(new(strStyle: HorizontalRowBase + "mt-2")
+            HStackPanel(_ => new(strStyle: HorizontalRowBase + "mt-2")
             {
                 HButton("Open Dialog",
                     strStyle: PrimaryBtnBase,
@@ -763,7 +764,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         var dialog = scope.CreateWindow((window, _) =>
         {
-            return HStackPanel(new(strStyle: VerticalStackBase + "mt-2 w-100 h-60 p-4")
+            return HStackPanel(_ => new(strStyle: VerticalStackBase + "mt-2 w-100 h-60 p-4")
             {
                 HTextBlock("Enter your text", strStyle: "text-lg fw-semibold fg-matcha-800"),
                 HTextBox(
@@ -771,7 +772,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     // placeholderText: "Type something...",
                     strStyle: InputBaseStyle + "text-base focus:border-matcha-500"
                 ), // HTextBox
-                HStackPanel(new(strStyle: HorizontalRowBase + "justify-end gap-2 mt-2")
+                HStackPanel(_ => new(strStyle: HorizontalRowBase + "justify-end gap-2 mt-2")
                 {
                     HButton("Cancel",
                         strStyle: SecondaryBtnBase,
@@ -814,26 +815,26 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement TreeViewDemo()
     {
-        return HStackPanel(new(strStyle: VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: VerticalStackBase)
         {
             HTextBlock("TreeView Hierarchical Data Tree Demo", strStyle: SectionTitleStyle),
             HTreeView(new(strStyle: DemoCardBase + "w-80 h-96 overflow-hidden")
             {
-                new HTreeViewItemProp("Root Directory 1",
+                new HTreeViewItemArgs("Root Directory 1",
                     strStyle: "p-1 rounded hover:bg-gray-100 transition-colors")
                 {
                     Children =
                     {
-                        new HTreeViewItemProp("Sub Folder 1.1", strStyle: "p-1 hover:bg-gray-50 rounded"),
-                        new HTreeViewItemProp("Sub Folder 1.2", strStyle: "p-1 hover:bg-gray-50 rounded")
-                    } // HTreeViewItemProp.Children
+                        new HTreeViewItemArgs("Sub Folder 1.1", strStyle: "p-1 hover:bg-gray-50 rounded"),
+                        new HTreeViewItemArgs("Sub Folder 1.2", strStyle: "p-1 hover:bg-gray-50 rounded")
+                    } // HTreeViewItemArgs.Children
                 }, // HTreeViewProp
-                new HTreeViewItemProp("Root Directory 2", isExpanded: true,
+                new HTreeViewItemArgs("Root Directory 2", isExpanded: true,
                     strStyle: "p-1 rounded hover:bg-gray-100 transition-colors")
                 {
                     Children =
                     {
-                        new HTreeViewItemProp("Sub Folder 2.1", strStyle: "p-1 hover:bg-gray-50 rounded")
+                        new HTreeViewItemArgs("Sub Folder 2.1", strStyle: "p-1 hover:bg-gray-50 rounded")
                     } // HTreeViewProp.Children
                 } // HTreeViewProp
             }) // HTreeView
@@ -854,7 +855,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         var selectedCountry = new MutSignal<Country?>(null);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("ComboBox Dropdown Selection List Demo", strStyle: SectionTitleStyle),
             HComboBox<Country>(new(
@@ -879,13 +880,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var showFlag = new MutSignal<bool?>(true);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Show – Conditional Rendering", strStyle: SectionTitleStyle),
             HTextBlock("Toggle visibility of content using a boolean signal",
                 strStyle: "text-sm fg-coffee-700 mb-2"),
 
-            HStackPanel(new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
+            HStackPanel(_ => new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
             {
                 HToggleSwitch(new(bindIsChecked: showFlag) { HTextBlock(" Show extra content") }),
                 Show(new(new(() => showFlag.RxValue is true))
@@ -905,19 +906,19 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var switchValue = new MutSignal<int>(0);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Switch – Branch by Integer", strStyle: SectionTitleStyle),
             HTextBlock("Render different content based on discrete integer values",
                 strStyle: "text-sm fg-coffee-700 mb-2"),
 
-            HStackPanel(new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
+            HStackPanel(_ => new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
             {
                 HButton("Value 0", strStyle: SecondaryBtnBase, onClick: _ => switchValue.RxValue = 0),
                 HButton("Value 1", strStyle: SecondaryBtnBase, onClick: _ => switchValue.RxValue = 1),
                 HButton("Value 2", strStyle: SecondaryBtnBase, onClick: _ => switchValue.RxValue = 2)
             }), // HStackPanel
-            HStackPanel(new(strStyle: "mt-2 p-3 bg-matcha-50 rounded-xl border border-matcha-200 w-full")
+            HStackPanel(_ => new(strStyle: "mt-2 p-3 bg-matcha-50 rounded-xl border border-matcha-200 w-full")
             {
                 Switch<int>(new(switchValue)
                 {
@@ -941,14 +942,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var matchValue = new MutSignal<double>(2);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Match – Predicate-based Branching", strStyle: SectionTitleStyle),
             HTextBlock("Use lambdas to match complex conditions (range, equality, etc.)",
                 strStyle: "text-sm fg-coffee-700 mb-2"),
 
             HSlider(bindValue: matchValue, minimum: 0, maximum: 10, strStyle: "w-64"),
-            HStackPanel(new(strStyle: "mt-2 p-3 bg-matcha-50 rounded-xl border border-matcha-200 w-full")
+            HStackPanel(_ => new(strStyle: "mt-2 p-3 bg-matcha-50 rounded-xl border border-matcha-200 w-full")
             {
                 Match<double>(new(matchValue)
                 {
@@ -972,13 +973,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var items = new MutSignal<IReadOnlyList<int>>([1, 2, 3]);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("ForEach – Dynamic Collection Rendering", strStyle: SectionTitleStyle),
             HTextBlock("Items reactively added/removed; DOM updates only where changed",
                 strStyle: "text-sm fg-coffee-700 mb-2"),
 
-            HStackPanel(new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
+            HStackPanel(_ => new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
             {
                 HButton("Add Item",
                     strStyle: PrimaryBtnBase,
@@ -1043,13 +1044,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 return user;
             }, initValue: new User(0, "Unknown User"));
 
-        var rootElement = HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        var rootElement = HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Loading – Asynchronous State Management", strStyle: SectionTitleStyle),
             HTextBlock("Debounced ID changes trigger async fetch; shows loading/error/success",
                 strStyle: "text-sm fg-coffee-700 mb-2"),
 
-            HStackPanel(new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
+            HStackPanel(_ => new(strStyle: HorizontalRowBase + " flex-wrap gap-2")
             {
                 HButton("Increase ID",
                     strStyle: PrimaryBtnBase,
@@ -1063,7 +1064,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
             Loading<User>(new(userMemo)
             {
-                Success = user => HStackPanel(new()
+                Success = user => HStackPanel(_ => new()
                 {
                     HTextBlock($"User ID: {user.Id}",
                         strStyle: "mt-2 text-lg fw-medium fg-matcha-800"),
@@ -1071,11 +1072,12 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                         strStyle: "text-xl fw-semibold fg-matcha-600")
                 }), // Loading<User>.Success
                 Loading = _ =>
-                    HStackPanel(new(strStyle: HorizontalRowBase + " p-3 bg-matcha-50 rounded-lg w-full justify-center")
-                    {
-                        HTextBlock("Fetching user data...",
-                            strStyle: "fg-coffee-500 italic animate-pulse")
-                    }), // HStackPanel
+                    HStackPanel(_ =>
+                        new(strStyle: HorizontalRowBase + " p-3 bg-matcha-50 rounded-lg w-full justify-center")
+                        {
+                            HTextBlock("Fetching user data...",
+                                strStyle: "fg-coffee-500 italic animate-pulse")
+                        }), // HStackPanel
                 // Loading<User>.Loading
                 Error = ex =>
                     HButton($"Retry: {ex.Message}",
@@ -1102,7 +1104,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         AddLog("Root component initialized");
 
-        var root = HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        var root = HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Component Lifecycle Tracking Demo", strStyle: SectionTitleStyle),
 
@@ -1116,7 +1118,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 {
                     AddLog("Dynamic child component initialized");
 
-                    var childRootElement = HStackPanel(
+                    var childRootElement = HStackPanel(_ =>
                         new(strStyle: "p-3 bg-amber-50 border border-amber-200 rounded-lg")
                         {
                             HTextBlock(
@@ -1136,7 +1138,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             {
                 ForEach<string>(new(logMessages)
                 {
-                    ItemsPanel = HStackPanel(new(strStyle: "gap-1 vertical")),
+                    ItemsPanel = HStackPanel(_ => new(strStyle: "gap-1 vertical")),
                     ItemTemplate = (msg, _) => HTextBlock(msg, strStyle: "text-xs fg-gray-700")
                 }) // ForEach<string>
             }) // HScrollViewer
@@ -1161,13 +1163,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement DemoSection(string title, IEnumerable<IElement> children)
     {
-        var stackPanelProp = new HPanelProp(strStyle: "gap-2 vertical pl-2");
-        foreach (var child in children) stackPanelProp.Add(child);
+        var stackPanelArgs = new HPanelArgs(strStyle: "gap-2 vertical pl-2");
+        foreach (var child in children) stackPanelArgs.Add(child);
 
-        return HStackPanel(new(strStyle: "gap-3 vertical")
+        return HStackPanel(_ => new(strStyle: "gap-3 vertical")
         {
             HTextBlock(title, strStyle: SectionTitleStyle + "pl-4 py-1 fg-lime-700 border-l-4 border-lime-700"),
-            HStackPanel(stackPanelProp)
+            HStackPanel(_ => stackPanelArgs)
         }); // HStackPanel
     }
 
@@ -1175,22 +1177,22 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement SizingDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Sizing Utilities: Width & Height",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
 
             DemoSection("Width (w-) — Fixed & Percentage",
             [
-                HStackPanel(new(strStyle: "horizontal gap-4 items-end")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4 items-end")
                 {
-                    HStackPanel(new(strStyle: "vertical gap-2 items-center")
+                    HStackPanel(_ => new(strStyle: "vertical gap-2 items-center")
                     {
                         HTextBlock("w-16", strStyle: "w-16 h-8 bg-matcha-200 rounded text-center fw-medium text-sm"),
                         HTextBlock("w-32", strStyle: "w-32 h-8 bg-matcha-200 rounded text-center fw-medium text-sm"),
                         HTextBlock("w-64", strStyle: "w-64 h-8 bg-matcha-200 rounded text-center fw-medium text-sm")
                     }), // HStackPanel
-                    HStackPanel(new(strStyle: "vertical gap-2 items-center")
+                    HStackPanel(_ => new(strStyle: "vertical gap-2 items-center")
                     {
                         HTextBlock("w-full", strStyle: "w-full h-8 bg-sky-200 rounded text-center fw-medium text-sm"),
                         // HTextBlock("w-1/2", strStyle: "w-[50%] h-8 bg-sky-200 rounded text-center fw-medium text-sm")
@@ -1200,7 +1202,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
             DemoSection("Height (h-)",
             [
-                HStackPanel(new(strStyle: "horizontal gap-4 items-start")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4 items-start")
                 {
                     HTextBlock("h-12", strStyle: "h-12 w-24 bg-matcha-300 rounded text-center fw-medium"),
                     HTextBlock("h-24", strStyle: "h-24 w-24 bg-matcha-300 rounded text-center fw-medium"),
@@ -1224,14 +1226,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement PaddingDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Padding Utilities",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
 
             DemoSection("Uniform Padding (p-)",
             [
-                HStackPanel(new(strStyle: "horizontal gap-4")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4")
                 {
                     HTextBlock("p-0", strStyle: "p-0 bg-matcha-100 rounded border"),
                     HTextBlock("p-2", strStyle: "p-2 bg-matcha-100 rounded border"),
@@ -1248,7 +1250,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
             DemoSection("Directional Padding (pt-, pr-, pb-, pl-)",
             [
-                HStackPanel(new(strStyle: "horizontal gap-4")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4")
                 {
                     HTextBlock("pl-4", strStyle: "p-2 pl-4 bg-rose-100 rounded border"),
                     HTextBlock("pr-4", strStyle: "p-2 pr-4 bg-rose-100 rounded border"),
@@ -1265,7 +1267,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement SpacingDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Spacing Utilities: Margin & Gap",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
@@ -1274,7 +1276,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             [
                 HTextBlock("Positive margins (multiples of 4px)",
                     strStyle: "text-sm fw-semibold fg-coffee-600 mb-2"),
-                HWrapPanel(new(strStyle: "gap-3")
+                HWrapPanel(_ => new(strStyle: "gap-3")
                 {
                     // 4 items with different margin-left
                     HTextBlock("ml-0", strStyle: "ml-0 p-2 bg-matcha-100 rounded border fw-medium"),
@@ -1282,14 +1284,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     HTextBlock("ml-4", strStyle: "ml-4 p-2 bg-matcha-100 rounded border fw-medium"),
                     HTextBlock("ml-8", strStyle: "ml-8 p-2 bg-matcha-100 rounded border fw-medium")
                 }), // HWrapPanel
-                HStackPanel(new(strStyle: "mt-4 gap-2")
+                HStackPanel(_ => new(strStyle: "mt-4 gap-2")
                 {
                     HTextBlock("mt-2", strStyle: "mt-2 p-2 bg-sky-100 rounded border fw-medium"),
                     HTextBlock("mt-4", strStyle: "mt-4 p-2 bg-sky-100 rounded border fw-medium")
                 }), // HStackPanel
                 HTextBlock("Negative margin example (pull element up):",
                     strStyle: "text-sm fg-coffee-600 mt-4 mb-2"),
-                HStackPanel(new(strStyle: "horizontal gap-0")
+                HStackPanel(_ => new(strStyle: "horizontal gap-0")
                 {
                     HTextBlock("mt-4", strStyle: "mt-4 p-2 bg-rose-100 rounded border fw-medium"),
                     HTextBlock("-mt-2", strStyle: "mt--2 p-2 bg-rose-200 rounded border fw-medium")
@@ -1298,14 +1300,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
             DemoSection("Gap (row/column spacing)",
             [
-                HStackPanel(new(strStyle: "horizontal gap-4")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4")
                 {
                     HTextBlock("Item 1", strStyle: "p-2 bg-matcha-100 rounded"),
                     HTextBlock("Item 2", strStyle: "p-2 bg-matcha-100 rounded"),
                     HTextBlock("Item 3", strStyle: "p-2 bg-matcha-100 rounded")
                 }), // HStackPanel
                 HTextBlock("Custom gap-x-8, gap-y-2", strStyle: "text-sm fg-coffee-600 mt-2"),
-                HStackPanel(new(strStyle: "horizontal gap-x-8 gap-y-2 wrap")
+                HStackPanel(_ => new(strStyle: "horizontal gap-x-8 gap-y-2 wrap")
                 {
                     HTextBlock("A", strStyle: "p-2 bg-sky-100 rounded"),
                     HTextBlock("B", strStyle: "p-2 bg-sky-100 rounded"),
@@ -1321,19 +1323,19 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement LayoutDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Layout Utilities: Flex, Alignment & Direction",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
             DemoSection("Direction (horizontal / vertical / flex-row / flex-col)",
             [
-                HStackPanel(new(strStyle: "horizontal gap-4")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4")
                 {
                     HTextBlock("horizontal →", strStyle: "p-2 bg-matcha-100 rounded"),
                     HTextBlock("items", strStyle: "p-2 bg-matcha-100 rounded"),
                     HTextBlock("in a row", strStyle: "p-2 bg-matcha-100 rounded")
                 }), // HStackPanel
-                HStackPanel(new(strStyle: "vertical gap-2 mt-4")
+                HStackPanel(_ => new(strStyle: "vertical gap-2 mt-4")
                 {
                     HTextBlock("vertical ↓", strStyle: "p-2 bg-sky-100 rounded"),
                     HTextBlock("stacked", strStyle: "p-2 bg-sky-100 rounded"),
@@ -1343,7 +1345,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
             DemoSection("Shorthand: start / center / end / stretch",
             [
-                HStackPanel(new(strStyle: "horizontal gap-4")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4")
                 {
                     HTextBlock("start", strStyle: "start w-16 h-16 bg-matcha-200 rounded text-center"),
                     HTextBlock("center", strStyle: "center w-16 h-16 bg-matcha-200 rounded text-center"),
@@ -1361,7 +1363,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     #endregion
 
-    #region #region Complete Text Style Typography Demo
+    #region #region Complete Text StrStyle Typography Demo
 
     private static IElement TextStyleDemo()
     {
@@ -1369,7 +1371,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             "This line demonstrates text truncation behaviors when content exceeds the container width, triggering ellipsis or line clamping.";
         const string multiLine =
             "Line one of the clamped block.\nLine two adds more detail.\nLine three is the last visible.\nLine four is completely hidden.";
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Typography Utilities",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
@@ -1404,8 +1406,8 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 HTextBlock("font-jetmono (JetBrains Mono)", strStyle: "font-jetmono text-lg"),
                 HTextBlock("font-lxgw (LXGW WenKai)", strStyle: "font-lxgw text-lg")
             }), // DemoSection
-            // Font Style (Italic/Oblique)
-            DemoSection("Font Style", new[]
+            // Font StrStyle (Italic/Oblique)
+            DemoSection("Font StrStyle", new[]
             {
                 HTextBlock("italic", strStyle: "italic text-lg"),
                 HTextBlock("oblique", strStyle: "oblique text-lg"),
@@ -1444,7 +1446,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             // Vertical Text Alignment
             DemoSection("Text Vertical Alignment", new[]
             {
-                HStackPanel(new(strStyle: "horizontal gap-4 items-start")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4 items-start")
                 {
                     HTextBlock("text-top", strStyle: "text-top w-32 h-20 p-2 bg-matcha-100 rounded border"),
                     HTextBlock("text-y-center", strStyle: "text-y-center w-32 h-20 p-2 bg-matcha-100 rounded border"),
@@ -1467,42 +1469,42 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             // Truncation & Clipping
             DemoSection("Text Trimming", new[]
             {
-                HStackPanel(new(strStyle: "gap-1 vertical")
+                HStackPanel(_ => new(strStyle: "gap-1 vertical")
                 {
                     HTextBlock("text-clip-none — No trimming, overflows horizontally",
                         strStyle: "text-xs fw-semibold fg-coffee-500"),
                     HTextBlock(longText,
                         strStyle: "w-80 text-clip-none whitespace-nowrap p-2 bg-gray-100 rounded border")
                 }), // HStackPanel
-                HStackPanel(new(strStyle: "gap-1 vertical")
+                HStackPanel(_ => new(strStyle: "gap-1 vertical")
                 {
                     HTextBlock("text-clip-end / truncate — Ellipsis at the end",
                         strStyle: "text-xs fw-semibold fg-coffee-500"),
                     HTextBlock(longText,
                         strStyle: "w-80 text-clip-end whitespace-nowrap p-2 bg-gray-100 rounded border")
                 }), // HStackPanel
-                HStackPanel(new(strStyle: "gap-1 vertical")
+                HStackPanel(_ => new(strStyle: "gap-1 vertical")
                 {
                     HTextBlock("text-clip-char — Character‑by‑character ellipsis",
                         strStyle: "text-xs fw-semibold fg-coffee-500"),
                     HTextBlock(longText,
                         strStyle: "w-80 text-clip-char whitespace-nowrap p-2 bg-gray-100 rounded border")
                 }), // HStackPanel
-                HStackPanel(new(strStyle: "gap-1 vertical")
+                HStackPanel(_ => new(strStyle: "gap-1 vertical")
                 {
                     HTextBlock("text-clip-start — Ellipsis at the start (path‑style)",
                         strStyle: "text-xs fw-semibold fg-coffee-500"),
                     HTextBlock(longText,
                         strStyle: "w-80 text-clip-start whitespace-nowrap p-2 bg-gray-100 rounded border")
                 }), // HStackPanel
-                HStackPanel(new(strStyle: "gap-1 vertical")
+                HStackPanel(_ => new(strStyle: "gap-1 vertical")
                 {
                     HTextBlock("text-clip-prefix — Prefix ellipsis",
                         strStyle: "text-xs fw-semibold fg-coffee-500"),
                     HTextBlock(longText,
                         strStyle: "w-80 text-clip-prefix whitespace-nowrap p-2 bg-gray-100 rounded border")
                 }), // HStackPanel
-                HStackPanel(new(strStyle: "gap-1 vertical")
+                HStackPanel(_ => new(strStyle: "gap-1 vertical")
                 {
                     HTextBlock("text-clip-path — Path‑segment ellipsis",
                         strStyle: "text-xs fw-semibold fg-coffee-500"),
@@ -1540,7 +1542,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     strStyle: "text-3xl tracking-2 fw-black italic fg-blue-300"),
                 HTextBlock("JetBrains Mono Programming Code Typography",
                     strStyle: "text-lg tracking-1 fw-semibold font-jetmono fg-emerald-600"),
-                HTextBlock("LXGW Custom Chinese Font Combined Style Demo Text",
+                HTextBlock("LXGW Custom Chinese Font Combined StrStyle Demo Text",
                     strStyle: "text-xl tracking-1 leading-10 fw-medium font-lxgw fg-rose-600")
             ]) // DemoSection
         }); // HStackPanel
@@ -1552,7 +1554,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement ColorDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Color & Gradient Utilities",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
@@ -1582,7 +1584,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             // ── Background Colors ──
             DemoSection("Background Colors (bg-)", new[]
             {
-                HStackPanel(new(strStyle: "horizontal gap-3 flex-wrap")
+                HStackPanel(_ => new(strStyle: "horizontal gap-3 flex-wrap")
                 {
                     HTextBlock("bg-matcha-500",
                         strStyle: "bg-matcha-500 fg-white p-2 rounded text-lg"),
@@ -1595,7 +1597,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             // ── Background Opacity Modifier ──
             DemoSection("Background Opacity (bg-<color>/<opacity>)", new[]
             {
-                HWrapPanel(new(strStyle: "w-full horizontal gap-3")
+                HWrapPanel(_ => new(strStyle: "w-full horizontal gap-3")
                 {
                     HTextBlock("bg-sky-300/100",
                         strStyle: "bg-sky-300/100 p-2 rounded text-lg fw-medium"),
@@ -1661,13 +1663,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement BorderDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Border Utilities",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
             DemoSection("Border Width (border, border-w-*)", new[]
             {
-                HStackPanel(new(strStyle: "horizontal gap-4")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4")
                 {
                     HTextBlock("border", strStyle: "border p-2 rounded"),
                     HTextBlock("border-w-2", strStyle: "p-2 border-w-2 border-matcha-500 rounded"),
@@ -1681,7 +1683,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             }), // DemoSection
             DemoSection("Corner Radius (rounded-*)", new[]
             {
-                HWrapPanel(new(strStyle: "w-full horizontal gap-4")
+                HWrapPanel(_ => new(strStyle: "w-full horizontal gap-4")
                 {
                     HTextBlock("rounded-none", strStyle: "p-2 rounded-none bg-matcha-100 border"),
                     HTextBlock("rounded-sm", strStyle: "p-2 rounded-sm bg-matcha-100 border"),
@@ -1702,13 +1704,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement EffectsDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Visual Effects",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
             DemoSection("Opacity (opacity-)", new[]
             {
-                HStackPanel(new(strStyle: "horizontal gap-4")
+                HStackPanel(_ => new(strStyle: "horizontal gap-4")
                 {
                     HTextBlock("opacity-100", strStyle: "opacity-100 text-xl fw-bold fg-matcha-800"),
                     HTextBlock("opacity-70", strStyle: "opacity-70 text-xl fw-bold fg-matcha-800"),
@@ -1783,14 +1785,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             ("cursor-drag-link", "Drag Link"),
             ("cursor-none", "None")
         };
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Cursor Utilities",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
 
             ForEach<(string style, string label)>(new(cursors)
             {
-                ItemsPanel = HWrapPanel(new(strStyle: "gap-3")),
+                ItemsPanel = HWrapPanel(_ => new(strStyle: "gap-3")),
                 ItemTemplate = (t, _) => HTextBlock($"  {t.label}  ",
                     strStyle: $"{t.style} p-2 bg-gray-50 border rounded text-sm fw-medium")
             }) // ForEach<(string style, string label)>
@@ -1804,7 +1806,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     private static IElement TransitionDemo()
     {
         // Create interactive buttons to show transition effects
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Transition & Animation Utilities",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
@@ -1854,7 +1856,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement TransformDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
+        return HStackPanel(_ => new(strStyle: DemoCardBase + "w-full h-full p-6 gap-8 vertical")
         {
             HTextBlock("Geometric Transforms",
                 strStyle: "text-3xl fw-bold font-jetmono fg-matcha-700 tracking-wide mb-2"),
@@ -1898,10 +1900,10 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     {
         var volume = new MutSignal<double>(50);
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Slider Continuous Value Adjustment Demo", strStyle: SectionTitleStyle),
-            HSlider(new(
+            HSlider(_ => new(
                 bindValue: volume,
                 minimum: 0,
                 maximum: 100,
@@ -1945,14 +1947,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         var longText = sb.ToString();
 
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Custom Scroll Demo", strStyle: SectionTitleStyle),
             HScrollViewer(new(
                 verticalScrollBarVisibility: ScrollBarVisibility.Auto,
                 strStyle: "w-full h-60 p-3 vertical bg-white rounded-xl border border-matcha-200 overflow-hidden")
             {
-                Template = (props, part) => HGrid(new(columnDefinitions: new([HgLen.Star(), HgLen.Auto]))
+                Template = (props, part) => HGrid(_ => new(columnDefinitions: new([HgLen.Star(), HgLen.Auto]))
                 {
                     [(0, 0)] = part.ContentPresenter(HScrollContentPresenter(presenterProps =>
                         new HScrollContentPresenterArgs(isScrollInertiaEnabled: props.IsScrollInertiaEnabled,
@@ -2002,31 +2004,28 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement GroupDemo()
     {
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Group Unified Hover State Parent Container Demo", strStyle: SectionTitleStyle),
-            HGroup(new(strStyle: "mx-auto my-auto p-6 bg-gray-50 border border-gray-200 rounded-xl")
+            HStackPanel(props => new(
+                strStyle: "mx-auto my-auto gap-8 p-6 horizontal bg-gray-50 border border-gray-200 rounded-xl")
             {
-                Content = state => HStackPanel(new(
-                    strStyle: "gap-8 horizontal justify-center items-center")
-                {
-                    HSvgImage("~/Assets/play.svg",
-                        strStyle: "w-16 h-16",
-                        style: new(
-                            foreground: BlueColor(state.IsHover)
-                        )
-                    ), // HSvgImage
-                    HSvgImage("~/Assets/skip-back.svg",
-                        strStyle: new(() =>
-                            $"w-16 h-16 fg-orange-{ToValue(state.IsHover.RxValue)}")),
-                    HSvgImage("~/Assets/skip-forward.svg",
-                        strStyle: new(() =>
-                            $"w-16 h-16 fg-yellow-{ToValue(state.IsHover.RxValue)}")),
-                    HSvgImage("~/Assets/stretch-vertical.svg",
-                        strStyle: new(() =>
-                            $"w-16 h-16 fg-red-{ToValue(state.IsHover.RxValue)}"))
-                })
-            }) // HGroup
+                HSvgImage("~/Assets/play.svg",
+                    strStyle: "w-16 h-16",
+                    style: new(
+                        foreground: BlueColor(props.IsPointerOver)
+                    )
+                ), // HSvgImage
+                HSvgImage("~/Assets/skip-back.svg",
+                    strStyle: new(() =>
+                        $"w-16 h-16 fg-orange-{ToValue(props.IsPointerOver.RxValue)}")),
+                HSvgImage("~/Assets/skip-forward.svg",
+                    strStyle: new(() =>
+                        $"w-16 h-16 fg-yellow-{ToValue(props.IsPointerOver.RxValue)}")),
+                HSvgImage("~/Assets/stretch-vertical.svg",
+                    strStyle: new(() =>
+                        $"w-16 h-16 fg-red-{ToValue(props.IsPointerOver.RxValue)}"))
+            })
         }); // HStackPanel
 
         string ToValue(bool isHover) => isHover ? "400" : "200";
@@ -2046,7 +2045,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     private static IElement ContextDemo()
     {
         var theme = new MutSignal<string>("light");
-        return HStackPanel(new(strStyle: DemoCardBase + VerticalStackBase)
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HTextBlock("Context Scope Theme Dependency Injection Demo", strStyle: SectionTitleStyle),
             HContext(new(ctx => ctx
@@ -2068,7 +2067,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             var theme = uiScope.GetContext(Theme);
             var toggleTheme = uiScope.GetContext(ToggleTheme);
             if (theme is null || toggleTheme is null) throw new ArgumentNullException();
-            return HStackPanel(new()
+            return HStackPanel(_ => new()
             {
                 HButton(new(strStyle: new(() =>
                         $"""
@@ -2078,7 +2077,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                          """),
                     onClick: _ => toggleTheme())
                 {
-                    HStackPanel(new(strStyle: "px-4 py-2 horizontal")
+                    HStackPanel(_ => new(strStyle: "px-4 py-2 horizontal")
                     {
                         Switch<string>(new(theme)
                         {
@@ -2106,14 +2105,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             var toggleTheme = uiScope.GetContext(ToggleTheme);
             if (theme is null || toggleTheme is null) throw new ArgumentNullException();
 
-            return HStackPanel(new(strStyle: new(() =>
+            return HStackPanel(_ => new(strStyle: new(() =>
                 $"""
                  mt-2 mx-auto max-w-md overflow-hidden rounded-xl shadow-md border-w-1
                  {(theme.RxValue is "dark" ? "bg-matcha-900 border-matcha-700" : "bg-coffee-50 border-matcha-200")} 
                  transition-colors duration-300
                  """))
             {
-                HStackPanel(new(strStyle: "p-6 vertical gap-3")
+                HStackPanel(_ => new(strStyle: "p-6 vertical gap-3")
                 {
                     HTextBlock("Theme Injection Demonstration",
                         strStyle: new(() =>
@@ -2178,7 +2177,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
         void SelectDemo(DemoView view) => currentView.RxValue = view;
 
-        return HGrid(new(
+        return HGrid(_ => new(
             columnDefinitions: new([224, HgLen.Star()]),
             strStyle: "w-full h-full gap-4")
         {
@@ -2205,7 +2204,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             // [(0, 0)]
 
             // Right Main Content Area (unchanged)
-            [(0, 1)] = HGrid(new(
+            [(0, 1)] = HGrid(_ => new(
                 rowDefinitions: new([HgLen.Auto, HgLen.Star()]),
                 strStyle: "gap-4 h-full")
             {
@@ -2213,7 +2212,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 [(0, 0)] =
                     ForEach<DemoView>(new(new(() => selectedCategory.RxValue.Demos))
                     {
-                        ItemsPanel = HUniformGrid(new(
+                        ItemsPanel = HUniformGrid(_ => new(
                             columns: 4,
                             strStyle: "gap-2 p-3 bg-white rounded-xl border border-matcha-200 shadow-sm")),
                         ItemTemplate = (view, _) =>
@@ -2314,9 +2313,9 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                     : "w-9999 h-9999 bg-black/40 visible"
             );
 
-            return HStackPanel(new(strStyle: "w-full h-full")
+            return HStackPanel(_ => new(strStyle: "w-full h-full")
             {
-                HPanel(new(strStyle: "w-full h-full")
+                HPanel(_ => new(strStyle: "w-full h-full")
                 {
                     MainNavDemo(),
                     HBlock(new(strStyle: lockStyle))

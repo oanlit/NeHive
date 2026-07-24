@@ -7,17 +7,13 @@ using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-/// <summary>
-/// SplitView 配置类（构造参数仅布局/样式/行为属性）
-/// </summary>
-public class HSplitViewProp(
+public class HSplitViewArgs(
     Accessor<bool>? isPaneOpen = null,
     Accessor<SplitViewDisplayMode>? displayMode = null,
     Accessor<double>? openPaneLength = null,
     Accessor<double>? compactPaneLength = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null
+    HStyle? style = null
 )
 {
     public readonly Accessor<bool>? IsPaneOpen = isPaneOpen;
@@ -25,20 +21,16 @@ public class HSplitViewProp(
     public readonly Accessor<double>? OpenPaneLength = openPaneLength;
     public readonly Accessor<double>? CompactPaneLength = compactPaneLength;
     
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
-    // 两个固定区域
     public IElement? Pane { get; init; }
     public IElement? Content { get; init; }
 }
 
 public static partial class BaseComponent
 {
-    /// <summary>
-    /// 创建 SplitView 组件（侧边栏面板 + 内容区域）
-    /// </summary>
-    public static IElement<SplitView> HSplitView(HSplitViewProp prop)
+    public static IElement<SplitView> HSplitView(HSplitViewArgs args)
     {
         return Element<SplitView>.WithScope(uiScope =>
         {
@@ -49,50 +41,51 @@ public static partial class BaseComponent
                 Child = splitView
             };
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, splitView, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, splitView, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(splitView, border, StyleUtil.ApplyStyle);
 
             // 绑定属性
-            if (prop.IsPaneOpen is not null)
+            if (args.IsPaneOpen is not null)
             {
-                splitView.IsPaneOpen = prop.IsPaneOpen.Value;
-                if (prop.IsPaneOpen.IsReactive)
-                    uiScope.CreateEffect(epochScope => splitView.IsPaneOpen = epochScope.Track(prop.IsPaneOpen));
+                splitView.IsPaneOpen = args.IsPaneOpen.Value;
+                if (args.IsPaneOpen.IsReactive)
+                    uiScope.CreateEffect(epochScope => splitView.IsPaneOpen = epochScope.Track(args.IsPaneOpen));
             }
 
-            if (prop.DisplayMode is not null)
+            if (args.DisplayMode is not null)
             {
-                splitView.DisplayMode = prop.DisplayMode.Value;
-                if (prop.DisplayMode.IsReactive)
-                    uiScope.CreateEffect(epochScope => splitView.DisplayMode = epochScope.Track(prop.DisplayMode));
+                splitView.DisplayMode = args.DisplayMode.Value;
+                if (args.DisplayMode.IsReactive)
+                    uiScope.CreateEffect(epochScope => splitView.DisplayMode = epochScope.Track(args.DisplayMode));
             }
 
-            if (prop.OpenPaneLength is not null)
+            if (args.OpenPaneLength is not null)
             {
-                splitView.OpenPaneLength = prop.OpenPaneLength.Value;
-                if (prop.OpenPaneLength.IsReactive)
+                splitView.OpenPaneLength = args.OpenPaneLength.Value;
+                if (args.OpenPaneLength.IsReactive)
                     uiScope.CreateEffect(epochScope =>
-                        splitView.OpenPaneLength = epochScope.Track(prop.OpenPaneLength));
+                        splitView.OpenPaneLength = epochScope.Track(args.OpenPaneLength));
             }
 
-            if (prop.CompactPaneLength is not null)
+            if (args.CompactPaneLength is not null)
             {
-                splitView.CompactPaneLength = prop.CompactPaneLength.Value;
-                if (prop.CompactPaneLength.IsReactive)
+                splitView.CompactPaneLength = args.CompactPaneLength.Value;
+                if (args.CompactPaneLength.IsReactive)
                     uiScope.CreateEffect(epochScope =>
-                        splitView.CompactPaneLength = epochScope.Track(prop.CompactPaneLength));
+                        splitView.CompactPaneLength = epochScope.Track(args.CompactPaneLength));
             }
 
             // 设置 Pane 和 Content
-            if (prop.Pane is not null)
-                splitView.Pane = prop.Pane.Content;
-            if (prop.Content is not null)
-                splitView.Content = prop.Content.Content;
+            if (args.Pane is not null)
+                splitView.Pane = args.Pane.Content;
+            if (args.Content is not null)
+                splitView.Content = args.Content.Content;
 
             return (splitView, border);
         });

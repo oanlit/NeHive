@@ -7,13 +7,15 @@ namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
-    public static IElement HSeparator(Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null)
+    public static IElement HSeparator(
+        Accessor<string>? strStyle = null,
+        HStyle? style = null)
     {
         return Element.WithScope(uiScope =>
         {
-            var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
+            var styleAccessor = StyleParser.ParseFull(strStyle);
+            var priorityStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
+            
             var sep = new Separator();
             var border = new Border
             {
@@ -21,6 +23,7 @@ public static partial class BaseComponent
             };
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
+                PriorityStyle = priorityStyle,
                 StrVariants = styleAccessor.Value.Variants
             };
 

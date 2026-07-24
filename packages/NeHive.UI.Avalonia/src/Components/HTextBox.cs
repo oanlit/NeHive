@@ -39,20 +39,20 @@ public static partial class BaseComponent
         Accessor<string>? placeholderText = null,
         Accessor<bool>? isReadOnly = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null,
+        HStyle? style = null,
         Action<string?>? onTextInput = null)
     {
         return Element<TextBox>.WithScope(uiScope =>
         {
             isReadOnly ??= false;
-            var styleAccessor = StyleParser.ParseFull(strStyle, HTextPresenterStyle.DefaultStyleSet, style);
+            var styleAccessor = StyleParser.ParseFull(strStyle, HTextPresenterStyle.DefaultStyleSet);
+            var priorityStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
 
             var textBox = new TextBox
             {
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalAlignment = VerticalAlignment.Stretch,
-                Padding = new Thickness(0), // 将 Padding 交由我们的内部 Border 接管
+                Padding = new Thickness(0)
             };
 
             var border = new Border
@@ -213,6 +213,7 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
+                PriorityStyle = priorityStyle,
                 StrVariants = styleAccessor.Value.Variants
             };
 
@@ -235,7 +236,6 @@ public static partial class BaseComponent
                 });
             }
 
-            // 4. 数据双向绑定
             textBox.Text = bindText.Value;
             uiScope.CreateEffect(epochScope =>
             {
@@ -273,7 +273,6 @@ public static partial class BaseComponent
                 }
             }
 
-            // 响应 editable 访问器
             uiScope.CreateEffect(epochScope =>
             {
                 textBox.IsReadOnly = epochScope.Track(isReadOnly);
@@ -281,7 +280,6 @@ public static partial class BaseComponent
 
             return (textBox, border);
 
-            // 内部方法：将您的 StyleSet 映射到 TextBox 和 Border 上
             void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
             {
                 StyleUtil.ApplyStyle(styleValue, layout, bord);
@@ -302,12 +300,6 @@ public static partial class BaseComponent
                 if (fullStyle.Variants.TryGetValue("selection", out var selectionStrStyle))
                 {
                     StyleParser.Parse(selectionStrStyle, ref selectionStyle);
-                    hasSelectionStyle = true;
-                }
-
-                if (variants?.TryGetValue("selection", out var selectionStyle2) is true)
-                {
-                    selectionStyle.Merge(selectionStyle2);
                     hasSelectionStyle = true;
                 }
 

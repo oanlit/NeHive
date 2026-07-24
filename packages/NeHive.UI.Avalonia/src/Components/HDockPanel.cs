@@ -1,25 +1,50 @@
 using System.Collections;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HDockPanelProp(
-    bool? lastChildFill = null,
+public class HDockPanelProps(Scope scope, Border border, DockPanel dockPanel)
+    : BaseComponentProps(scope, border, dockPanel)
+{
+    public Signal<bool> LastChildFill
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<bool>(dockPanel.LastChildFill);
+            field = sig;
+
+            dockPanel.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => dockPanel.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == DockPanel.LastChildFillProperty)
+                    sig.RxValue = (bool)args.NewValue!;
+            }
+        }
+    }
+}
+
+public class HDockPanelArgs(
+    Accessor<bool>? lastChildFill = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null
+    HStyle? style = null
 ) : IEnumerable<(Dock? Dock, IElement Element)>
 {
     private readonly List<(Dock? Dock, IElement Element)> _children = [];
-    public readonly bool LastChildFill = lastChildFill ?? true;
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<bool> LastChildFill = lastChildFill ?? true;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
-    // 集合初始化器支持：添加子元素并指定停靠方向
     public IElement this[Dock? key]
     {
         set => _children.Add((key, value));
@@ -33,10 +58,7 @@ public class HDockPanelProp(
 
 public static partial class BaseComponent
 {
-    /// <summary>
-    /// 创建 DockPanel 组件
-    /// </summary>
-    public static IElement<DockPanel> HDockPanel(HDockPanelProp prop)
+    public static IElement<DockPanel> HDockPanel(Func<HDockPanelProps,HDockPanelArgs> fn)
     {
         return Element<DockPanel>.WithScope(uiScope =>
         {
@@ -46,18 +68,20 @@ public static partial class BaseComponent
                 Child = dockPanel
             };
 
-            // 应用样式
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var props = new HDockPanelProps(uiScope, border, dockPanel);
+            var args = fn(props);
+
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, dockPanel, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, dockPanel, border, ApplyStyle);
             state.ApplyVariantsStyle(dockPanel, border, ApplyStyle);
 
-            // 添加子元素并设置 Dock 附加属性
             Control? lastItem = null;
-            foreach (var (dock, element) in prop)
+            foreach (var (dock, element) in args)
             {
                 var control = element.Content;
                 if (dock is null)
@@ -70,7 +94,11 @@ public static partial class BaseComponent
                 dockPanel.Children.Add(control);
             }
 
-            dockPanel.LastChildFill = prop.LastChildFill;
+            dockPanel.LastChildFill = args.LastChildFill.Value;
+            if (args.LastChildFill.IsReactive)
+            {
+                uiScope.CreateEffect(epoch => dockPanel.LastChildFill = epoch.Track(args.LastChildFill));
+            }
             if (lastItem is not null) dockPanel.Children.Add(lastItem);
 
             return (dockPanel, border);
@@ -96,8 +124,8 @@ public static partial class BaseComponent
                 if (style.MaxHeight is not null)
                     dockPanel.MaxHeight = style.MaxHeight.Value;
 
-                if (style.RowSpacing is not null) dockPanel.HorizontalSpacing = style.RowSpacing.Value;
-                if (style.ColumnSpacing is not null) dockPanel.VerticalSpacing = style.ColumnSpacing.Value;
+                if (style.GapY is not null) dockPanel.HorizontalSpacing = style.GapY.Value;
+                if (style.GapX is not null) dockPanel.VerticalSpacing = style.GapX.Value;
             }
         });
     }

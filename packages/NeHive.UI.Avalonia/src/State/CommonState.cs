@@ -11,7 +11,7 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
 {
     public StyleSet BaseStyle = baseStyle;
     public StyleSet CurrentStyle = baseStyle.Copy();
-    public Signal<StyleSet>? MergeStyle { get; init; }
+    public Signal<StyleSet>? PriorityStyle { get; init; }
     public bool CurrentIsBase { get; private set; } = true;
     public Dictionary<string, List<string>>? StrVariants;
 
@@ -34,8 +34,8 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         SetFocusStyle();
         SetClickStyle();
         SetDragOverStyle();
-        if (MergeStyle is null) return;
-        CurrentStyle.Merge(MergeStyle.Value);
+        if (PriorityStyle is null) return;
+        CurrentStyle.Merge(PriorityStyle.Value);
     }
 
     public void SetHoverStyle()
@@ -94,7 +94,7 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         Layoutable layout, Border border,
         Action<StyleSet, Layoutable, Border> applyStyle)
     {
-        if (MergeStyle is null)
+        if (PriorityStyle is null)
         {
             applyStyle(CurrentStyle, layout, border);
             if (!strStyle.IsReactive) return;
@@ -116,13 +116,13 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
         }
         else
         {
-            CurrentStyle.Merge(MergeStyle.Value);
+            CurrentStyle.Merge(PriorityStyle.Value);
             applyStyle(CurrentStyle, layout, border);
             var firstApply = true;
             uiScope.CreateEffect(epoch =>
             {
                 var srtStyleValue = epoch.Track(strStyle);
-                var styleValue = epoch.Pull(MergeStyle);
+                var styleValue = epoch.Pull(PriorityStyle);
                 BaseStyle = srtStyleValue.Normal;
                 BaseStyle.Merge(styleValue);
                 StrVariants = srtStyleValue.Variants;

@@ -18,13 +18,13 @@ public static class ElementUtil
                 child = elements.First();
                 break;
             default:
-                var panelProp = new HPanelProp();
+                var panelProp = new HPanelArgs();
                 foreach (var el in elements)
                 {
                     panelProp.Add(el);
                 }
 
-                child = HStackPanel(panelProp);
+                child = HStackPanel(_ => panelProp);
                 break;
         }
 

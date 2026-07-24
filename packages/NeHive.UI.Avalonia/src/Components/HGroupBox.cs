@@ -19,7 +19,7 @@
 //     private readonly List<IElement> _children = [];
 //
 //     // 合并后的样式
-//     public readonly Accessor<HPanelStyle>? Style = (style, strStyle) switch
+//     public readonly Accessor<HPanelStyle>? StrStyle = (style, strStyle) switch
 //     {
 //         (not null, not null) => new Computed<HPanelStyle>(() =>
 //             HPanelStyle.Parse(strStyle).RxValue.Merge(style.RxValue)),
@@ -48,11 +48,11 @@
 //         var groupBox = new GroupBox();
 //
 //         // 应用样式
-//         if (prop.Style != null)
+//         if (prop.StrStyle != null)
 //         {
 //             uiScope.CreateEffect(scope =>
 //             {
-//                 var style = scope.Track(prop.Style);
+//                 var style = scope.Track(prop.StrStyle);
 //                 ApplyPanelStyle(groupBox, style);
 //             });
 //         }

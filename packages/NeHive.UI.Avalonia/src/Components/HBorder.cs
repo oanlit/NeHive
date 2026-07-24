@@ -11,11 +11,10 @@ using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HBlockProp(
+public class HBorderArgs(
     Accessor<bool>? isAllowDrop = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null,
+    HStyle? style = null,
     Action<RoutedEventArgs>? onPointerEntered = null,
     Action<RoutedEventArgs>? onPointerExited = null,
     Action<PointerEventArgs>? onPointerMoved = null,
@@ -35,14 +34,14 @@ public class HBlockProp(
     Action<DragEventArgs>? onDragOver = null,
     Action<DragEventArgs>? onDragLeave = null,
     Action<DragEventArgs>? onDrop = null
-) : ISingleChildrenProp
+) : ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
 
     public readonly Accessor<bool>? IsAllowDrop = isAllowDrop;
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
+    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public readonly Action<PointerEventArgs>? OnPointerEntered = onPointerEntered;
     public readonly Action<PointerEventArgs>? OnPointerExited = onPointerExited;
@@ -86,11 +85,11 @@ public class HBlockProp(
 
 public static partial class BaseComponent
 {
-    public static IElement HBlock(HBlockProp prop)
+    public static IElement HBlock(HBorderArgs args)
     {
         return Element.WithScope(uiScope =>
         {
-            var child = ElementUtil.WrapSingleContainerContent(prop);
+            var child = ElementUtil.WrapSingleContainerContent(args);
 
             var border = new Border
             {
@@ -98,47 +97,48 @@ public static partial class BaseComponent
                 Child = child.Content
             };
 
-            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                StrVariants = prop.Style.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(prop.Style, border, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, border, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(border, border, StyleUtil.ApplyStyle);
 
-            if (prop.OnPointerEntered is not null) border.PointerEntered += (_, e) => prop.OnPointerEntered(e);
-            if (prop.OnPointerExited is not null) border.PointerExited += (_, e) => prop.OnPointerExited(e);
-            if (prop.OnPointerMoved is not null) border.PointerMoved += (_, e) => prop.OnPointerMoved(e);
+            if (args.OnPointerEntered is not null) border.PointerEntered += (_, e) => args.OnPointerEntered(e);
+            if (args.OnPointerExited is not null) border.PointerExited += (_, e) => args.OnPointerExited(e);
+            if (args.OnPointerMoved is not null) border.PointerMoved += (_, e) => args.OnPointerMoved(e);
 
-            if (prop.OnPointerPressed is not null) border.PointerPressed += (_, e) => prop.OnPointerPressed(e);
-            if (prop.OnPointerReleased is not null) border.PointerReleased += (_, e) => prop.OnPointerReleased(e);
-            if (prop.OnPointerCaptureLost is not null)
-                border.PointerCaptureLost += (_, e) => prop.OnPointerCaptureLost(e);
-            if (prop.OnPointerWheelChanged is not null)
-                border.PointerWheelChanged += (_, e) => prop.OnPointerWheelChanged(e);
+            if (args.OnPointerPressed is not null) border.PointerPressed += (_, e) => args.OnPointerPressed(e);
+            if (args.OnPointerReleased is not null) border.PointerReleased += (_, e) => args.OnPointerReleased(e);
+            if (args.OnPointerCaptureLost is not null)
+                border.PointerCaptureLost += (_, e) => args.OnPointerCaptureLost(e);
+            if (args.OnPointerWheelChanged is not null)
+                border.PointerWheelChanged += (_, e) => args.OnPointerWheelChanged(e);
 
-            if (prop.OnGotFocus is not null) border.GotFocus += (_, e) => prop.OnGotFocus(e);
-            if (prop.OnGettingFocus is not null) border.GettingFocus += (_, e) => prop.OnGettingFocus(e);
-            if (prop.OnLostFocus is not null) border.LostFocus += (_, e) => prop.OnLostFocus(e);
-            if (prop.OnLosingFocus is not null) border.LosingFocus += (_, e) => prop.OnLosingFocus(e);
+            if (args.OnGotFocus is not null) border.GotFocus += (_, e) => args.OnGotFocus(e);
+            if (args.OnGettingFocus is not null) border.GettingFocus += (_, e) => args.OnGettingFocus(e);
+            if (args.OnLostFocus is not null) border.LostFocus += (_, e) => args.OnLostFocus(e);
+            if (args.OnLosingFocus is not null) border.LosingFocus += (_, e) => args.OnLosingFocus(e);
 
-            if (prop.OnKeyDown is not null) border.KeyDown += (_, e) => prop.OnKeyDown(e);
-            if (prop.OnKeyUp is not null) border.KeyUp += (_, e) => prop.OnKeyUp(e);
-            if (prop.OnTextInput is not null) border.TextInput += (_, e) => prop.OnTextInput(e);
-            if (prop.OnTextInputMethodClientRequested is not null)
-                border.TextInputMethodClientRequested += (_, e) => prop.OnTextInputMethodClientRequested(e);
+            if (args.OnKeyDown is not null) border.KeyDown += (_, e) => args.OnKeyDown(e);
+            if (args.OnKeyUp is not null) border.KeyUp += (_, e) => args.OnKeyUp(e);
+            if (args.OnTextInput is not null) border.TextInput += (_, e) => args.OnTextInput(e);
+            if (args.OnTextInputMethodClientRequested is not null)
+                border.TextInputMethodClientRequested += (_, e) => args.OnTextInputMethodClientRequested(e);
 
-            if (prop.IsAllowDrop is not null)
+            if (args.IsAllowDrop is not null)
             {
-                DragDrop.SetAllowDrop(border, prop.IsAllowDrop.Value);
-                if (prop.IsAllowDrop.IsReactive)
-                    uiScope.CreateEffect(scope => DragDrop.SetAllowDrop(border, scope.Track(prop.IsAllowDrop)));
+                DragDrop.SetAllowDrop(border, args.IsAllowDrop.Value);
+                if (args.IsAllowDrop.IsReactive)
+                    uiScope.CreateEffect(scope => DragDrop.SetAllowDrop(border, scope.Track(args.IsAllowDrop)));
             }
 
-            if (prop.OnDragEnter is not null) DragDrop.AddDragEnterHandler(border, (_, e) => prop.OnDragEnter(e));
-            if (prop.OnDragOver is not null) DragDrop.AddDragOverHandler(border, (_, e) => prop.OnDragOver(e));
-            if (prop.OnDragLeave is not null) DragDrop.AddDragLeaveHandler(border, (_, e) => prop.OnDragLeave(e));
-            if (prop.OnDrop is not null) DragDrop.AddDropHandler(border, (_, e) => prop.OnDrop(e));
+            if (args.OnDragEnter is not null) DragDrop.AddDragEnterHandler(border, (_, e) => args.OnDragEnter(e));
+            if (args.OnDragOver is not null) DragDrop.AddDragOverHandler(border, (_, e) => args.OnDragOver(e));
+            if (args.OnDragLeave is not null) DragDrop.AddDragLeaveHandler(border, (_, e) => args.OnDragLeave(e));
+            if (args.OnDrop is not null) DragDrop.AddDropHandler(border, (_, e) => args.OnDrop(e));
 
             return border;
         });

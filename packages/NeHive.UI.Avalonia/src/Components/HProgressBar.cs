@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
@@ -22,8 +21,7 @@ public static partial class BaseComponent
         Accessor<bool>? isShowProgressText = null,
         Accessor<string>? progressTextFormat = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null,
+        HStyle? style = null,
         Action<RangeBaseValueChangedEventArgs>? onValueChanged = null)
     {
         return Element<ProgressBar>.WithScope(uiScope =>
@@ -34,7 +32,8 @@ public static partial class BaseComponent
             isIndeterminate ??= false;
             isShowProgressText ??= false;
 
-            var styleAccessor = StyleParser.ParseFull(strStyle, null, style);
+            var styleAccessor = StyleParser.ParseFull(strStyle);
+            var priorityStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
 
             var progressBar = new ProgressBar();
             var border = new Border
@@ -44,6 +43,7 @@ public static partial class BaseComponent
 
             var state = new CommonState(uiScope, styleAccessor.Value.Normal)
             {
+                PriorityStyle = priorityStyle,
                 StrVariants = styleAccessor.Value.Variants
             };
 
