@@ -14,11 +14,9 @@ using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HPopupProps(Scope scope, Border border, Popup popup) : BaseComponentProps(scope, border, popup)
-{
-}
-
+public class HPopupProps(Scope scope, Border border, Popup popup) : BaseComponentProps(scope, border, popup);
 public class HPopupArgs(
+    Accessor<bool>? isHitTestVisible = null,
     Accessor<bool>? isOpen = null,
     Accessor<bool>? isLightDismissEnabled = null,
     Accessor<bool>? isTopmost = null,
@@ -44,6 +42,8 @@ public class HPopupArgs(
 ) : ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
+    
+    public readonly Accessor<bool>? IsHitTestVisible = isHitTestVisible;
 
     public readonly Accessor<bool>? IsOpen = isOpen;
     public readonly Accessor<bool>? IsLightDismissEnabled = isLightDismissEnabled;
@@ -113,6 +113,13 @@ public static partial class BaseComponent
 
             state.ApplyAccessorStyle(args.StrStyle, popup, border, ApplyStyle);
             state.ApplyVariantsStyle(popup, border, ApplyStyle);
+            
+            if (args.IsHitTestVisible is not null)
+            {
+                popup.IsHitTestVisible = args.IsHitTestVisible.Value;
+                if (args.IsHitTestVisible.IsReactive)
+                    uiScope.CreateEffect(epoch => popup.IsHitTestVisible = epoch.Track(args.IsHitTestVisible));
+            }
 
             if (args.IsOpen is not null)
             {

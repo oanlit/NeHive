@@ -24,7 +24,7 @@ public static partial class BaseComponent
 
             using (new ScopeFrame(uiScope))
             {
-                button = HButton(text, strStyle, style);
+                button = HButton(text,strStyle: strStyle,style: style);
             }
 
             button.Content.PointerPressed += async (_, _) =>

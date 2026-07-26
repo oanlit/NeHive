@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -33,12 +34,7 @@ public static partial class BaseComponent
             
             if (args.Popups is not null)
             {
-                foreach (var popupEl in args.Popups)
-                {
-                    _ = popupEl.Content;
-                    var popup = popupEl.Expose!;
-                    popup.PlacementTarget = border;
-                }
+                ElementUtil.ApplyPopups(border, args.Popups);
             }
 
             return (stack, border);

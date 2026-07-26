@@ -42,7 +42,7 @@ public static partial class BaseComponent
             Button button;
             using (new ScopeFrame(uiScope))
             {
-                buttonElement = HButton(text, strStyle, style);
+                buttonElement = HButton(text,strStyle: strStyle,style: style);
                 _ = buttonElement.Content;
                 button = buttonElement.Expose!;
             }

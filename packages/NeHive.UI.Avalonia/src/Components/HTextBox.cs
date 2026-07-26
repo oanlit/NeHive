@@ -38,6 +38,8 @@ public static partial class BaseComponent
         Accessor<char>? passwordChar = null,
         Accessor<string>? placeholderText = null,
         Accessor<bool>? isReadOnly = null,
+        Accessor<IBrush>? selectionBrush = null,
+        Accessor<IBrush>? selectionForegroundBrush = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         Action<string?>? onTextInput = null)
@@ -157,12 +159,16 @@ public static partial class BaseComponent
 
                 var placeholder = new TextBlock
                 {
-                    [!!TextBlock.ForegroundProperty] = control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
-                    [!!Layoutable.HorizontalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
-                    [!!Layoutable.VerticalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+                    [!!TextBlock.ForegroundProperty] =
+                        control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
+                    [!!Layoutable.HorizontalAlignmentProperty] =
+                        control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+                    [!!Layoutable.VerticalAlignmentProperty] =
+                        control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
                     // [!!Visual.OpacityProperty] = control.GetObservable(TextBox.PlaceholderForegroundProperty).ToBinding(),
                     [!!TextBlock.TextProperty] = control.GetObservable(TextBox.PlaceholderTextProperty).ToBinding(),
-                    [!!Layoutable.VerticalAlignmentProperty] = control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
+                    [!!Layoutable.VerticalAlignmentProperty] =
+                        control.GetObservable(Layoutable.HorizontalAlignmentProperty).ToBinding(),
                     [!!TextPresenter.TextAlignmentProperty] =
                         control.GetObservable(TextBox.TextAlignmentProperty).ToBinding(),
                     [!!TextPresenter.TextWrappingProperty] =
@@ -178,7 +184,7 @@ public static partial class BaseComponent
                                 Path = nameof(TextPresenter.PreeditText),
                                 Converter = StringConverters.IsNullOrEmpty
                             },
-  
+
                             new TemplateBinding(TextBox.TextProperty)
                             {
                                 Converter = StringConverters.IsNullOrEmpty
@@ -236,10 +242,25 @@ public static partial class BaseComponent
                 });
             }
 
-            textBox.Text = bindText.Value;
-            uiScope.CreateEffect(epochScope =>
+            if (selectionBrush is not null)
             {
-                var newText = epochScope.Pull(bindText);
+                textBox.SelectionBrush = selectionBrush.Value;
+                if (selectionBrush.IsReactive)
+                    uiScope.CreateEffect(epoch => textBox.SelectionBrush = epoch.Track(selectionBrush));
+            }
+
+            if (selectionForegroundBrush is not null)
+            {
+                textBox.SelectionForegroundBrush = selectionForegroundBrush.Value;
+                if (selectionForegroundBrush.IsReactive)
+                    uiScope.CreateEffect(epoch =>
+                        textBox.SelectionForegroundBrush = epoch.Track(selectionForegroundBrush));
+            }
+
+            textBox.Text = bindText.Value;
+            uiScope.CreateEffect(epoch =>
+            {
+                var newText = epoch.Pull(bindText);
                 if (textBox.Text != newText) textBox.Text = newText;
             });
 
@@ -253,30 +274,17 @@ public static partial class BaseComponent
             {
                 textBox.PasswordChar = passwordChar.Value;
                 if (passwordChar.IsReactive)
-                {
-                    uiScope.CreateEffect(epochScope =>
-                    {
-                        textBox.PasswordChar = epochScope.Track(passwordChar);
-                    });
-                }
+                    uiScope.CreateEffect(epoch => textBox.PasswordChar = epoch.Track(passwordChar));
             }
-            
+
             if (placeholderText is not null)
             {
                 textBox.PlaceholderText = placeholderText.Value;
                 if (placeholderText.IsReactive)
-                {
-                    uiScope.CreateEffect(epochScope =>
-                    {
-                        textBox.PlaceholderText = epochScope.Track(placeholderText);
-                    });
-                }
+                    uiScope.CreateEffect(epoch => textBox.PlaceholderText = epoch.Track(placeholderText));
             }
 
-            uiScope.CreateEffect(epochScope =>
-            {
-                textBox.IsReadOnly = epochScope.Track(isReadOnly);
-            });
+            uiScope.CreateEffect(epoch => textBox.IsReadOnly = epoch.Track(isReadOnly));
 
             return (textBox, border);
 
@@ -304,8 +312,10 @@ public static partial class BaseComponent
                 }
 
                 if (!hasSelectionStyle) return;
-                if (selectionStyle.Background is not null) textBox.SelectionBrush = selectionStyle.Background;
-                if (selectionStyle.Foreground is not null) textBox.SelectionForegroundBrush = selectionStyle.Foreground;
+                if (selectionStyle.Background is not null && selectionBrush is null)
+                    textBox.SelectionBrush = selectionStyle.Background;
+                if (selectionStyle.Background is not null && selectionForegroundBrush is null)
+                    textBox.SelectionForegroundBrush = selectionStyle.Foreground;
             }
 
             void ApplyTextStyle(StyleSet styleValue)

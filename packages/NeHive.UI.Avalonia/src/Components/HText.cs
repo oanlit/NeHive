@@ -10,7 +10,7 @@ namespace NeHive.UI.Avalonia.Components;
 
 public static partial class BaseComponent
 {
-    public static IElement HTextBlock(
+    public static IElement HText(
         Accessor<string>? text,
         Accessor<string>? strStyle = null,
         HStyle? style = null)

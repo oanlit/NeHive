@@ -19,10 +19,10 @@ public struct LoadingProp<TData>(AsyncMemo<TData> dataSource)
 public static partial class ControlFlow
 {
     private static IElement DefaultLoading()
-        => HTextBlock(new("RxLoading..."));
+        => HText(new("RxLoading..."));
 
     private static IElement DefaultError(Exception ex)
-        => HTextBlock(new($"RxError: {ex.Message}"));
+        => HText(new($"RxError: {ex.Message}"));
 
     public static IElement Loading<T>(LoadingProp<T> prop)
     {
@@ -30,11 +30,10 @@ public static partial class ControlFlow
         {
             var container = new Panel();
 
-            // 使用 Effect 监听 AsyncMemo 的状态变化
             uiScope.CreateEffect(epochScope =>
             {
                 var memo = prop.DataSource;
-                var state = epochScope.Track(() => memo.RxState); // 追踪状态
+                var state = epochScope.Track(() => memo.RxState);
 
                 IElement? newChild;
                 T? data = default;
@@ -55,7 +54,7 @@ public static partial class ControlFlow
                     case AsyncMemoState.Ready:
                         try
                         {
-                            data = memo.RxValue!; // 就绪时取值（可能是信号，直接读当前值）
+                            data = memo.RxValue!;
                             using (new ScopeFrame(uiScope))
                             {
                                 newChild = prop.Success(data);
@@ -64,7 +63,6 @@ public static partial class ControlFlow
                         }
                         catch (Exception ex)
                         {
-                            // RxValue 可能抛出异常（如果底层错误），转为错误状态处理
                             using (new ScopeFrame(uiScope))
                             {
                                 newChild = prop.Error?.Invoke(ex) ?? DefaultError(ex);

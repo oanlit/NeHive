@@ -1,3 +1,5 @@
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using NeHive.UI.Avalonia.Components;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
 
@@ -29,5 +31,15 @@ public static class ElementUtil
         }
 
         return child;
+    }
+
+    public static void ApplyPopups(Control targetControl, IEnumerable<IElement<Popup>> popups)
+    {
+        foreach (var popupEl in popups)
+        {
+            _ = popupEl.Content;
+            var popup = popupEl.Expose!;
+            popup.PlacementTarget = targetControl;
+        }
     }
 }
