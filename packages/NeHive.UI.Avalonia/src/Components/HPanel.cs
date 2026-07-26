@@ -1,5 +1,6 @@
 using System.Collections;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Controls.Primitives;
 using NeHive.Model;
 using NeHive.Reactive;
@@ -56,8 +57,8 @@ public static partial class BaseComponent
                 StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(args.StrStyle, panel, border, StyleUtil.ApplyStyle);
-            state.ApplyVariantsStyle(panel, border, StyleUtil.ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, panel, border, ApplyStyle);
+            state.ApplyVariantsStyle(panel, border, ApplyStyle);
 
             if (args.Popups is not null)
             {
@@ -70,6 +71,28 @@ public static partial class BaseComponent
             }
 
             return (panel, border);
+            
+            void ApplyStyle(StyleSet style, Layoutable layout, Border bord)
+            {
+                StyleUtil.ApplyStyle(style, layout, bord);
+                if (style.Width is not null)
+                    panel.Width = style.Width.Value;
+
+                if (style.Height is not null)
+                    panel.Height = style.Height.Value;
+
+                if (style.MinWidth is not null)
+                    panel.MinWidth = style.MinWidth.Value;
+
+                if (style.MaxWidth is not null)
+                    panel.MaxWidth = style.MaxWidth.Value;
+
+                if (style.MinHeight is not null)
+                    panel.MinHeight = style.MinHeight.Value;
+
+                if (style.MaxHeight is not null)
+                    panel.MaxHeight = style.MaxHeight.Value;
+            }
         });
     }
 }

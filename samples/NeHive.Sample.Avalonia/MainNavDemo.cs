@@ -5,6 +5,8 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Input;
 using Avalonia.Controls.Primitives;
+using Avalonia.Media.Transformation;
+using Avalonia.Threading;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Components;
 using static NeHive.UI.Avalonia.Components.BaseComponent;
@@ -2160,6 +2162,124 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     #endregion
 
+    extension(Scope scope)
+    {
+        DispatcherTimer CreateInterval(int interval, Action fn)
+        {
+            var timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(interval)
+            };
+
+            timer.Tick += Handler;
+            scope.OnCleanup += () =>
+            {
+                timer.Stop();
+                timer.Tick -= Handler;
+            };
+
+            timer.Start();
+            return timer;
+
+            void Handler(object? sender, EventArgs e)
+            {
+                fn();
+            }
+        }
+    }
+
+    private static IElement ClockDemo()
+    {
+        return Element.WithScope(uiScope =>
+        {
+            var size = 400;
+            var borderWidth = 8;
+            var hourTransforms = Enumerable.Range(1, 12).Select(n =>
+            {
+                var a = Math.PI * n / 6;
+                var x = Math.Sin(a) * size / 2 * 0.85;
+                var y = -Math.Cos(a) * size / 2 * 0.85;
+
+                var builder = TransformOperations.CreateBuilder(1);
+                builder.AppendTranslate(x, y);
+                return builder.Build();
+            }).ToArray();
+
+            var tickStyles = Enumerable.Range(0, 59).Select(n =>
+            {
+                var isFiveTime = n % 5 == 0;
+                var width = isFiveTime ? 4 : 2;
+                var height = isFiveTime ? 8 : 6;
+                var angle = Math.PI * n / 30;
+
+                var builder = TransformOperations.CreateBuilder(2);
+                builder.AppendTranslate(0, size * 0.5 - height * 0.5);
+                builder.AppendRotate(angle);
+                ITransform transform = builder.Build();
+                return (width, height, transform);
+            }).ToArray();
+
+            var currentTime = new MutSignal<DateTime>(DateTime.Now);
+            uiScope.CreateInterval(500, () => currentTime.RxValue = DateTime.Now);
+
+            return HGrid(_ => new(
+                strStyle: $"bg-matcha-50 border-w-{borderWidth} border-matcha-200 rounded-full")
+            {
+                ForEach<(int, int, ITransform)>(new(tickStyles)
+                {
+                    ItemsPanel = HGrid(_ => new(style: new(width: size, height: size))),
+                    ItemTemplate = (tickStyle, _) =>
+                        HBorder(strStyle: "mx-auto my-auto bg-coffee-700 origin-center",
+                            style: new(
+                                width: tickStyle.Item1,
+                                height: tickStyle.Item2,
+                                renderTransform: new(tickStyle.Item3)
+                            )
+                        ) // HBorder
+                }), // ForEach<ITransform>
+                ForEach<ITransform>(new(hourTransforms)
+                {
+                    ItemsPanel = HGrid(_ => new(style: new(width: size, height: size))),
+                    ItemTemplate = (transform, i) =>
+                        HText($"{i.Value + 1}", strStyle: "mx-auto my-auto text-2xl fw-bold fg-coffee-700",
+                            style: new(renderTransform: new(transform)))
+                }), // ForEach<ITransform>
+                HText(new(() => currentTime.RxValue.ToString("yyyy-MM-dd HH:mm:ss")),
+                    strStyle: "mx-auto my-auto mt-60 text-base fg-coffee-500"),
+                HBorder(strStyle: "mx-auto my-auto bg-coffee-700 origin-center",
+                    style: new(width: 10, height: size / 4,
+                        renderTransform: HandTransform(-size * 0.075,
+                            () => 2 * Math.PI * (currentTime.RxValue.Hour * 3600 + currentTime.RxValue.Minute * 60 +
+                                                 currentTime.RxValue.Second) / 43200))
+                ), // HBorder
+                HBorder(strStyle: "mx-auto my-auto bg-coffee-700 origin-center",
+                    style: new(width: 5, height: size / 2.5,
+                        renderTransform: HandTransform(-size * 0.15,
+                            () => 2 * Math.PI * (currentTime.RxValue.Minute * 60 +
+                                                 currentTime.RxValue.Second) / 3600))
+                ), // HBorder
+                HBorder(strStyle: "mx-auto my-auto bg-matcha-700 origin-center",
+                    style: new(width: 2, height: size / 2,
+                        renderTransform: HandTransform(-size * 0.2,
+                            () => 2 * Math.PI * currentTime.RxValue.Second / 60))
+                ), // HBorder
+                HBorder(strStyle: "mx-auto my-auto w-2 h-2 bg-coffee-50 rounded-full")
+            });
+
+            Func<ITransform> HandTransform(double move, Func<double> getAngle)
+            {
+                return () =>
+                {
+                    var angle = getAngle();
+                    var builder = TransformOperations.CreateBuilder(2);
+                    builder.AppendTranslate(0, move);
+                    builder.AppendRotate(angle);
+                    return builder.Build();
+                };
+            }
+        });
+    }
+
     #region Main Category Navigation Layout
 
     public static IElement MainNavDemo()
@@ -2199,7 +2319,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 DemoView.ContextDemo
             ),
 
-            new("🚀 Advanced Integrated Sample", DemoView.MusicPlayerDemo)
+            new("🚀 Advanced Integrated Sample", DemoView.ClockDemo, DemoView.MusicPlayerDemo)
         };
 
         var categoriesSignal = new MutSignal<IReadOnlyList<DemoCategory>>(categories);
@@ -2321,6 +2441,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 [DemoView.GroupDemo] = GroupDemo,
                                 [DemoView.ContextDemo] = ContextDemo,
 
+                                [DemoView.ClockDemo] = ClockDemo,
                                 [DemoView.MusicPlayerDemo] = MusicPlayerDemo.MusicPlayer
                             }, // Switch<DemoView>.Cases
                             Default = () => HText("Select a demo item from left sidebar to preview",
@@ -2421,6 +2542,7 @@ public enum DemoView
     GroupDemo,
     ContextDemo,
 
+    ClockDemo,
     MusicPlayerDemo,
     Unknown
 }

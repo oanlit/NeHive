@@ -3,7 +3,6 @@ using Avalonia.Layout;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
-
 using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Styles;
@@ -27,7 +26,7 @@ public static class StyleUtil
         Opacity = 1.0,
         IsVisible = true
     };
-    
+
     public static Signal<StyleSet> HStyle2Signal(HStyle style)
     {
         return new Computed<StyleSet>(() => new StyleSet
@@ -176,6 +175,9 @@ public static class StyleUtil
 
         border.RenderTransformOrigin = style.RenderTransformOrigin ?? RelativePoint.Center;
         border.RenderTransform = style.RenderTransform;
+        // if(style.RenderTransform is not null)
+        //     Console.WriteLine($"{DateTime.Now}:{style.RenderTransform.Value}");
+        
         border.Transitions ??= style.Transitions;
     }
 

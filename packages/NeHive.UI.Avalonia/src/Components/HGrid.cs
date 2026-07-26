@@ -31,15 +31,17 @@ public readonly struct HgLen
 }
 
 public class HGridProps(Scope scope, Border border, Grid grid) : BaseComponentProps(scope, border, grid);
+
 public class HGridArgs(
     Accessor<bool>? showGridLines = null,
     Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
     Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null
-) : IEnumerable<KeyValuePair<GridPosition, IElement>>
+) : IEnumerable<(GridPosition?, IElement)>
 {
-    private readonly Dictionary<GridPosition, IElement> _children = new();
+    private readonly List<(GridPosition? GridPos, IElement Element)> _children = [];
+    // private readonly Dictionary<GridPosition?, IElement> _children = new();
 
     public readonly Accessor<bool>? ShowGridLines = showGridLines;
     public readonly Accessor<IReadOnlyList<HgLen>>? RowDefinitions = rowDefinitions;
@@ -50,7 +52,7 @@ public class HGridArgs(
 
     public IElement this[GridPosition key]
     {
-        set => _children[key] = value;
+        set => _children.Add((key, value));
     }
 
     public IElement this[SimpleGridPosition key]
@@ -58,11 +60,16 @@ public class HGridArgs(
         set
         {
             GridPosition pos = (key.row, key.column, 1, 1);
-            _children[pos] = value;
+            _children.Add((pos, value));
         }
     }
 
-    public IEnumerator<KeyValuePair<GridPosition, IElement>> GetEnumerator()
+    public void Add(IElement element)
+    {
+        _children.Add((null, element));
+    }
+
+    public IEnumerator<(GridPosition?, IElement)> GetEnumerator()
         => _children.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -70,9 +77,9 @@ public class HGridArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement HGrid(Func<HGridProps,HGridArgs>  fn)
+    public static IElement<Grid> HGrid(Func<HGridProps, HGridArgs> fn)
     {
-        return Element.WithScope(uiScope =>
+        return Element<Grid>.WithScope(uiScope =>
         {
             var grid = new Grid();
 
@@ -126,14 +133,18 @@ public static partial class BaseComponent
             foreach (var (position, childElement) in args)
             {
                 var child = childElement.Content;
-                Grid.SetRow(child, position.row);
-                Grid.SetColumn(child, position.column);
-                Grid.SetRowSpan(child, position.rowSpan);
-                Grid.SetColumnSpan(child, position.colSpan);
+                if (position is not null)
+                {
+                    Grid.SetRow(child, position.Value.row);
+                    Grid.SetColumn(child, position.Value.column);
+                    Grid.SetRowSpan(child, position.Value.rowSpan);
+                    Grid.SetColumnSpan(child, position.Value.colSpan);
+                }
+
                 grid.Children.Add(child);
             }
 
-            return border;
+            return (grid, border);
 
             void ApplyStyle(StyleSet style, Layoutable layout, Border bord)
             {

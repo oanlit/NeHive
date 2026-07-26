@@ -147,15 +147,15 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             {
                 var srtStyleValue = epoch.Track(strStyle);
                 var styleValue = epoch.Pull(PriorityStyle);
-                BaseStyle = srtStyleValue.Normal;
-                BaseStyle.Merge(styleValue);
-                StrVariants = srtStyleValue.Variants;
-                CurrentStyle = BaseStyle.Copy();
                 if (firstApply)
                 {
                     firstApply = false;
                     return;
                 }
+                BaseStyle = srtStyleValue.Normal;
+                BaseStyle.Merge(styleValue);
+                StrVariants = srtStyleValue.Variants;
+                CurrentStyle = BaseStyle.Copy();
 
                 applyStyle(CurrentStyle, layout, border);
             });

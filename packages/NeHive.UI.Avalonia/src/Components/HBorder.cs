@@ -143,4 +143,31 @@ public static partial class BaseComponent
             return border;
         });
     }
+
+    public static IElement HBorder(Accessor<bool>? isAllowDrop = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        Action<RoutedEventArgs>? onPointerEntered = null,
+        Action<RoutedEventArgs>? onPointerExited = null,
+        Action<PointerEventArgs>? onPointerMoved = null,
+        Action<PointerPressedEventArgs>? onPointerPressed = null,
+        Action<PointerReleasedEventArgs>? onPointerReleased = null,
+        Action<PointerCaptureLostEventArgs>? onPointerCaptureLost = null,
+        Action<PointerWheelEventArgs>? onPointerWheelChanged = null,
+        Action<FocusChangedEventArgs>? onGotFocus = null,
+        Action<FocusChangingEventArgs>? onGettingFocus = null,
+        Action<FocusChangedEventArgs>? onLostFocus = null,
+        Action<FocusChangingEventArgs>? onLosingFocus = null,
+        Action<KeyEventArgs>? onKeyDown = null,
+        Action<KeyEventArgs>? onKeyUp = null,
+        Action<TextInputEventArgs>? onTextInput = null,
+        Action<TextInputMethodClientRequestedEventArgs>? onTextInputMethodClientRequested = null,
+        Action<DragEventArgs>? onDragEnter = null,
+        Action<DragEventArgs>? onDragOver = null,
+        Action<DragEventArgs>? onDragLeave = null,
+        Action<DragEventArgs>? onDrop = null
+    ) => HBorder(new(isAllowDrop, strStyle, style, onPointerEntered, onPointerExited, onPointerMoved, onPointerPressed,
+        onPointerReleased, onPointerCaptureLost, onPointerWheelChanged, onGotFocus, onGettingFocus, onLostFocus,
+        onLosingFocus, onKeyDown, onKeyUp, onTextInput, onTextInputMethodClientRequested, onDragEnter, onDragOver,
+        onDragLeave, onDrop));
 }
