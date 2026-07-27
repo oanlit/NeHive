@@ -1,11 +1,11 @@
 using System.Collections;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Controls.Primitives;
 using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -13,13 +13,11 @@ public class HPanelProps(Scope scope, Border border, Panel content) : BaseCompon
 
 public class HPanelArgs(
     Accessor<string>? strStyle = null,
-    HStyle? style = null) : ISingleChildrenArgs
+    HStyle? style = null,
+    BaseComponentInteraction? events = null
+) : BaseComponentArgs(strStyle, style, events), ISingleChildrenArgs
 {
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
-
     public List<IElement> Children { private get; init; } = [];
-    public List<IElement<Popup>>? Popups { internal get; init; }
 
     public IEnumerator<IElement> GetEnumerator()
         => Children.GetEnumerator();
@@ -60,18 +58,13 @@ public static partial class BaseComponent
             state.ApplyAccessorStyle(args.StrStyle, panel, border, ApplyStyle);
             state.ApplyVariantsStyle(panel, border, ApplyStyle);
 
+            if (args.BaseInteraction is not null)
+                args.BaseInteraction.ApplyInteractions(uiScope, panel);
             if (args.Popups is not null)
-            {
-                foreach (var popupEl in args.Popups)
-                {
-                    _ = popupEl.Content;
-                    var popup = popupEl.Expose!;
-                    popup.PlacementTarget = border;
-                }
-            }
+                ElementUtil.ApplyPopups(border, args.Popups);
 
             return (panel, border);
-            
+
             void ApplyStyle(StyleSet style, Layoutable layout, Border bord)
             {
                 StyleUtil.ApplyStyle(style, layout, bord);

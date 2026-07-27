@@ -1,95 +1,124 @@
-using System.Collections;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
-using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
+public class HRadioButtonProps(Scope scope, Border border, RadioButton button)
+    : HToggleButtonProps(scope, border, button)
+{
+    public Signal<string?> GroupName
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<string?>(button.GroupName);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == RadioButton.GroupNameProperty)
+                    sig.RxValue = (string?)args.NewValue;
+            }
+        }
+    }
+}
+
 public class HRadioButtonArgs(
+    Accessor<string>? text = null,
+    Accessor<string>? groupName = null,
     Accessor<bool?>? isChecked = null,
     MutSignal<bool?>? bindIsChecked = null,
-    Accessor<string>? groupName = null,
-    Accessor<bool>? isEnabled = null,
+    Accessor<bool>? isThreeState = null,
+    Accessor<ClickMode>? clickMode = null,
+    Accessor<KeyGesture>? hotKey = null,
+    Accessor<bool>? isDefault = null,
+    Accessor<bool>? isCancel = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    Action<bool?>? onClick = null) : IEnumerable<IElement>
+    Action<RoutedEventArgs>? onClick = null,
+    Action<RoutedEventArgs>? onIsCheckedChanged = null,
+    BaseComponentInteraction? baseInteraction = null
+) : HToggleButtonArgs(text, isChecked, bindIsChecked, isThreeState, clickMode, hotKey, isDefault, isCancel,
+    strStyle, style, onClick, onIsCheckedChanged, baseInteraction)
 {
-    private readonly List<IElement> _children = [];
-
-    public readonly MutSignal<bool?>? BindIsChecked = bindIsChecked;
-    public readonly Accessor<bool?>? IsChecked = isChecked;
     public readonly Accessor<string>? GroupName = groupName;
-    public readonly Accessor<bool>? IsEnabled = isEnabled;
-    public readonly Action<bool?>? OnClick = onClick;
-
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
-
-    public void Add(IElement element) => _children.Add(element);
-    public IEnumerator<IElement> GetEnumerator() => _children.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
 public static partial class BaseComponent
 {
-    public static IElement<RadioButton> HRadioButton(HRadioButtonArgs args)
+    public static IElement<RadioButton> HRadioButton(
+        Accessor<string>? text = null,
+        Accessor<string>? groupName = null,
+        Accessor<bool?>? isChecked = null,
+        MutSignal<bool?>? bindIsChecked = null,
+        Accessor<bool>? isThreeState = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
+        Accessor<bool>? isDefault = null,
+        Accessor<bool>? isCancel = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        Action<RoutedEventArgs>? onClick = null,
+        Action<RoutedEventArgs>? onIsCheckedChanged = null,
+        BaseComponentInteraction? baseInteraction = null) =>
+        HRadioButton(out _,
+            _ => new(text, groupName, isChecked, bindIsChecked, isThreeState, clickMode, hotKey, isDefault,
+                isCancel, strStyle, style, onClick, onIsCheckedChanged, baseInteraction));
+
+    public static IElement<RadioButton> HRadioButton(
+        out RadioButton expose,
+        Accessor<string>? text = null,
+        Accessor<string>? groupName = null,
+        Accessor<bool?>? isChecked = null,
+        MutSignal<bool?>? bindIsChecked = null,
+        Accessor<bool>? isThreeState = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
+        Accessor<bool>? isDefault = null,
+        Accessor<bool>? isCancel = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        Action<RoutedEventArgs>? onClick = null,
+        Action<RoutedEventArgs>? onIsCheckedChanged = null,
+        BaseComponentInteraction? baseInteraction = null) =>
+        HRadioButton(out expose,
+            _ => new(text, groupName, isChecked, bindIsChecked, isThreeState, clickMode, hotKey, isDefault,
+                isCancel, strStyle, style, onClick, onIsCheckedChanged, baseInteraction));
+
+    public static IElement<RadioButton> HRadioButton(Func<HRadioButtonProps, HRadioButtonArgs> fn) =>
+        HRadioButton(out _, fn);
+
+    public static IElement<RadioButton> HRadioButton(out RadioButton expose,
+        Func<HRadioButtonProps, HRadioButtonArgs> fn)
     {
+        var radio = new RadioButton();
+        expose = radio;
         return Element<RadioButton>.WithScope(uiScope =>
         {
-            var radio = new RadioButton();
-            var border = new Border
-            {
-                Child = radio
-            };
-
-            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
-            {
-                PriorityStyle = args.Style,
-                StrVariants = args.StrStyle.Value.Variants
-            };
-
-            state.ApplyAccessorStyle(args.StrStyle, radio, border, StyleUtil.ApplyStyle);
-            state.ApplyVariantsStyle(radio, border, StyleUtil.ApplyStyle);
-
-            if (args.IsEnabled is not null)
-            {
-                radio.IsEnabled = args.IsEnabled.Value;
-                if (args.IsEnabled.IsReactive)
-                    uiScope.CreateEffect(epochScope => radio.IsEnabled = epochScope.Track(args.IsEnabled));
-            }
+            var border = new Border();
+            var props = new HRadioButtonProps(uiScope, border, radio);
+            var args = fn(props);
+            InternalButtonUtil.SetToggleButtonEffectCore(uiScope, radio, border, args);
+            radio.Content = border;
 
             if (args.GroupName is not null)
             {
                 radio.GroupName = args.GroupName.Value;
                 if (args.GroupName.IsReactive)
-                    uiScope.CreateEffect(epochScope => radio.GroupName = epochScope.Track(args.GroupName));
+                    uiScope.CreateEffect(epoch => radio.GroupName = epoch.Track(args.GroupName));
             }
 
-            if (args.BindIsChecked is not null)
-            {
-                uiScope.CreateEffect(() => radio.IsChecked = args.BindIsChecked.RxValue);
-                radio.Click += (_, _) =>
-                {
-                    args.BindIsChecked.NotifySet(prev => prev is not true);
-                    args.OnClick?.Invoke(args.BindIsChecked.Value);
-                };
-            }
-            else if (args.IsChecked is not null)
-            {
-                uiScope.CreateEffect(() => radio.IsChecked = args.IsChecked.RxValue);
-                radio.Click += (_, _) => args.OnClick?.Invoke(radio.IsChecked);
-            }
-            else if (args.OnClick is not null)
-            {
-                radio.Click += (_, _) => args.OnClick?.Invoke(radio.IsChecked);
-            }
-
-            var firstChild = args.FirstOrDefault();
-            if (firstChild is not null)
-                radio.Content = firstChild.Content;
-
-            return (radio, border);
+            return (radio, radio);
         });
     }
 }

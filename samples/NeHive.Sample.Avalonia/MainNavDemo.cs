@@ -109,11 +109,11 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                      """)
             )
             {
-                [(0, 0)] = HText("Top Left Cell",
+                [row: 0, column: 0] = HText("Top Left Cell",
                     strStyle: "p-3 text-base fw-bold bg-matcha-100 fg-matcha-700 rounded"),
-                [(0, 1)] = HText("Top Right Cell",
+                [row: 0, column: 1] = HText("Top Right Cell",
                     strStyle: "p-3 text-base fw-bold bg-matcha-50 fg-matcha-700 rounded"),
-                [(1, 0, 1, 2)] =
+                [row: 1, column: 0, rowSpan: 1, colSpan: 2] =
                     HButton(new(() => $"Expand Horizontal Gap (current: {gapX.RxValue})"),
                         strStyle: PrimaryBtnBase + " w-full",
                         onClick: _ => gapX.RxValue++
@@ -132,21 +132,21 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
         return HStackPanel(_ => new(strStyle: DemoCardBase + " vertical gap-4")
         {
             HSelectableText("Absolute Positioning Layout", strStyle: DemoTitle),
-            HSelectableText("Fixed Left/Top offset positioning inside a relative container", strStyle: DemoDesc),
+            HSelectableText("Fixed Left/Top offset positioning inside a relativeTarget container", strStyle: DemoDesc),
             HAbsolute(_ => new(
-                strStyle: "w-full h-80 bg-matcha-50 rounded-xl border border-matcha-200 relative overflow-hidden")
+                strStyle: "w-full h-80 bg-matcha-50 rounded-xl border border-matcha-200 relativeTarget overflow-hidden")
             {
-                [new(left: 10, top: 10)] =
+                [left: 10, top: 10] =
                     HText("Top Left Anchor (10,10)",
                         strStyle: "text-sm fg-matcha-700 p-1 bg-white/80 rounded shadow-sm"),
 
-                [new(left: 420, top: 10)] =
+                [left: 420, top: 10] =
                     HButton("Top Right Action",
                         strStyle: PrimaryBtnBase,
                         onClick: _ => Console.WriteLine("Top Right Button Clicked")
                     ), // HButton
 
-                [new(left: 120, top: 120)] =
+                [left: 120, top: 120] =
                     HStackPanel(_ => new(
                         strStyle: "gap-2 vertical bg-white p-4 rounded-xl shadow-md border border-matcha-100 w-48")
                     {
@@ -154,13 +154,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                         HText("Fixed Offset (120,120)", strStyle: "text-xs fg-coffee-500")
                     }), // HStackPanel
 
-                [new(left: 420, top: 280)] =
+                [left: 420, top: 280] =
                     HButton("Bottom Right Action",
                         strStyle: SecondaryBtnBase,
                         onClick: _ => Console.WriteLine("Bottom Right Button Clicked")
                     ), // HButton
 
-                [new(left: 20, top: 250)] =
+                [left: 20, top: 250] =
                     HStackPanel(_ => new(
                         strStyle: "gap-2 horizontal bg-matcha-900/80 p-3 rounded-xl shadow-md")
                     {
@@ -345,13 +345,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 columnDefinitions: new([100, HgLen.Auto, HgLen.Star()]),
                 strStyle: $"{DemoContent} min-h-32")
             {
-                [(0, 0)] = HText("Left Column",
+                [row: 0, column: 0] = HText("Left Column",
                     strStyle: "mr-2 p-3 bg-matcha-100 rounded h-full fg-matcha-800 text-center"),
-                [(0, 1)] = HGridSplitter(
+                [row: 0, column: 1] = HGridSplitter(
                     strStyle:
                     "w-1 h-full horizontal bg-matcha-300 hover:bg-matcha-500 transition-colors cursor-ew-resize"
                 ),
-                [(0, 2)] = HText("Right Column",
+                [row: 0, column: 2] = HText("Right Column",
                     strStyle: "ml-2 p-3 bg-matcha-50 rounded h-full fg-matcha-800 text-center")
             }) // HGrid
         }); // HStackPanel
@@ -448,22 +448,28 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
 
     private static IElement CheckBoxDemo()
     {
-        var threeState = new MutSignal<bool?>(null);
-
-        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
+        return Element.WithScope(uiScope =>
         {
-            HText("CheckBox Tri-State Selection Demo", strStyle: SectionTitleStyle),
-            HCheckBox(new(
-                bindIsChecked: threeState,
-                onClick: isChecked => Console.WriteLine($"Agreement Checkbox State: {isChecked}"),
-                strStyle: "p-2 rounded-lg hover:bg-gray-50 transition-colors w-full"
-            )
+            var isChecked = new MutSignal<bool?>(null);
+
+            var root = HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
             {
-                HText("I agree to the service terms", strStyle: "text-base fg-gray-800 ml-2")
-            }), // HCheckBox
-            HButton("Toggle Checkbox State", strStyle: SecondaryBtnBase,
-                onClick: _ => threeState.NotifySet(prev => prev is false))
-        }); // HStackPanel
+                HText("CheckBox Tri-State Selection Demo", strStyle: SectionTitleStyle),
+                HCheckBox(_ => new(
+                    bindIsChecked: isChecked,
+                    strStyle: "p-2 rounded-lg hover:bg-gray-50 transition-colors w-full"
+                )
+                {
+                    HText("I agree to the service terms", strStyle: "text-base fg-gray-800 ml-2")
+                }), // HCheckBox
+                HButton("Toggle Checkbox State", strStyle: SecondaryBtnBase,
+                    onClick: _ => isChecked.NotifySet(prev => prev is false))
+            }); // HStackPanel
+
+            uiScope.CreateEffect(() => Console.WriteLine($"Agreement Checkbox State: {isChecked.RxValue is true}"));
+
+            return root;
+        });
     }
 
     #endregion
@@ -477,14 +483,14 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
         return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
             HText("RadioButton Exclusive Single Select Demo", strStyle: SectionTitleStyle),
-            HRadioButton(new(
+            HRadioButton(_ => new(
                 bindIsChecked: threeState,
                 onClick: isChecked => Console.WriteLine($"Radio Selection State: {isChecked}"),
                 strStyle: "p-2 rounded-lg hover:bg-gray-50 transition-colors w-full"
             )
             {
                 HText("I accept the privacy policy", strStyle: "text-base fg-gray-800 ml-2")
-            }),
+            }), // HRadioButton
             HButton("Switch Radio Selected State", strStyle: SecondaryBtnBase,
                 onClick: _ => threeState.NotifySet(prev => prev is false))
         }); // HStackPanel
@@ -540,7 +546,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             ), // HFilePicker
             HText(new(() => $"Selected File Path: {selectedFile.RxValue ?? "No file selected"}"),
                 strStyle: "mt-2 text-sm fg-coffee-700"),
-            HBorder(new(strStyle: new(() => $"mt-2 w-64 h-64 overflow-hidden {MaskColor()} border rounded-xl"))
+            HBorder(_ => new(strStyle: new(() => $"mt-2 w-64 h-64 overflow-hidden {MaskColor()} border rounded-xl"))
             {
                 HUriImage(selectedFile,
                     stretch: Stretch.UniformToFill,
@@ -569,10 +575,10 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
         {
             HText("Drag Image File Demo", strStyle: SectionTitleStyle),
 
-            HBorder(new(
+            HBorder(_ => new(
                 isAllowDrop: true,
                 strStyle: new(() =>
-                    $"mt-2 w-64 h-64 overflow-hidden relative {MaskColor()} border rounded-xl dragover:bg-sky-200"),
+                    $"mt-2 w-64 h-64 overflow-hidden relativeTarget {MaskColor()} border rounded-xl dragover:bg-sky-200"),
                 onDragOver: DragOver,
                 onDrop: Drop
             )
@@ -1905,7 +1911,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 HText("scale-100", strStyle: "scale-100 p-4 bg-rose-100 rounded"),
                 HText("scale-150", strStyle: "scale-150 p-4 bg-rose-100 rounded"),
                 HText("scale-x-75", strStyle: "scale-x-75 p-4 bg-rose-100 rounded")
-            }),
+            }), // DemoSection
             DemoSection("Rotate", new[]
             {
                 HText("rotate-45", strStyle: "rotate-45 p-4 bg-sky-100 rounded"),
@@ -1989,7 +1995,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             {
                 Template = (props, part) => HGrid(_ => new(columnDefinitions: new([HgLen.Star(), HgLen.Auto]))
                 {
-                    [(0, 0)] = part.ContentPresenter(HScrollContentPresenter(presenterProps =>
+                    [row: 0, column: 0] = part.ContentPresenter(HScrollContentPresenter(presenterProps =>
                         new HScrollContentPresenterArgs(isScrollInertiaEnabled: props.IsScrollInertiaEnabled,
                             horizontalSnapPointsType: props.HorizontalSnapPointsType,
                             verticalSnapPointsType: props.VerticalSnapPointsType,
@@ -2004,7 +2010,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 viewport: presenterProps.Viewport,
                                 extent: presenterProps.Extent
                             )))),
-                    [(0, 1)] = part.VerticalScrollBar(HScrollBar(scrollBarProps =>
+                    [row: 0, column: 1] = part.VerticalScrollBar(HScrollBar(scrollBarProps =>
                         new(strStyle: "w-2 h-full vertical rounded")
                         {
                             Template = scrollBarPart =>
@@ -2205,7 +2211,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 return builder.Build();
             }).ToArray();
 
-            var tickStyles = Enumerable.Range(0, 59).Select(n =>
+            var tickStyles = Enumerable.Range(0, 60).Select(n =>
             {
                 var isFiveTime = n % 5 == 0;
                 var width = isFiveTime ? 4 : 2;
@@ -2247,7 +2253,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 HText(new(() => currentTime.RxValue.ToString("yyyy-MM-dd HH:mm:ss")),
                     strStyle: "mx-auto my-auto mt-60 text-base fg-coffee-500"),
                 HBorder(strStyle: "mx-auto my-auto bg-coffee-700 origin-center",
-                    style: new(width: 10, height: size / 4,
+                    style: new(width: 10, height: size / 3.5,
                         renderTransform: HandTransform(-size * 0.075,
                             () => 2 * Math.PI * (currentTime.RxValue.Hour * 3600 + currentTime.RxValue.Minute * 60 +
                                                  currentTime.RxValue.Second) / 43200))
@@ -2333,7 +2339,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             strStyle: "w-full h-full gap-4")
         {
             // Left Category Sidebar – Manual implementation without HListBox
-            [(0, 0)] =
+            [row: 0, column: 0] =
                 ForEach<DemoCategory>(new(categoriesSignal)
                 {
                     ItemsPanel =
@@ -2352,15 +2358,15 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                         ) // HButton
                     // ForEach<DemoCategory>.ItemTemplate
                 }), // ForEach<DemoCategory>
-            // [(0, 0)]
+            // [row: 0, column: 0]
 
             // Right Main Content Area (unchanged)
-            [(0, 1)] = HGrid(_ => new(
+            [row: 0, column: 1] = HGrid(_ => new(
                 rowDefinitions: new([HgLen.Auto, HgLen.Star()]),
                 strStyle: "gap-4 h-full")
             {
                 // Top Demo Button Grid
-                [(0, 0)] =
+                [row: 0, column: 2] =
                     ForEach<DemoView>(new(new(() => selectedCategory.RxValue.Demos))
                     {
                         ItemsPanel = HUniformGrid(_ => new(
@@ -2378,10 +2384,10 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                             ) // HButton
                         // ForEach<DemoView>.ItemTemplate
                     }), // ForEach<DemoView>
-                // [(0, 0)]
+                // [row: 0, column: 2]
 
                 // Bottom Demo Render Viewport (unchanged)
-                [(1, 0)] =
+                [row: 1, column: 0] =
                     HScrollViewer(new(strStyle: "w-full max-h-125")
                     {
                         Switch<DemoView>(new(currentView)
@@ -2448,7 +2454,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                                 strStyle: "fg-gray-400 text-center p-16 text-lg")
                         }) // Switch<DemoView>
                     }) // HScrollViewer
-                // [(1, 0)]
+                // [row: 1, column: 0]
             }) // // HGird
         }); // HGird
     }
@@ -2471,7 +2477,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 HPanel(_ => new(strStyle: "w-full h-full")
                 {
                     MainNavDemo(),
-                    HBorder(new(strStyle: lockStyle))
+                    HBorder(strStyle: lockStyle)
                 }) // HPanel
             }); // RootElement
         });

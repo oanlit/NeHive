@@ -6,7 +6,6 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Controls.Primitives;
 using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.State;
@@ -144,12 +143,13 @@ public class HButtonArgs(
     Accessor<string>? text = null,
     Accessor<ClickMode>? clickMode = null,
     Accessor<KeyGesture>? hotKey = null,
-    Accessor<bool>? isEnabled = null,
     Accessor<bool>? isDefault = null,
     Accessor<bool>? isCancel = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    Action<RoutedEventArgs>? onClick = null) : ISingleChildrenArgs
+    Action<RoutedEventArgs>? onClick = null,
+    BaseComponentInteraction? baseInteraction = null
+) : BaseComponentArgs(strStyle, style, baseInteraction), ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
 
@@ -158,16 +158,10 @@ public class HButtonArgs(
     public readonly Accessor<ClickMode>? ClickMode = clickMode;
     public readonly Accessor<KeyGesture>? HotKey = hotKey;
 
-    public readonly Accessor<bool>? IsEnabled = isEnabled;
     public readonly Accessor<bool>? IsDefault = isDefault;
     public readonly Accessor<bool>? IsCancel = isCancel;
 
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle, HButtonStyle.DefaultStyleSet);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
-
     public readonly Action<RoutedEventArgs>? OnClick = onClick;
-
-    public List<IElement<Popup>>? Popups { internal get; init; }
 
     public IEnumerator<IElement> GetEnumerator()
         => _children.GetEnumerator();
@@ -187,145 +181,151 @@ public static partial class BaseComponent
         Accessor<string>? text = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
-        Accessor<bool>? isEnabled = null,
         Accessor<bool>? isDefault = null,
         Accessor<bool>? isCancel = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         Action<RoutedEventArgs>? onClick = null
-    ) => HButton(_ =>
-        new HButtonArgs(text, clickMode, hotKey, isEnabled, isDefault, isCancel, strStyle, style, onClick));
+    ) => HButton(out _, _ =>
+        new HButtonArgs(text, clickMode, hotKey, isDefault, isCancel, strStyle, style, onClick));
 
     public static IElement<Button> HButton(
-        out Button exp,
+        out Button expose,
         Accessor<string>? text = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
-        Accessor<bool>? isEnabled = null,
         Accessor<bool>? isDefault = null,
         Accessor<bool>? isCancel = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         Action<RoutedEventArgs>? onClick = null
-    ) => HButton(out exp, _ =>
-        new HButtonArgs(text, clickMode, hotKey, isEnabled, isDefault, isCancel, strStyle, style, onClick));
-
-    public static IElement<Button> HButton(
-        out Button exp,
-        Func<HButtonProps, HButtonArgs> fn)
-    {
-        var button = new Button();
-        exp = button;
-        return Element<Button>.WithScope(uiScope =>
-        {
-            var border = new Border();
-
-            var props = new HButtonProps(uiScope, border, button);
-            var args = fn(props);
-
-            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
-            {
-                PriorityStyle = args.Style,
-                StrVariants = args.StrStyle.Value.Variants
-            };
-
-            if (args.Count() is 0)
-            {
-                var textBlock = new TextBlock();
-
-                border.Child = textBlock;
-
-                state.ApplyAccessorStyle(args.StrStyle, textBlock, border,
-                    (styleValue, _, bord) => ApplyTextStyle(styleValue, textBlock, bord));
-                state.ApplyVariantsStyle(textBlock, border,
-                    (styleValue, _, bord) => ApplyTextStyle(styleValue, textBlock, bord));
-
-                if (args.Text is not null)
-                {
-                    textBlock.Text = args.Text.Value;
-                    button.Content = args.Text.Value;
-                    if (args.Text.IsReactive)
-                        uiScope.CreateEffect(epoch =>
-                        {
-                            var t = epoch.Track(args.Text);
-                            textBlock.Text = t;
-                            button.Content = t;
-                        });
-                }
-            }
-            else
-            {
-                var content = ElementUtil.WrapSingleContainerContent(args).Content;
-                border.Child = content;
-
-                state.ApplyAccessorStyle(args.StrStyle, content, border, StyleUtil.ApplyStyle);
-                state.ApplyVariantsStyle(content, border, StyleUtil.ApplyStyle);
-            }
-
-            button.Template = new FuncControlTemplate((_, _) => border);
-
-            if (args.ClickMode is not null)
-            {
-                button.ClickMode = args.ClickMode.Value;
-                if (args.ClickMode.IsReactive)
-                    uiScope.CreateEffect(epoch => button.ClickMode = epoch.Track(args.ClickMode));
-            }
-
-            if (args.HotKey is not null)
-            {
-                button.HotKey = args.HotKey.Value;
-                if (args.HotKey.IsReactive)
-                    uiScope.CreateEffect(epoch => button.HotKey = epoch.Track(args.HotKey));
-            }
-
-            if (args.IsEnabled is not null)
-            {
-                button.IsEnabled = args.IsEnabled.Value;
-                if (args.IsEnabled.IsReactive)
-                    uiScope.CreateEffect(epoch => button.IsDefault = epoch.Track(args.IsEnabled));
-            }
-
-            if (args.IsDefault is not null)
-            {
-                button.IsDefault = args.IsDefault.Value;
-                if (args.IsDefault.IsReactive)
-                    uiScope.CreateEffect(epoch => button.IsDefault = epoch.Track(args.IsDefault));
-            }
-
-            if (args.IsCancel is not null)
-            {
-                button.IsCancel = args.IsCancel.Value;
-                if (args.IsCancel.IsReactive)
-                    uiScope.CreateEffect(epoch => button.IsCancel = epoch.Track(args.IsCancel));
-            }
-
-            if (args.Popups is not null)
-            {
-                ElementUtil.ApplyPopups(button, args.Popups);
-            }
-
-            if (args.OnClick is not null) button.Click += (_, e) => args.OnClick(e);
-
-            return (button, button);
-
-            void ApplyTextStyle(StyleSet styleValue, TextBlock tb, Border bord)
-            {
-                StyleUtil.ApplyStyle(styleValue, tb, bord);
-
-                if (styleValue.TextAlignment is not null) tb.TextAlignment = styleValue.TextAlignment.Value;
-                if (styleValue.VerticalTextAlignment is not null)
-                    border.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
-                if (styleValue.TextWrapping is not null) tb.TextWrapping = styleValue.TextWrapping.Value;
-                if (styleValue.Foreground is not null) tb.Foreground = styleValue.Foreground;
-
-                if (styleValue.FontSize is not null) tb.FontSize = styleValue.FontSize.Value;
-                if (styleValue.FontWeight is not null) tb.FontWeight = styleValue.FontWeight.Value;
-                if (styleValue.FontStyle is not null) tb.FontStyle = styleValue.FontStyle.Value;
-                if (styleValue.Foreground is not null) tb.Foreground = styleValue.Foreground;
-            }
-        });
-    }
+    ) => HButton(out expose, _ =>
+        new HButtonArgs(text, clickMode, hotKey, isDefault, isCancel, strStyle, style, onClick));
 
     public static IElement<Button> HButton(Func<HButtonProps, HButtonArgs> fn)
         => HButton(out _, fn);
+
+    public static IElement<Button> HButton(
+        out Button expose,
+        Func<HButtonProps, HButtonArgs> fn)
+    {
+        var button = new Button();
+        expose = button;
+        return Element<Button>.WithScope(uiScope =>
+        {
+            var border = new Border();
+            var props = new HButtonProps(uiScope, border, button);
+            var args = fn(props);
+            InternalButtonUtil.SetButtonEffectCore(uiScope, button, border, args);
+            button.Template = new FuncControlTemplate((_, _) => border);
+            return (button, button);
+        });
+    }
+}
+
+internal static partial class InternalButtonUtil
+{
+    internal static void SetButtonEffectCore(UiScope uiScope, Button button, Border border, HButtonArgs args)
+    {
+        var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
+        {
+            PriorityStyle = args.Style,
+            StrVariants = args.StrStyle.Value.Variants
+        };
+
+        if (args.Count() is 0)
+        {
+            var textBlock = new TextBlock();
+
+            border.Child = textBlock;
+
+            state.ApplyAccessorStyle(args.StrStyle, textBlock, border,
+                (styleValue, _, bord) => ApplyTextStyle(styleValue, textBlock, bord));
+            state.ApplyVariantsStyle(textBlock, border,
+                (styleValue, _, bord) => ApplyTextStyle(styleValue, textBlock, bord));
+
+            if (args.Text is not null)
+            {
+                textBlock.Text = args.Text.Value;
+                button.Content = args.Text.Value;
+                if (args.Text.IsReactive)
+                    uiScope.CreateEffect(epoch =>
+                    {
+                        var t = epoch.Track(args.Text);
+                        textBlock.Text = t;
+                        button.Content = t;
+                    });
+            }
+        }
+        else
+        {
+            var content = ElementUtil.WrapSingleContainerContent(args).Content;
+            border.Child = content;
+
+            state.ApplyAccessorStyle(args.StrStyle, content, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(content, border, StyleUtil.ApplyStyle);
+        }
+
+        if (args.ClickMode is not null)
+        {
+            button.ClickMode = args.ClickMode.Value;
+            if (args.ClickMode.IsReactive)
+                uiScope.CreateEffect(epoch => button.ClickMode = epoch.Track(args.ClickMode));
+        }
+
+        if (args.HotKey is not null)
+        {
+            button.HotKey = args.HotKey.Value;
+            if (args.HotKey.IsReactive)
+                uiScope.CreateEffect(epoch => button.HotKey = epoch.Track(args.HotKey));
+        }
+
+        if (args.IsDefault is not null)
+        {
+            button.IsDefault = args.IsDefault.Value;
+            if (args.IsDefault.IsReactive)
+                uiScope.CreateEffect(epoch => button.IsDefault = epoch.Track(args.IsDefault));
+        }
+
+        if (args.IsCancel is not null)
+        {
+            button.IsCancel = args.IsCancel.Value;
+            if (args.IsCancel.IsReactive)
+                uiScope.CreateEffect(epoch => button.IsCancel = epoch.Track(args.IsCancel));
+        }
+
+        if (args.Popups is not null)
+            ElementUtil.ApplyPopups(button, args.Popups);
+
+        args.BaseInteraction?.ApplyInteractions(uiScope, button);
+
+        if (args.OnClick is not null)
+        {
+            button.Click += ClickHandler;
+            uiScope.OnCleanup += () => button.Click -= ClickHandler;
+        }
+
+        return;
+
+        void ApplyTextStyle(StyleSet styleValue, TextBlock tb, Border bord)
+        {
+            StyleUtil.ApplyStyle(styleValue, tb, bord);
+
+            if (styleValue.TextAlignment is not null) tb.TextAlignment = styleValue.TextAlignment.Value;
+            if (styleValue.VerticalTextAlignment is not null)
+                border.VerticalAlignment = styleValue.VerticalTextAlignment.Value;
+            if (styleValue.TextWrapping is not null) tb.TextWrapping = styleValue.TextWrapping.Value;
+            if (styleValue.Foreground is not null) tb.Foreground = styleValue.Foreground;
+
+            if (styleValue.FontSize is not null) tb.FontSize = styleValue.FontSize.Value;
+            if (styleValue.FontWeight is not null) tb.FontWeight = styleValue.FontWeight.Value;
+            if (styleValue.FontStyle is not null) tb.FontStyle = styleValue.FontStyle.Value;
+            if (styleValue.Foreground is not null) tb.Foreground = styleValue.Foreground;
+        }
+
+        void ClickHandler(object? _, RoutedEventArgs e)
+        {
+            args.OnClick!(e);
+        }
+    }
 }

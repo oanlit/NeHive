@@ -12,47 +12,48 @@ public static partial class BaseComponent
     {
         return Element<StackPanel>.WithScope(uiScope =>
         {
-            var stack = new StackPanel();
+            var panel = new StackPanel();
             var border = new Border
             {
-                Child = stack
+                Child = panel
             };
 
-            var props = new HPanelProps(uiScope, border, stack);
+            var props = new HPanelProps(uiScope, border, panel);
             var args = fn(props);
 
             foreach (var child in args)
-                stack.Children.Add(child.Content);
+                panel.Children.Add(child.Content);
 
             var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
+                PriorityStyle = args.Style,
                 StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(args.StrStyle, stack, border, ApplyStyle);
-            state.ApplyVariantsStyle(stack, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, panel, border, ApplyStyle);
+            state.ApplyVariantsStyle(panel, border, ApplyStyle);
             
+            if (args.BaseInteraction is not null)
+                args.BaseInteraction.ApplyInteractions(uiScope, panel);
             if (args.Popups is not null)
-            {
                 ElementUtil.ApplyPopups(border, args.Popups);
-            }
 
-            return (stack, border);
+            return (panel, border);
 
             void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
             {
                 StyleUtil.ApplyStyle(styleValue, layout, bord);
 
                 var orientation = styleValue.Orientation ?? Orientation.Vertical;
-                stack.Orientation = orientation;
+                panel.Orientation = orientation;
 
                 switch (orientation)
                 {
                     case Orientation.Vertical:
-                        if (styleValue.GapY is not null) stack.Spacing = styleValue.GapY.Value;
+                        if (styleValue.GapY is not null) panel.Spacing = styleValue.GapY.Value;
                         break;
                     case Orientation.Horizontal:
-                        if (styleValue.GapX is not null) stack.Spacing = styleValue.GapX.Value;
+                        if (styleValue.GapX is not null) panel.Spacing = styleValue.GapX.Value;
                         break;
                 }
             }

@@ -4,6 +4,7 @@ using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -25,17 +26,28 @@ public class HAbsoluteProps(Scope scope, Border border, Canvas canvas)
 
 public class HAbsoluteArgs(
     Accessor<string>? strStyle = null,
-    HStyle? style = null
-) : IEnumerable<KeyValuePair<AbsPosition, IElement>>
+    HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null
+) : BaseComponentArgs(strStyle, style, baseInteraction), IEnumerable<KeyValuePair<AbsPosition, IElement>>
 {
     private readonly Dictionary<AbsPosition, IElement> _children = new();
-
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public IElement this[AbsPosition key]
     {
         set => _children[key] = value;
+    }
+
+    public IElement this[
+        Accessor<double>? left = null,
+        Accessor<double>? top = null,
+        Accessor<double>? right = null,
+        Accessor<double>? bottom = null]
+    {
+        set
+        {
+            var key = new AbsPosition(left, top, right, bottom);
+            _children[key] = value;
+        }
     }
 
     public IEnumerator<KeyValuePair<AbsPosition, IElement>> GetEnumerator()
@@ -46,17 +58,30 @@ public class HAbsoluteArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement HAbsolute(Func<HAbsoluteProps,HAbsoluteArgs> fn)
-    {
-        return Element.WithScope(uiScope =>
-        {
-            var canvas = new Canvas();
+    public static IElement<Canvas> HAbsolute(Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null) =>
+        HAbsolute(out _, _ => new(strStyle, style, baseInteraction));
+    
+    public static IElement<Canvas> HAbsolute(out Canvas expose,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null) =>
+        HAbsolute(out expose, _ => new(strStyle, style, baseInteraction));
 
+    public static IElement<Canvas> HAbsolute(Func<HAbsoluteProps, HAbsoluteArgs> fn) => HAbsolute(out _, fn);
+
+    public static IElement<Canvas> HAbsolute(out Canvas expose, Func<HAbsoluteProps, HAbsoluteArgs> fn)
+    {
+        var canvas = new Canvas();
+        expose = canvas;
+        return Element<Canvas>.WithScope(uiScope =>
+        {
             var border = new Border
             {
                 Child = canvas
             };
-            
+
             var props = new HAbsoluteProps(uiScope, border, canvas);
             var args = fn(props);
 
@@ -68,6 +93,11 @@ public static partial class BaseComponent
 
             state.ApplyAccessorStyle(args.StrStyle, canvas, border, StyleUtil.ApplyStyle);
             state.ApplyVariantsStyle(canvas, border, StyleUtil.ApplyStyle);
+
+            args.BaseInteraction?.ApplyInteractions(uiScope, canvas);
+
+            if (args.Popups is not null)
+                ElementUtil.ApplyPopups(border, args.Popups);
 
             foreach (var (pos, element) in args)
             {
@@ -88,7 +118,7 @@ public static partial class BaseComponent
                 canvas.Children.Add(control);
             }
 
-            return border;
+            return (canvas, border);
 
             void SetPos(Control control, double? left, double? top, double? right, double? bottom)
             {

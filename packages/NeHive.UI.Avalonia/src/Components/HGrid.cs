@@ -5,12 +5,10 @@ using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
-// 位置参数元组别名，便于阅读
-using GridPosition = (int row, int column, int rowSpan, int colSpan);
-using SimpleGridPosition = (int row, int column);
 
 public readonly struct HgLen
 {
@@ -18,17 +16,21 @@ public readonly struct HgLen
 
     private HgLen(GridLength value) => Value = value;
 
-    // 隐式转换：从 GridLength 直接转换
     public static implicit operator HgLen(GridLength length) => new(length);
 
-    // 隐式转换：从数值（像素）转换
     public static implicit operator HgLen(int pixels) => new(new GridLength(pixels, GridUnitType.Pixel));
     public static implicit operator HgLen(double pixels) => new(new GridLength(pixels, GridUnitType.Pixel));
 
-    // 静态辅助方法（也可以放到单独的 Grid 类中）
     public static HgLen Auto => new(GridLength.Auto);
     public static HgLen Star(double value = 1) => new(new GridLength(value, GridUnitType.Star));
 }
+
+public record GridPosition(
+    Accessor<int>? Row = null,
+    Accessor<int>? Column= null,
+    Accessor<int>? RowSpan= null,
+    Accessor<int>? ColSpan= null
+);
 
 public class HGridProps(Scope scope, Border border, Grid grid) : BaseComponentProps(scope, border, grid);
 
@@ -37,39 +39,39 @@ public class HGridArgs(
     Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
     Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
     Accessor<string>? strStyle = null,
-    HStyle? style = null
-) : IEnumerable<(GridPosition?, IElement)>
+    HStyle? style = null,
+    BaseComponentInteraction? events = null
+) : BaseComponentArgs(strStyle, style, events), IEnumerable<(GridPosition, IElement)>
 {
-    private readonly List<(GridPosition? GridPos, IElement Element)> _children = [];
-    // private readonly Dictionary<GridPosition?, IElement> _children = new();
+    private readonly List<(GridPosition GridPos, IElement Element)> _children = [];
 
     public readonly Accessor<bool>? ShowGridLines = showGridLines;
     public readonly Accessor<IReadOnlyList<HgLen>>? RowDefinitions = rowDefinitions;
     public readonly Accessor<IReadOnlyList<HgLen>>? ColumnDefinitions = columnDefinitions;
-
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public IElement this[GridPosition key]
     {
         set => _children.Add((key, value));
     }
 
-    public IElement this[SimpleGridPosition key]
+    public IElement this[Accessor<int>? row = null,
+        Accessor<int>? column = null,
+        Accessor<int>? rowSpan = null,
+        Accessor<int>? colSpan = null]
     {
         set
         {
-            GridPosition pos = (key.row, key.column, 1, 1);
-            _children.Add((pos, value));
+            var key = new GridPosition(row, column, rowSpan, colSpan);
+            _children.Add((key, value));
         }
     }
 
     public void Add(IElement element)
     {
-        _children.Add((null, element));
+        _children.Add((new(), element));
     }
 
-    public IEnumerator<(GridPosition?, IElement)> GetEnumerator()
+    public IEnumerator<(GridPosition, IElement)> GetEnumerator()
         => _children.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -100,14 +102,17 @@ public static partial class BaseComponent
             state.ApplyAccessorStyle(args.StrStyle, grid, border, ApplyStyle);
             state.ApplyVariantsStyle(grid, border, ApplyStyle);
 
+            if (args.BaseInteraction is not null)
+                args.BaseInteraction.ApplyInteractions(uiScope, grid);
+            if (args.Popups is not null)
+                ElementUtil.ApplyPopups(border, args.Popups);
+
             var showGridLines = args.ShowGridLines;
             if (showGridLines is not null)
             {
                 grid.ShowGridLines = showGridLines.Value;
                 if (showGridLines.IsReactive)
-                {
-                    uiScope.CreateEffect(epochScope => { grid.ShowGridLines = epochScope.Track(showGridLines); });
-                }
+                    uiScope.CreateEffect(epoch => grid.ShowGridLines = epoch.Track(showGridLines));
             }
 
             var rowDefinitions = args.RowDefinitions;
@@ -115,9 +120,7 @@ public static partial class BaseComponent
             {
                 ApplyRowDefinitions(rowDefinitions.Value);
                 if (rowDefinitions.IsReactive)
-                {
-                    uiScope.CreateEffect(epochScope => { ApplyRowDefinitions(epochScope.Track(rowDefinitions)); });
-                }
+                    uiScope.CreateEffect(epoch => ApplyRowDefinitions(epoch.Track(rowDefinitions)));
             }
 
             var columnDefinitions = args.ColumnDefinitions;
@@ -125,21 +128,23 @@ public static partial class BaseComponent
             {
                 ApplyColumnDefinitions(columnDefinitions.Value);
                 if (columnDefinitions.IsReactive)
-                {
-                    uiScope.CreateEffect(epochScope => { ApplyRowDefinitions(epochScope.Track(columnDefinitions)); });
-                }
+                    uiScope.CreateEffect(epoch => ApplyRowDefinitions(epoch.Track(columnDefinitions)));
             }
 
-            foreach (var (position, childElement) in args)
+            foreach (var (pos, childElement) in args)
             {
                 var child = childElement.Content;
-                if (position is not null)
-                {
-                    Grid.SetRow(child, position.Value.row);
-                    Grid.SetColumn(child, position.Value.column);
-                    Grid.SetRowSpan(child, position.Value.rowSpan);
-                    Grid.SetColumnSpan(child, position.Value.colSpan);
-                }
+                SetPos(child, pos.Row?.Value, pos.Column?.Value, pos.RowSpan?.Value, pos.ColSpan?.Value);
+                if (pos.Row?.IsReactive is true ||
+                    pos.Column?.IsReactive is true ||
+                    pos.RowSpan?.IsReactive is true ||
+                    pos.ColSpan?.IsReactive is true
+                   )
+                    uiScope.CreateEffect(() =>
+                    {
+                        SetPos(child, pos.Row?.RxValue, pos.Column?.RxValue, pos.RowSpan?.RxValue,
+                            pos.ColSpan?.RxValue);
+                    });
 
                 grid.Children.Add(child);
             }
@@ -183,6 +188,14 @@ public static partial class BaseComponent
                 grid.RowDefinitions.Clear();
                 foreach (var len in lens)
                     grid.RowDefinitions.Add(new RowDefinition(len.Value));
+            }
+
+            void SetPos(Control control, int? row, int? column, int? rowSpan, int? colSpan)
+            {
+                if (row is not null) Grid.SetRow(control, row.Value);
+                if (column is not null) Grid.SetColumn(control, column.Value);
+                if (rowSpan is not null) Grid.SetRowSpan(control, rowSpan.Value);
+                if (colSpan is not null) Grid.SetColumnSpan(control, colSpan.Value);
             }
         });
     }
