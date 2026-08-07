@@ -48,7 +48,7 @@ public class Element : IElement
         return new Border { Child = content };
     }
 
-    public void OnDisposeContent()
+    private void OnDisposeContent()
     {
         var control = Content;
         Scope?.OnCleanup += () =>
@@ -65,7 +65,7 @@ public class Element : IElement
                         contentControl.Content = null;
                     break;
 
-                case Decorator decorator: // 比如 Border
+                case Decorator decorator:
                     if (decorator.Child == control)
                         decorator.Child = null;
                     break;

@@ -1,55 +1,35 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
 
 public class HRepeatButtonProps(Scope scope, Border border, RepeatButton button) : HButtonProps(scope, border, button)
 {
-    public Signal<int> Interval
+    public MutSignal<int> Interval
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<int>(button.Interval);
-            field = sig;
-
-            Content.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
-
+            field = new MutSignal<int>(button.Interval);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, RepeatButton.IntervalProperty);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == RepeatButton.IntervalProperty)
-                    sig.RxValue = (int)args.NewValue!;
-            }
         }
     }
 
-    public Signal<int> Delay
+    public MutSignal<int> Delay
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<int>(button.Delay);
-            field = sig;
-
-            Content.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
-
+            field = new MutSignal<int>(button.Delay);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, RepeatButton.IntervalProperty);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == RepeatButton.DelayProperty)
-                    sig.RxValue = (int)args.NewValue!;
-            }
         }
     }
 }
@@ -58,15 +38,15 @@ public class HRepeatButtonArgs(
     Accessor<string>? text = null,
     Accessor<int>? interval = null,
     Accessor<int>? delay = null,
-    Accessor<ClickMode>? clickMode = null,
-    Accessor<KeyGesture>? hotKey = null,
     Accessor<bool>? isDefault = null,
     Accessor<bool>? isCancel = null,
+    Accessor<ClickMode>? clickMode = null,
+    Accessor<KeyGesture>? hotKey = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    Action<RoutedEventArgs>? onClick = null,
-    BaseComponentInteraction? baseInteraction = null) : HButtonArgs(text, clickMode, hotKey, isDefault,
-    isCancel, strStyle, style, onClick, baseInteraction)
+    BaseComponentInteraction? baseInteraction = null,
+    Action<RoutedEventArgs>? onClick = null
+) : HButtonArgs(text, isDefault, isCancel, clickMode, hotKey, strStyle, style, baseInteraction, onClick)
 {
     public readonly Accessor<int>? Interval = interval;
     public readonly Accessor<int>? Delay = delay;
@@ -74,43 +54,41 @@ public class HRepeatButtonArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement<RepeatButton> HRadioButton(
+    public static IElement<RepeatButton> HRepeatButton(
         Accessor<string>? text = null,
         Accessor<int>? interval = null,
         Accessor<int>? delay = null,
-        Accessor<ClickMode>? clickMode = null,
-        Accessor<KeyGesture>? hotKey = null,
         Accessor<bool>? isDefault = null,
         Accessor<bool>? isCancel = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
-        Action<RoutedEventArgs>? onClick = null,
-        BaseComponentInteraction? baseInteraction = null) =>
-        HRadioButton(out _,
-            _ => new(text, interval, delay, clickMode, hotKey, 
-                isDefault, isCancel, strStyle, style, onClick, baseInteraction));
-    
+        BaseComponentInteraction? baseInteraction = null,
+        Action<RoutedEventArgs>? onClick = null
+    ) => HRepeatButton(out _, _ => new(text, interval, delay, isDefault, isCancel,
+        clickMode, hotKey, strStyle, style, baseInteraction, onClick));
+
     public static IElement<RepeatButton> HRadioButton(
         out RepeatButton expose,
         Accessor<string>? text = null,
         Accessor<int>? interval = null,
         Accessor<int>? delay = null,
-        Accessor<ClickMode>? clickMode = null,
-        Accessor<KeyGesture>? hotKey = null,
         Accessor<bool>? isDefault = null,
         Accessor<bool>? isCancel = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
-        Action<RoutedEventArgs>? onClick = null,
-        BaseComponentInteraction? baseInteraction = null) =>
-        HRadioButton(out expose,
-            _ => new(text, interval, delay, clickMode, hotKey, 
-                isDefault, isCancel, strStyle, style, onClick, baseInteraction));
+        BaseComponentInteraction? baseInteraction = null,
+        Action<RoutedEventArgs>? onClick = null
+    ) => HRepeatButton(out expose, _ => new(text, interval, delay, isDefault, isCancel,
+        clickMode, hotKey, strStyle, style, baseInteraction, onClick));
 
-    public static IElement<RepeatButton> HRadioButton(Func<HRepeatButtonProps, HRepeatButtonArgs> fn) =>
-        HRadioButton(out _, fn);
+    public static IElement<RepeatButton> HRepeatButton(Func<HRepeatButtonProps, HRepeatButtonArgs> fn) =>
+        HRepeatButton(out _, fn);
 
-    public static IElement<RepeatButton> HRadioButton(out RepeatButton expose,
+    public static IElement<RepeatButton> HRepeatButton(out RepeatButton expose,
         Func<HRepeatButtonProps, HRepeatButtonArgs> fn)
     {
         var button = new RepeatButton();
@@ -128,6 +106,7 @@ public static partial class BaseComponent
                 if (args.Interval.IsReactive)
                     uiScope.CreateEffect(epoch => button.Interval = epoch.Track(args.Interval));
             }
+
             if (args.Delay is not null)
             {
                 button.Delay = args.Delay.Value;

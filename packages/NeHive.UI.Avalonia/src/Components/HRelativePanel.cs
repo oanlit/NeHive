@@ -29,11 +29,11 @@ public record RelativePosition(
 public class HRelativePanelArgs(
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    BaseComponentInteraction? events = null
-) : BaseComponentArgs(strStyle, style, events), IEnumerable<(RelativePosition?, IElement)>
+    BaseComponentInteraction? baseInteraction = null
+) : BaseComponentArgs(strStyle, style, baseInteraction), IEnumerable<(RelativePosition?, IElement)>
 {
     private readonly List<(RelativePosition?, IElement)> _children = [];
-    
+
     public IElement this[RelativePosition key]
     {
         set => _children.Add((key, value));
@@ -79,11 +79,29 @@ public class HRelativePanelArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement<RelativePanel> HRelativePanel(Func<HPanelProps, HRelativePanelArgs> fn)
+    public static IElement<RelativePanel> HRelativePanel(
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HRelativePanel(out _, _ => new(strStyle, style, baseInteraction));
+    
+    public static IElement<RelativePanel> HRelativePanel(
+        out RelativePanel expose,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HRelativePanel(out expose, _ => new(strStyle, style, baseInteraction));
+
+    public static IElement<RelativePanel> HRelativePanel(Func<HPanelProps, HRelativePanelArgs> fn
+    ) => HRelativePanel(out _, fn);
+
+    public static IElement<RelativePanel> HRelativePanel(out RelativePanel expose,
+        Func<HPanelProps, HRelativePanelArgs> fn)
     {
+        var panel = new RelativePanel();
+        expose = panel;
         return Element<RelativePanel>.WithScope(uiScope =>
         {
-            var panel = new RelativePanel();
             var border = new Border
             {
                 Child = panel
@@ -125,9 +143,11 @@ public static partial class BaseComponent
                     if (relative.AlignBottomWithPanel is not null)
                         RelativePanel.SetAlignBottomWithPanel(child.Content, relative.AlignBottomWithPanel.Value);
                     if (relative.AlignHorizontalCenterWithPanel is not null)
-                        RelativePanel.SetAlignHorizontalCenterWithPanel(child.Content, relative.AlignHorizontalCenterWithPanel.Value);
+                        RelativePanel.SetAlignHorizontalCenterWithPanel(child.Content,
+                            relative.AlignHorizontalCenterWithPanel.Value);
                     if (relative.AlignVerticalCenterWithPanel is not null)
-                        RelativePanel.SetAlignVerticalCenterWithPanel(child.Content, relative.AlignVerticalCenterWithPanel.Value);
+                        RelativePanel.SetAlignVerticalCenterWithPanel(child.Content,
+                            relative.AlignVerticalCenterWithPanel.Value);
                 }
 
                 panel.Children.Add(child.Content);

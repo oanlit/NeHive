@@ -19,19 +19,9 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Size>(scrollContentPresenter.Extent);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.ExtentProperty, scrollContentPresenter.Extent);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.ExtentProperty)
-                    sig.RxValue = (Size)args.NewValue!;
-            }
         }
     }
 
@@ -40,19 +30,9 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Size>(scrollContentPresenter.Viewport);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.ViewportProperty, scrollContentPresenter.Viewport);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.ViewportProperty)
-                    sig.RxValue = (Size)args.NewValue!;
-            }
         }
     }
 
@@ -61,19 +41,9 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Vector>(scrollContentPresenter.Offset);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.OffsetProperty, scrollContentPresenter.Offset);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.OffsetProperty)
-                    sig.RxValue = (Vector)args.NewValue!;
-            }
         }
     }
 
@@ -82,19 +52,9 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(scrollContentPresenter.IsScrollChainingEnabled);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.IsScrollChainingEnabledProperty, scrollContentPresenter.IsScrollChainingEnabled);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.IsScrollChainingEnabledProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
         }
     }
 
@@ -103,19 +63,10 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(ScrollViewer.GetIsScrollInertiaEnabled(scrollContentPresenter));
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollViewer.IsScrollInertiaEnabledProperty,
+                ScrollViewer.GetIsScrollInertiaEnabled(scrollContentPresenter));
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.IsScrollInertiaEnabledProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
         }
     }
 
@@ -124,19 +75,9 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(scrollContentPresenter.CanHorizontallyScroll);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.CanHorizontallyScrollProperty, scrollContentPresenter.CanHorizontallyScroll);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.CanHorizontallyScrollProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
         }
     }
 
@@ -145,40 +86,20 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(scrollContentPresenter.CanVerticallyScroll);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.CanVerticallyScrollProperty, scrollContentPresenter.CanVerticallyScroll);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.CanVerticallyScrollProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
         }
     }
 
-    public Signal<SnapPointsType>? HorizontalSnapPointsType
+    public Signal<SnapPointsType> HorizontalSnapPointsType
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<SnapPointsType>(scrollContentPresenter.HorizontalSnapPointsType);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.HorizontalSnapPointsTypeProperty, scrollContentPresenter.HorizontalSnapPointsType);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.HorizontalSnapPointsTypeProperty)
-                    sig.RxValue = (SnapPointsType)args.NewValue!;
-            }
         }
     }
 
@@ -187,19 +108,9 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<SnapPointsType>(scrollContentPresenter.VerticalSnapPointsType);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.VerticalSnapPointsTypeProperty, scrollContentPresenter.VerticalSnapPointsType);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.VerticalSnapPointsTypeProperty)
-                    sig.RxValue = (SnapPointsType)args.NewValue!;
-            }
         }
     }
 
@@ -208,19 +119,9 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<SnapPointsAlignment>(scrollContentPresenter.HorizontalSnapPointsAlignment);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.HorizontalSnapPointsAlignmentProperty, scrollContentPresenter.HorizontalSnapPointsAlignment);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.HorizontalSnapPointsAlignmentProperty)
-                    sig.RxValue = (SnapPointsAlignment)args.NewValue!;
-            }
         }
     }
 
@@ -229,19 +130,9 @@ public class HScrollContentPresenterProps(Scope scope, Border border, ScrollCont
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<SnapPointsAlignment>(scrollContentPresenter.VerticalSnapPointsAlignment);
-            field = sig;
-
-            scrollContentPresenter.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollContentPresenter.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollContentPresenter,
+                ScrollContentPresenter.VerticalSnapPointsAlignmentProperty, scrollContentPresenter.VerticalSnapPointsAlignment);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollContentPresenter.VerticalSnapPointsAlignmentProperty)
-                    sig.RxValue = (SnapPointsAlignment)args.NewValue!;
-            }
         }
     }
 }

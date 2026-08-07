@@ -1,49 +1,39 @@
 using System.Collections;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
 public class HDockPanelProps(Scope scope, Border border, DockPanel dockPanel)
     : BaseComponentProps(scope, border, dockPanel)
 {
-    public Signal<bool> LastChildFill
+    public MutSignal<bool> IsLastChildFill
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(dockPanel.LastChildFill);
-            field = sig;
-
-            dockPanel.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => dockPanel.PropertyChanged -= OnPropUpdate;
-
+            field = new MutSignal<bool>(dockPanel.LastChildFill);
+            BridgeAvalonia.BindPropertySignal(scope, field, dockPanel, DockPanel.LastChildFillProperty);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == DockPanel.LastChildFillProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
         }
     }
 }
 
 public class HDockPanelArgs(
-    Accessor<bool>? lastChildFill = null,
+    Accessor<bool>? isLastChildFill = null,
     Accessor<string>? strStyle = null,
-    HStyle? style = null
-) : IEnumerable<(Dock? Dock, IElement Element)>
+    HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null
+) : BaseComponentArgs(strStyle, style, baseInteraction), IEnumerable<(Dock? Dock, IElement Element)>
 {
     private readonly List<(Dock? Dock, IElement Element)> _children = [];
-    public readonly Accessor<bool> LastChildFill = lastChildFill ?? true;
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
+    public readonly Accessor<bool> LastChildFill = isLastChildFill ?? true;
 
     public IElement this[Dock? key]
     {
@@ -58,11 +48,29 @@ public class HDockPanelArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement<DockPanel> HDockPanel(Func<HDockPanelProps,HDockPanelArgs> fn)
+    public static IElement<DockPanel> HDockPanel(
+        Accessor<bool>? isLastChildFill = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HDockPanel(out _, _ => new(isLastChildFill, strStyle, style, baseInteraction));
+
+    public static IElement<DockPanel> HDockPanel(
+        out DockPanel expose,
+        Accessor<bool>? isLastChildFill = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HDockPanel(out expose, _ => new(isLastChildFill, strStyle, style, baseInteraction));
+
+    public static IElement<DockPanel> HDockPanel(Func<HDockPanelProps, HDockPanelArgs> fn) => HDockPanel(out _, fn);
+
+    public static IElement<DockPanel> HDockPanel(out DockPanel expose, Func<HDockPanelProps, HDockPanelArgs> fn)
     {
+        var dockPanel = new DockPanel();
+        expose = dockPanel;
         return Element<DockPanel>.WithScope(uiScope =>
         {
-            var dockPanel = new DockPanel();
             var border = new Border
             {
                 Child = dockPanel
@@ -79,6 +87,9 @@ public static partial class BaseComponent
 
             state.ApplyAccessorStyle(args.StrStyle, dockPanel, border, ApplyStyle);
             state.ApplyVariantsStyle(dockPanel, border, ApplyStyle);
+            args.BaseInteraction?.ApplyInteractions(uiScope, dockPanel);
+            if (args.Popups is not null)
+                ElementUtil.ApplyPopups(border, args.Popups);
 
             Control? lastItem = null;
             foreach (var (dock, element) in args)
@@ -99,6 +110,7 @@ public static partial class BaseComponent
             {
                 uiScope.CreateEffect(epoch => dockPanel.LastChildFill = epoch.Track(args.LastChildFill));
             }
+
             if (lastItem is not null) dockPanel.Children.Add(lastItem);
 
             return (dockPanel, border);

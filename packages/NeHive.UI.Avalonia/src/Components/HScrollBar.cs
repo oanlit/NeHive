@@ -1,10 +1,10 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
 using NeHive.UI.Avalonia.Utils;
@@ -25,111 +25,16 @@ public class HScrollBarPart
 }
 
 public class HScrollBarProps(Scope scope, Border border, ScrollBar scrollBar)
-    : BaseComponentProps(scope, border, scrollBar)
+    : HRangeBaseProps(scope, border, scrollBar)
 {
-    public MutSignal<double> Value
+    public Signal<bool> IsExpanded
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double>(scrollBar.Value);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-            scope.CreateEffect(epoch => scrollBar.Value = epoch.Pull(sig));
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollBar,
+                ScrollBar.IsExpandedProperty, scrollBar.IsExpanded);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == RangeBase.ValueProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<double> Minimum
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<double>(scrollBar.Minimum);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == RangeBase.MinimumProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<double> Maximum
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<double>(scrollBar.Maximum);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == RangeBase.MaximumProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<double> SmallChange
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<double>(scrollBar.SmallChange);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == RangeBase.SmallChangeProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<double> LargeChange
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<double>(scrollBar.LargeChange);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == RangeBase.LargeChangeProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
         }
     }
 
@@ -138,19 +43,12 @@ public class HScrollBarProps(Scope scope, Border border, ScrollBar scrollBar)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double>(scrollBar.ViewportSize);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollBar,
+                ScrollBar.ViewportSizeProperty, scrollBar.ViewportSize);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollBar.ViewportSizeProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
+            // field = new MutSignal<double>(scrollBar.ViewportSize);
+            // BridgeAvalonia.BindPropertySignal(scope, field, scrollBar, ScrollBar.ViewportSizeProperty);
+            // return field;
         }
     }
 
@@ -159,19 +57,12 @@ public class HScrollBarProps(Scope scope, Border border, ScrollBar scrollBar)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(scrollBar.AllowAutoHide);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollBar,
+                ScrollBar.AllowAutoHideProperty, scrollBar.AllowAutoHide);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollBar.AllowAutoHideProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
+            // field = new MutSignal<bool>(scrollBar.AllowAutoHide);
+            // BridgeAvalonia.BindPropertySignal(scope, field, scrollBar, ScrollBar.AllowAutoHideProperty);
+            // return field;
         }
     }
 
@@ -180,19 +71,12 @@ public class HScrollBarProps(Scope scope, Border border, ScrollBar scrollBar)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(ScrollViewer.GetIsDeferredScrollingEnabled(scrollBar));
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollBar,
+                ScrollViewer.IsDeferredScrollingEnabledProperty, ScrollViewer.GetIsDeferredScrollingEnabled(scrollBar));
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.IsDeferredScrollingEnabledProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
+            // field = new MutSignal<bool>(ScrollViewer.GetIsDeferredScrollingEnabled(scrollBar));
+            // BridgeAvalonia.BindPropertySignal(scope, field, scrollBar, ScrollViewer.IsDeferredScrollingEnabledProperty);
+            // return field;
         }
     }
 
@@ -201,19 +85,12 @@ public class HScrollBarProps(Scope scope, Border border, ScrollBar scrollBar)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<ScrollBarVisibility>(scrollBar.Visibility);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollBar,
+                ScrollBar.VisibilityProperty, scrollBar.Visibility);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollBar.VisibilityProperty)
-                    sig.RxValue = (ScrollBarVisibility)args.NewValue!;
-            }
+            // field = new MutSignal<ScrollBarVisibility>(scrollBar.Visibility);
+            // BridgeAvalonia.BindPropertySignal(scope, field, scrollBar, ScrollBar.VisibilityProperty);
+            // return field;
         }
     }
 
@@ -222,19 +99,12 @@ public class HScrollBarProps(Scope scope, Border border, ScrollBar scrollBar)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<TimeSpan>(scrollBar.HideDelay);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollBar,
+                ScrollBar.HideDelayProperty, scrollBar.HideDelay);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollBar.HideDelayProperty)
-                    sig.RxValue = (TimeSpan)args.NewValue!;
-            }
+            // field = new MutSignal<TimeSpan>(scrollBar.HideDelay);
+            // BridgeAvalonia.BindPropertySignal(scope, field, scrollBar, ScrollBar.HideDelayProperty);
+            // return field;
         }
     }
 
@@ -243,19 +113,12 @@ public class HScrollBarProps(Scope scope, Border border, ScrollBar scrollBar)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<TimeSpan>(scrollBar.ShowDelay);
-            field = sig;
-
-            scrollBar.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollBar.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollBar,
+                ScrollBar.ShowDelayProperty, scrollBar.ShowDelay);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollBar.ShowDelayProperty)
-                    sig.RxValue = (TimeSpan)args.NewValue!;
-            }
+            // field = new MutSignal<TimeSpan>(scrollBar.ShowDelay);
+            // BridgeAvalonia.BindPropertySignal(scope, field, scrollBar, ScrollBar.ShowDelayProperty);
+            // return field;
         }
     }
 }
@@ -275,16 +138,12 @@ public class HScrollBarArgs(
     Accessor<TimeSpan>? hideDelay = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null,
     Action<RangeBaseValueChangedEventArgs>? onValueChanged = null,
-    Action<ScrollEventArgs>? onScroll = null)
+    Action<ScrollEventArgs>? onScroll = null
+) : HRangeBaseArgs(value, bindValue, minimum, maximum, smallChange,
+    largeChange, strStyle, style, baseInteraction, onValueChanged)
 {
-    public readonly Accessor<double>? Value = bindValue ?? value;
-    public readonly MutSignal<double>? BindValue = bindValue;
-
-    public readonly Accessor<double>? Minimum = minimum;
-    public readonly Accessor<double>? Maximum = maximum;
-    public readonly Accessor<double>? SmallChange = smallChange;
-    public readonly Accessor<double>? LargeChange = largeChange;
     public readonly Accessor<double>? ViewportSize = viewportSize;
 
     public readonly Accessor<bool>? IsAllowAutoHide = isAllowAutoHide;
@@ -292,11 +151,6 @@ public class HScrollBarArgs(
     public readonly Accessor<ScrollBarVisibility>? Visibility = visibility;
     public readonly Accessor<TimeSpan>? HideDelay = hideDelay;
     public readonly Accessor<TimeSpan>? ShowDelay = showDelay;
-
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
-
-    public readonly Action<RangeBaseValueChangedEventArgs>? OnValueChanged = onValueChanged;
     public readonly Action<ScrollEventArgs>? OnScroll = onScroll;
 
     public Func<HScrollBarPart, IElement>? Template { get; init; }
@@ -323,8 +177,7 @@ public static partial class BaseComponent
             state.ApplyAccessorStyle(args.StrStyle, scrollBar, border, ApplyStyle);
             state.ApplyVariantsStyle(scrollBar, border, ApplyStyle);
 
-            RangeBaseUtil.BindAccessor(uiScope, scrollBar, args.Value, args.BindValue, args.Minimum, args.Maximum,
-                args.SmallChange, args.LargeChange, args.OnValueChanged);
+            RangeBaseUtil.BindAccessor(uiScope, scrollBar, args);
 
             if (args.IsAllowAutoHide is not null)
             {

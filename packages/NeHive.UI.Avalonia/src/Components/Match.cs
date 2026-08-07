@@ -7,7 +7,13 @@ namespace NeHive.UI.Avalonia.Components;
 public struct MatchProp<T>(Accessor<T> key) where T : notnull
 {
     public readonly Accessor<T> Key = key;
-    public required Dictionary<Func<T, bool>, Func<IElement>> Cases { get; init; }
+    internal readonly Dictionary<Func<T, bool>, Func<IElement>> Cases = new();
+
+    public Func<IElement> this[Func<T, bool> key]
+    {
+        set => Cases[key] = value;
+    }
+
     public Func<IElement>? Default { get; init; }
 }
 

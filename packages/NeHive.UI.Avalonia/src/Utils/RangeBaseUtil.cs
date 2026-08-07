@@ -1,66 +1,58 @@
 using Avalonia.Controls.Primitives;
-
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Components;
+using NeHive.UI.Avalonia.Objects;
 
 namespace NeHive.UI.Avalonia.Utils;
 
 public static class RangeBaseUtil
 {
-    public static void BindAccessor(UiScope uiScope,
-        RangeBase range, 
-        Accessor<double>? value = null,
-        MutSignal<double>? bindValue = null,
-        Accessor<double>? minimum = null,
-        Accessor<double>? maximum = null,
-        Accessor<double>? smallChange = null,
-        Accessor<double>? largeChange = null,
-        Action<RangeBaseValueChangedEventArgs>? onValueChanged = null)
+    public static void BindAccessor(UiScope uiScope, RangeBase range, HRangeBaseArgs args)
     {
-        if (bindValue is not null)
+        if (args.BindValue is not null)
+            BridgeAvalonia.BindPropertySignal(uiScope, args.BindValue, range, RangeBase.ValueProperty, true);
+        else if (args.Value is not null)
         {
-            uiScope.CreateEffect(epoch => range.Value = epoch.Pull(bindValue));
-            range.PropertyChanged += (_, e) =>
-            {
-                if (e.Property != RangeBase.ValueProperty) return;
-                var newVal = range.Value;
-                if (Math.Abs(newVal - bindValue.RxValue) > 0.0001)
-                    bindValue.RxValue = newVal;
-            };
-        }
-        else if (value is not null)
-        {
-            uiScope.CreateEffect(epoch => range.Value = epoch.Track(value));
+            range.Value = args.Value.Value;
+            if (args.Value.IsReactive)
+                uiScope.CreateEffect(epoch => range.Value = epoch.Track(args.Value));
         }
 
-        if(onValueChanged is not null)
-            range.ValueChanged += (_, e) => onValueChanged(e);
+        if (args.OnValueChanged is not null)
+        {
+            uiScope.AddHandler<EventHandler<RangeBaseValueChangedEventArgs>>(
+                add: h => range.ValueChanged += h,
+                remove: h => range.ValueChanged -= h,
+                handler: (_, e) => args.OnValueChanged(e)
+            );
+        }
 
-        if (minimum is not null)
+        if (args.Minimum is not null)
         {
-            range.Minimum = minimum.Value;
-            if (minimum.IsReactive)
-                uiScope.CreateEffect(epoch => range.Minimum = epoch.Track(minimum));
+            range.Minimum = args.Minimum.Value;
+            if (args.Minimum.IsReactive)
+                uiScope.CreateEffect(epoch => range.Minimum = epoch.Track(args.Minimum));
         }
-        
-        if (maximum is not null)
+
+        if (args.Maximum is not null)
         {
-            range.Maximum = maximum.Value;
-            if (maximum.IsReactive)
-                uiScope.CreateEffect(epoch => range.Maximum = epoch.Track(maximum));
+            range.Maximum = args.Maximum.Value;
+            if (args.Maximum.IsReactive)
+                uiScope.CreateEffect(epoch => range.Maximum = epoch.Track(args.Maximum));
         }
-        
-        if (smallChange is not null)
+
+        if (args.SmallChange is not null)
         {
-            range.SmallChange = smallChange.Value;
-            if (smallChange.IsReactive)
-                uiScope.CreateEffect(epoch => range.SmallChange = epoch.Track(smallChange));
+            range.SmallChange = args.SmallChange.Value;
+            if (args.SmallChange.IsReactive)
+                uiScope.CreateEffect(epoch => range.SmallChange = epoch.Track(args.SmallChange));
         }
-        
-        if (largeChange is not null)
+
+        if (args.LargeChange is not null)
         {
-            range.LargeChange = largeChange.Value;
-            if (largeChange.IsReactive)
-                uiScope.CreateEffect(epoch => range.LargeChange = epoch.Track(largeChange));
+            range.LargeChange = args.LargeChange.Value;
+            if (args.LargeChange.IsReactive)
+                uiScope.CreateEffect(epoch => range.LargeChange = epoch.Track(args.LargeChange));
         }
     }
 }

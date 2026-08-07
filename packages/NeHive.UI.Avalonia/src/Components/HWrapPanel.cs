@@ -6,6 +6,7 @@ using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -32,7 +33,7 @@ public class HWrapPanelProps(Scope scope, Border border, WrapPanel wrapPanel)
             }
         }
     }
-    
+
     public Signal<double> ItemHeight
     {
         get
@@ -53,7 +54,7 @@ public class HWrapPanelProps(Scope scope, Border border, WrapPanel wrapPanel)
             }
         }
     }
-    
+
     public Signal<WrapPanelItemsAlignment> ItemsAlignment
     {
         get
@@ -76,23 +77,20 @@ public class HWrapPanelProps(Scope scope, Border border, WrapPanel wrapPanel)
     }
 }
 
-public class HWrapPanelArgs : IEnumerable<IElement>
+public class HWrapPanelArgs : HPanelArgs
 {
-    private readonly List<IElement> _children = [];
-
     public readonly Accessor<double>? ItemWidth;
     public readonly Accessor<double>? ItemHeight;
     public readonly Accessor<WrapPanelItemsAlignment>? ItemsAlignment;
-    public readonly Accessor<FullStyle> StrStyle;
-    public readonly Signal<StyleSet>? Style;
 
     public HWrapPanelArgs(
         Accessor<double>? itemWidth = null,
         Accessor<double>? itemHeight = null,
         Accessor<WrapPanelItemsAlignment>? itemsAlignment = null,
         Accessor<string>? strStyle = null,
-        HStyle? style = null
-    )
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) : base(style: style, baseInteraction: baseInteraction)
     {
         ItemWidth = itemWidth;
         ItemHeight = itemHeight;
@@ -100,30 +98,47 @@ public class HWrapPanelArgs : IEnumerable<IElement>
 
         var baseStyle = StyleUtil.FromDefault();
         baseStyle.Orientation = Orientation.Horizontal;
-
-        StrStyle = StyleParser.ParseFull(strStyle);
-        Style = style is null ? null : StyleUtil.HStyle2Signal(style);
+        StrStyle = StyleParser.ParseFull(strStyle, baseStyle);
     }
-
-    public void Add(IElement element) => _children.Add(element);
-
-    public IEnumerator<IElement> GetEnumerator() => _children.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
 public static partial class BaseComponent
 {
-    public static IElement<WrapPanel> HWrapPanel(Func<HWrapPanelProps,HWrapPanelArgs> fn)
+    public static IElement<WrapPanel> HWrapPanel(
+        Accessor<double>? itemWidth = null,
+        Accessor<double>? itemHeight = null,
+        Accessor<WrapPanelItemsAlignment>? itemsAlignment = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HWrapPanel(out _, _ => new(itemWidth, itemHeight, itemsAlignment,
+        strStyle, style, baseInteraction));
+
+    public static IElement<WrapPanel> HWrapPanel(
+        out WrapPanel expose,
+        Accessor<double>? itemWidth = null,
+        Accessor<double>? itemHeight = null,
+        Accessor<WrapPanelItemsAlignment>? itemsAlignment = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HWrapPanel(out expose, _ => new(itemWidth, itemHeight, itemsAlignment,
+        strStyle, style, baseInteraction));
+
+    public static IElement<WrapPanel> HWrapPanel(Func<HWrapPanelProps, HWrapPanelArgs> fn) => HWrapPanel(out _, fn);
+
+    public static IElement<WrapPanel> HWrapPanel(out WrapPanel expose, Func<HWrapPanelProps, HWrapPanelArgs> fn)
     {
+        var wrapPanel = new WrapPanel();
+        expose = wrapPanel;
         return Element<WrapPanel>.WithScope(uiScope =>
         {
-            var wrapPanel = new WrapPanel();
             var border = new Border
             {
                 Child = wrapPanel
             };
-            
-            var props = new HWrapPanelProps(uiScope, border,wrapPanel);
+
+            var props = new HWrapPanelProps(uiScope, border, wrapPanel);
             var args = fn(props);
 
             var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
@@ -134,6 +149,10 @@ public static partial class BaseComponent
 
             state.ApplyAccessorStyle(args.StrStyle, wrapPanel, border, ApplyStyle);
             state.ApplyVariantsStyle(wrapPanel, border, ApplyStyle);
+
+            args.BaseInteraction?.ApplyInteractions(uiScope, wrapPanel);
+            if (args.Popups is not null)
+                ElementUtil.ApplyPopups(border, args.Popups);
 
             if (args.ItemWidth is not null)
             {
@@ -152,7 +171,7 @@ public static partial class BaseComponent
                     wrapPanel.ItemHeight = itemHeight;
                 });
             }
-            
+
             if (args.ItemsAlignment is not null)
             {
                 uiScope.CreateEffect(scope =>

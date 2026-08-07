@@ -1,91 +1,89 @@
 using System.Collections;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
+public class HToggleSwitchProps(Scope scope, Border border, ToggleSwitch button)
+    : HToggleButtonProps(scope, border, button);
+
 public class HToggleSwitchArgs(
+    Accessor<string>? text = null,
     Accessor<bool?>? isChecked = null,
     MutSignal<bool?>? bindIsChecked = null,
-    Accessor<bool>? isEnabled = null,
+    Accessor<bool>? isThreeState = null,
+    Accessor<bool>? isDefault = null,
+    Accessor<bool>? isCancel = null,
+    Accessor<ClickMode>? clickMode = null,
+    Accessor<KeyGesture>? hotKey = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    Action<bool?>? onCheckedChanged = null
-) : IEnumerable<IElement>
-{
-    private readonly List<IElement> _children = [];
-
-    public readonly MutSignal<bool?>? BindIsChecked = bindIsChecked;
-    public readonly Accessor<bool?>? IsChecked =  isChecked;
-    public readonly Accessor<bool>? IsEnabled =  isEnabled;
-    public readonly Action<bool?>? OnCheckedChanged =  onCheckedChanged;
-
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
-
-    public void Add(IElement element) => _children.Add(element);
-    public IEnumerator<IElement> GetEnumerator() => _children.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-}
+    BaseComponentInteraction? baseInteraction = null,
+    Action<RoutedEventArgs>? onClick = null,
+    Action<RoutedEventArgs>? onIsCheckedChanged = null
+) : HToggleButtonArgs(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel, clickMode, hotKey, strStyle,
+    style, baseInteraction, onClick, onIsCheckedChanged);
 
 public static partial class BaseComponent
 {
-    public static IElement<ToggleSwitch> HToggleSwitch(HToggleSwitchArgs args)
+    public static IElement<ToggleSwitch> HToggleSwitch(
+        Accessor<string>? text = null,
+        Accessor<bool?>? isChecked = null,
+        MutSignal<bool?>? bindIsChecked = null,
+        Accessor<bool>? isThreeState = null,
+        Accessor<bool>? isDefault = null,
+        Accessor<bool>? isCancel = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null,
+        Action<RoutedEventArgs>? onClick = null,
+        Action<RoutedEventArgs>? onIsCheckedChanged = null
+    ) => HToggleSwitch(out _, _ => new(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel, 
+        clickMode, hotKey, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
+    
+    public static IElement<ToggleSwitch> HToggleSwitch(
+        out ToggleSwitch expose,
+        Accessor<string>? text = null,
+        Accessor<bool?>? isChecked = null,
+        MutSignal<bool?>? bindIsChecked = null,
+        Accessor<bool>? isThreeState = null,
+        Accessor<bool>? isDefault = null,
+        Accessor<bool>? isCancel = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null,
+        Action<RoutedEventArgs>? onClick = null,
+        Action<RoutedEventArgs>? onIsCheckedChanged = null
+    ) => HToggleSwitch(out expose, _ => new(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel, 
+        clickMode, hotKey, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
+
+    public static IElement<ToggleSwitch> HToggleSwitch(Func<HToggleSwitchProps, HToggleSwitchArgs> fn) =>
+        HToggleSwitch(out _, fn);
+
+    public static IElement<ToggleSwitch> HToggleSwitch(
+        out ToggleSwitch expose,
+        Func<HToggleSwitchProps, HToggleSwitchArgs> fn)
     {
+        var toggle = new ToggleSwitch();
+        expose = toggle;
         return Element<ToggleSwitch>.WithScope(uiScope =>
         {
-            var toggle = new ToggleSwitch();
-            var border = new Border
-            {
-                Child = toggle
-            };
+            var border = new Border();
+            var props = new HToggleSwitchProps(uiScope, border, toggle);
+            var args = fn(props);
+            InternalButtonUtil.SetToggleButtonEffectCore(uiScope, toggle, border, args);
+            toggle.Content = border;
 
-            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
-            {
-                PriorityStyle = args.Style,
-                StrVariants = args.StrStyle.Value.Variants
-            };
-
-            state.ApplyAccessorStyle(args.StrStyle, toggle, border, StyleUtil.ApplyStyle);
-            state.ApplyVariantsStyle(toggle, border, StyleUtil.ApplyStyle);
-
-            // 启用状态
-            if (args.IsEnabled is not null)
-                uiScope.CreateEffect(() => toggle.IsEnabled = args.IsEnabled.RxValue);
-
-            // 双向绑定 BindIsChecked
-            if (args.BindIsChecked is not null)
-            {
-                uiScope.CreateEffect(epochScope => toggle.IsChecked = epochScope.Pull(args.BindIsChecked));
-                toggle.IsCheckedChanged += (_, _) =>
-                {
-                    var newValue = toggle.IsChecked == true;
-                    if (args.BindIsChecked.RxValue != newValue)
-                        args.BindIsChecked.RxValue = newValue;
-                    args.OnCheckedChanged?.Invoke(newValue);
-                };
-            }
-            else if (args.IsChecked is not null)
-            {
-                toggle.IsChecked = args.IsChecked.Value;
-                if (args.IsChecked.IsReactive)
-                    uiScope.CreateEffect(epochScope => toggle.IsChecked = epochScope.Track(args.IsChecked));
-
-                toggle.Click += (_, _) => args.OnCheckedChanged?.Invoke(toggle.IsChecked);
-            }
-            else if (args.OnCheckedChanged is not null)
-            {
-                toggle.IsCheckedChanged += (_, _) => args.OnCheckedChanged?.Invoke(toggle.IsChecked == true);
-            }
-
-            // 设置内容（通常是 TextBlock 或 StackPanel）
-            var firstChild = args.FirstOrDefault();
-            if (firstChild is not null)
-                toggle.Content = firstChild.Content;
-
-            return (toggle, border);
+            return (toggle, toggle);
         });
     }
 }

@@ -4,7 +4,7 @@ using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HContextProp(Action<IContextSetter> contextSetter) : ISingleChildrenArgs
+public class HContextArgs(Action<IContextSetter> contextSetter) : ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
     internal readonly Action<IContextSetter> ContextSetter = contextSetter;
@@ -23,12 +23,12 @@ public class HContextProp(Action<IContextSetter> contextSetter) : ISingleChildre
 
 public static partial class BaseComponent
 {
-    public static IElement HContext(HContextProp prop)
+    public static IElement HContext(HContextArgs args)
     {
         return Element.WithScope(uiScope =>
         {
-            prop.ContextSetter(uiScope);
-            return ElementUtil.WrapSingleContainerContent(prop);
+            args.ContextSetter(uiScope);
+            return ElementUtil.WrapSingleContainerContent(args);
         });
     }
 }

@@ -14,8 +14,8 @@ public class HPanelProps(Scope scope, Border border, Panel content) : BaseCompon
 public class HPanelArgs(
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    BaseComponentInteraction? events = null
-) : BaseComponentArgs(strStyle, style, events), ISingleChildrenArgs
+    BaseComponentInteraction? baseInteraction = null
+) : BaseComponentArgs(strStyle, style, baseInteraction), ISingleChildrenArgs
 {
     public List<IElement> Children { private get; init; } = [];
 
@@ -33,11 +33,27 @@ public class HPanelArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement<Panel> HPanel(Func<HPanelProps, HPanelArgs> fn)
+    public static IElement<Panel> HPanel(
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HPanel(out _, _ => new(strStyle, style, baseInteraction));
+
+    public static IElement<Panel> HPanel(
+        out Panel expose,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HPanel(out expose, _ => new(strStyle, style, baseInteraction));
+
+    public static IElement<Panel> HPanel(Func<HPanelProps, HPanelArgs> fn) => HPanel(out _, fn);
+
+    public static IElement<Panel> HPanel(out Panel expose, Func<HPanelProps, HPanelArgs> fn)
     {
+        var panel = new Panel();
+        expose = panel;
         return Element<Panel>.WithScope(uiScope =>
         {
-            var panel = new Panel();
             var border = new Border
             {
                 Child = panel
@@ -58,8 +74,7 @@ public static partial class BaseComponent
             state.ApplyAccessorStyle(args.StrStyle, panel, border, ApplyStyle);
             state.ApplyVariantsStyle(panel, border, ApplyStyle);
 
-            if (args.BaseInteraction is not null)
-                args.BaseInteraction.ApplyInteractions(uiScope, panel);
+            args.BaseInteraction?.ApplyInteractions(uiScope, panel);
             if (args.Popups is not null)
                 ElementUtil.ApplyPopups(border, args.Popups);
 

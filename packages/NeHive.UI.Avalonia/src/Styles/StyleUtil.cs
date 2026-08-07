@@ -3,6 +3,7 @@ using Avalonia.Layout;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
+using Avalonia.Styling;
 using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Styles;
@@ -20,6 +21,7 @@ public static class StyleUtil
 
         FontWeight = FontWeight.Normal,
         BorderThickness = new Thickness(0),
+        Background = Brushes.Transparent,
 
         CornerRadius = new CornerRadius(0),
 
@@ -65,7 +67,9 @@ public static class StyleUtil
 
             RenderTransformOrigin = style.RenderTransformOrigin?.RxValue,
             RenderTransform = style.RenderTransform?.RxValue,
+            
             Transitions = style.Transitions?.RxValue,
+            Animation = style.Animation?.RxValue,
 
             GapY = style.GapY?.RxValue,
             GapX = style.GapX?.RxValue,
@@ -175,10 +179,13 @@ public static class StyleUtil
 
         border.RenderTransformOrigin = style.RenderTransformOrigin ?? RelativePoint.Center;
         border.RenderTransform = style.RenderTransform;
-        // if(style.RenderTransform is not null)
-        //     Console.WriteLine($"{DateTime.Now}:{style.RenderTransform.Value}");
-        
+
         border.Transitions ??= style.Transitions;
+        border.Styles.Clear();
+        var s = new Style();
+        if(style.Animation is not null)
+            s.Animations.Add(style.Animation);
+        border.Styles.Add(s);
     }
 
     extension(BaseStyle target)
@@ -243,7 +250,9 @@ public static class StyleUtil
 
                 target.RenderTransformOrigin = source.RenderTransformOrigin;
                 target.RenderTransform = source.RenderTransform;
+                
                 target.Transitions = source.Transitions;
+                target.Animation = source.Animation;
                 return;
             }
 
@@ -280,7 +289,9 @@ public static class StyleUtil
 
             if (source.RenderTransformOrigin is not null) target.RenderTransformOrigin = source.RenderTransformOrigin;
             if (source.RenderTransform is not null) target.RenderTransform = source.RenderTransform;
+            
             if (source.Transitions is not null) target.Transitions = source.Transitions;
+            if (source.Animation is not null) target.Animation = source.Animation;
         }
 
         public void MergeMany(params BaseStyle[] styles)

@@ -5,51 +5,32 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 using NeHive.UI.Avalonia.Styles;
 
 namespace NeHive.UI.Avalonia.Components;
 
 public class HLinkButtonProps(Scope scope, Border border, HyperlinkButton button) : HButtonProps(scope, border, button)
 {
-    public Signal<bool> IsVisited
+    public MutSignal<bool> IsVisited
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(button.IsVisited);
-            field = sig;
-
-            Content.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
-
+            field = new MutSignal<bool>(button.IsVisited);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, HyperlinkButton.IsVisitedProperty);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == HyperlinkButton.IsVisitedProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
         }
     }
 
-    public Signal<Uri?> NavigateUri
+    public MutSignal<Uri?> NavigateUri
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Uri?>(button.NavigateUri);
-            field = sig;
-
-            Content.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
-
+            field = new MutSignal<Uri?>(button.NavigateUri);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, HyperlinkButton.NavigateUriProperty);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == HyperlinkButton.NavigateUriProperty)
-                    sig.RxValue = (Uri?)args.NewValue;
-            }
         }
     }
 }
@@ -59,15 +40,15 @@ public class HLinkButtonArgs(
     Accessor<bool>? isVisited = null,
     MutSignal<bool>? bindIsVisited = null,
     Accessor<Uri?>? navigateUri = null,
-    Accessor<ClickMode>? clickMode = null,
-    Accessor<KeyGesture>? hotKey = null,
     Accessor<bool>? isDefault = null,
     Accessor<bool>? isCancel = null,
+    Accessor<ClickMode>? clickMode = null,
+    Accessor<KeyGesture>? hotKey = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    Action<RoutedEventArgs>? onClick = null,
-    BaseComponentInteraction? baseInteraction = null) : HButtonArgs(text, clickMode, hotKey, isDefault,
-    isCancel, strStyle, style, onClick, baseInteraction)
+    BaseComponentInteraction? baseInteraction = null,
+    Action<RoutedEventArgs>? onClick = null
+) : HButtonArgs(text, isDefault, isCancel, clickMode, hotKey, strStyle, style, baseInteraction, onClick)
 {
     public readonly MutSignal<bool>? BindIsVisited = bindIsVisited;
     public readonly Accessor<bool>? IsVisited = bindIsVisited ?? isVisited;
@@ -81,35 +62,33 @@ public static partial class BaseComponent
         Accessor<bool>? isVisited = null,
         MutSignal<bool>? bindIsVisited = null,
         Accessor<Uri?>? navigateUri = null,
-        Accessor<ClickMode>? clickMode = null,
-        Accessor<KeyGesture>? hotKey = null,
         Accessor<bool>? isDefault = null,
         Accessor<bool>? isCancel = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
-        Action<RoutedEventArgs>? onClick = null,
-        BaseComponentInteraction? baseInteraction = null) =>
-        HLinkButton(out _,
-            _ => new(text, isVisited, bindIsVisited, navigateUri, clickMode, hotKey,
-                isDefault, isCancel, strStyle, style, onClick, baseInteraction));
-    
+        BaseComponentInteraction? baseInteraction = null,
+        Action<RoutedEventArgs>? onClick = null
+    ) => HLinkButton(out _, _ => new(text, isVisited, bindIsVisited, navigateUri, isDefault, 
+        isCancel, clickMode, hotKey, strStyle, style, baseInteraction, onClick));
+
     public static IElement<HyperlinkButton> HLinkButton(
         out HyperlinkButton expose,
         Accessor<string>? text = null,
         Accessor<bool>? isVisited = null,
         MutSignal<bool>? bindIsVisited = null,
         Accessor<Uri?>? navigateUri = null,
-        Accessor<ClickMode>? clickMode = null,
-        Accessor<KeyGesture>? hotKey = null,
         Accessor<bool>? isDefault = null,
         Accessor<bool>? isCancel = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
-        Action<RoutedEventArgs>? onClick = null,
-        BaseComponentInteraction? baseInteraction = null) =>
-        HLinkButton(out expose,
-            _ => new(text, isVisited, bindIsVisited, navigateUri, clickMode, hotKey,
-                isDefault, isCancel, strStyle, style, onClick, baseInteraction));
+        BaseComponentInteraction? baseInteraction = null,
+        Action<RoutedEventArgs>? onClick = null
+    ) => HLinkButton(out expose, _ => new(text, isVisited, bindIsVisited, navigateUri, isDefault, 
+        isCancel, clickMode, hotKey, strStyle, style, baseInteraction, onClick));
 
     public static IElement<HyperlinkButton> HLinkButton(Func<HLinkButtonProps, HLinkButtonArgs> fn) =>
         HLinkButton(out _, fn);

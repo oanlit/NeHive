@@ -1,50 +1,97 @@
+using System.Collections;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
-
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
+public class HTextProps(Scope scope, Border border, TextBlock textBlock)
+    : BaseComponentProps(scope, border, textBlock);
+
+public class HTextArgs(
+    Accessor<string?>? text,
+    Accessor<string>? strStyle = null,
+    HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null
+) : BaseComponentArgs(strStyle, style, baseInteraction), ISingleChildrenArgs
+{
+    private readonly List<IElement> _children = [];
+
+    public readonly Accessor<string?>? Text = text;
+
+    public IEnumerator<IElement> GetEnumerator()
+        => _children.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => GetEnumerator();
+
+    public void Add(IElement element)
+        => _children.Add(element);
+}
+
 public static partial class BaseComponent
 {
-    public static IElement HText(
-        Accessor<string>? text,
+    public static IElement<TextBlock> HText(
+        Accessor<string?>? text,
         Accessor<string>? strStyle = null,
-        HStyle? style = null)
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HText(out _, _ => new(text, strStyle, style, baseInteraction));
+    
+    public static IElement<TextBlock> HText(
+        out TextBlock expose,
+        Accessor<string?>? text,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HText(out expose, _ => new(text, strStyle, style, baseInteraction));
+
+    public static IElement<TextBlock> HText(Func<HTextProps, HTextArgs> fn) => HText(out _, fn);
+
+    public static IElement<TextBlock> HText(
+        out TextBlock expose,
+        Func<HTextProps, HTextArgs> fn)
     {
-        return Element.WithScope(uiScope =>
+        var textBlock = new TextBlock
         {
-            text ??= "";
-            var styleAccessor = StyleParser.ParseFull(strStyle);
-            var priorityStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
-
-            var textBlock = new TextBlock
-            {
-                TextDecorations = null
-            };
-
+            TextDecorations = null
+        };
+        expose = textBlock;
+        return Element<TextBlock>.WithScope(uiScope =>
+        {
             var border = new Border
             {
                 Child = textBlock
             };
 
-            var state = new CommonState(uiScope, styleAccessor.Value.Normal)
+            var props = new HTextProps(uiScope, border, textBlock);
+            var args = fn(props);
+
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
-                PriorityStyle = priorityStyle,
-                StrVariants = styleAccessor.Value.Variants
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
             };
-
-            state.ApplyAccessorStyle(styleAccessor, textBlock, border, ApplyStyle);
+            state.ApplyAccessorStyle(args.StrStyle, textBlock, border, ApplyStyle);
             state.ApplyVariantsStyle(textBlock, border, ApplyStyle);
+            if (args.Popups is not null)
+                ElementUtil.ApplyPopups(textBlock, args.Popups);
 
-            textBlock.Text = text.Value;
-            if (text.IsReactive)
-                uiScope.CreateEffect(epochScope => textBlock.Text = epochScope.Track(text));
+            args.BaseInteraction?.ApplyInteractions(uiScope, textBlock);
 
-            return border;
+            if (args.Text is not null)
+            {
+                textBlock.Text = args.Text.Value;
+                if (args.Text.IsReactive)
+                    uiScope.CreateEffect(epoch => textBlock.Text = epoch.Track(args.Text));
+            }
+
+            return (textBlock, border);
 
             void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
             {

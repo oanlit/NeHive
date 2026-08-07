@@ -282,7 +282,7 @@ public class HFlyoutArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement<Flyout> HFlyout(Func<HFlyoutProps,HFlyoutArgs> fn)
+    public static IElement<Flyout> HFlyout(Func<HFlyoutProps, HFlyoutArgs> fn)
     {
         return Element<Flyout>.WithScope(uiScope =>
         {

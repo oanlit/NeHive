@@ -1,4 +1,3 @@
-using System.Collections;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -33,7 +32,7 @@ public class HUniformGridProps(Scope scope, Border border, UniformGrid uniformGr
             }
         }
     }
-    
+
     public Signal<int> Columns
     {
         get
@@ -54,7 +53,7 @@ public class HUniformGridProps(Scope scope, Border border, UniformGrid uniformGr
             }
         }
     }
-    
+
     public Signal<int> FirstColumn
     {
         get
@@ -82,16 +81,15 @@ public class HUniformGridArgs(
     Accessor<int>? columns = null,
     Accessor<int>? firstColumn = null,
     Accessor<string>? strStyle = null,
-    HStyle? style = null
-) : IEnumerable<IElement>
+    HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null
+) : HPanelArgs(strStyle, style, baseInteraction)
 {
     private readonly List<IElement> _children = [];
 
     public readonly Accessor<int>? Rows = rows;
     public readonly Accessor<int>? Columns = columns;
     public readonly Accessor<int>? FirstColumn = firstColumn;
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
 
     public IElement this[int index]
     {
@@ -102,26 +100,45 @@ public class HUniformGridArgs(
             _children[index] = value;
         }
     }
-
-    public void Add(IElement element) => _children.Add(element);
-
-    public IEnumerator<IElement> GetEnumerator() => _children.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
 public static partial class BaseComponent
 {
-    public static IElement<UniformGrid> HUniformGrid(Func<HUniformGridProps,HUniformGridArgs> fn)
+    public static IElement<UniformGrid> HUniformGrid(
+        Accessor<int>? rows = null,
+        Accessor<int>? columns = null,
+        Accessor<int>? firstColumn = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HUniformGrid(out _, _ => new(rows, columns, firstColumn, strStyle, style, baseInteraction));
+    
+    public static IElement<UniformGrid> HUniformGrid(
+        out UniformGrid expose,
+        Accessor<int>? rows = null,
+        Accessor<int>? columns = null,
+        Accessor<int>? firstColumn = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HUniformGrid(out expose, _ => new(rows, columns, firstColumn, strStyle, style, baseInteraction));
+
+    public static IElement<UniformGrid> HUniformGrid(Func<HUniformGridProps, HUniformGridArgs> fn
+    ) => HUniformGrid(out _, fn);
+
+    public static IElement<UniformGrid> HUniformGrid(out UniformGrid expose,
+        Func<HUniformGridProps, HUniformGridArgs> fn)
     {
+        var grid = new UniformGrid();
+        expose = grid;
         return Element<UniformGrid>.WithScope(uiScope =>
         {
-            var grid = new UniformGrid();
             var border = new Border
             {
                 Child = grid
             };
-            
-            var props = new HUniformGridProps(uiScope, border,grid);
+
+            var props = new HUniformGridProps(uiScope, border, grid);
             var args = fn(props);
 
             var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
@@ -146,7 +163,7 @@ public static partial class BaseComponent
                 if (args.Columns.IsReactive)
                     uiScope.CreateEffect(epochScope => grid.Columns = epochScope.Track(args.Columns));
             }
-            
+
             if (args.FirstColumn is not null)
             {
                 grid.Columns = args.FirstColumn.Value;

@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 using NeHive.UI.Avalonia.State;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.Utils;
@@ -15,9 +16,10 @@ using NeHive.UI.Avalonia.Utils;
 namespace NeHive.UI.Avalonia.Components;
 
 public class HPopupProps(Scope scope, Border border, Popup popup) : BaseComponentProps(scope, border, popup);
+
 public class HPopupArgs(
-    Accessor<bool>? isHitTestVisible = null,
     Accessor<bool>? isOpen = null,
+    MutSignal<bool>? bindIsOpen = null,
     Accessor<bool>? isLightDismissEnabled = null,
     Accessor<bool>? isTopmost = null,
     Accessor<bool>? shouldUseOverlayLayer = null,
@@ -37,15 +39,15 @@ public class HPopupArgs(
     Accessor<IInputElement>? overlayInputPassThroughElement = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null,
     Action<EventArgs>? onOpened = null,
     Action<EventArgs>? onClosed = null
-) : ISingleChildrenArgs
+) : BaseComponentArgs(strStyle, style, baseInteraction), ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
-    
-    public readonly Accessor<bool>? IsHitTestVisible = isHitTestVisible;
 
-    public readonly Accessor<bool>? IsOpen = isOpen;
+    public readonly Accessor<bool>? IsOpen = bindIsOpen ?? isOpen;
+    public readonly MutSignal<bool>? BindIsOpen = bindIsOpen;
     public readonly Accessor<bool>? IsLightDismissEnabled = isLightDismissEnabled;
     public readonly Accessor<bool>? IsTopmost = isTopmost;
     public readonly Accessor<bool>? ShouldUseOverlayLayer = shouldUseOverlayLayer;
@@ -70,9 +72,6 @@ public class HPopupArgs(
 
     public readonly Accessor<IInputElement>? OverlayInputPassThroughElement = overlayInputPassThroughElement;
 
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
-
     public readonly Action<EventArgs>? OnOpened = onOpened;
     public readonly Action<EventArgs>? OnClosed = onClosed;
 
@@ -90,20 +89,89 @@ public class HPopupArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement<Popup> HPopup(HPopupArgs args)
+    public static IElement<Popup> HPopup(
+        Accessor<bool>? isOpen = null,
+        MutSignal<bool>? bindIsOpen = null,
+        Accessor<bool>? isLightDismissEnabled = null,
+        Accessor<bool>? isTopmost = null,
+        Accessor<bool>? shouldUseOverlayLayer = null,
+        Accessor<bool>? isInheritsTransform = null,
+        Accessor<bool>? isOverlayDismissEventPassThrough = null,
+        Accessor<bool>? isTakesFocusFromNativeControl = null,
+        Accessor<bool>? isWindowManagerAddShadowHint = null,
+        Accessor<Control>? placementTarget = null,
+        Accessor<PlacementMode>? placement = null,
+        Accessor<PopupAnchor>? placementAnchor = null,
+        Accessor<Rect>? placementRect = null,
+        Accessor<PopupPositionerConstraintAdjustment>? placementConstraintAdjustment = null,
+        Accessor<PopupGravity>? placementGravity = null,
+        Accessor<CustomPopupPlacementCallback>? customPopupPlacementCallback = null,
+        Accessor<double>? horizontalOffset = null,
+        Accessor<double>? verticalOffset = null,
+        Accessor<IInputElement>? overlayInputPassThroughElement = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null,
+        Action<EventArgs>? onOpened = null,
+        Action<EventArgs>? onClosed = null
+    ) => HPopup(out _, _ => new(isOpen, bindIsOpen, isLightDismissEnabled, isTopmost, shouldUseOverlayLayer,
+        isInheritsTransform, isOverlayDismissEventPassThrough, isTakesFocusFromNativeControl, isWindowManagerAddShadowHint,
+        placementTarget, placement, placementAnchor, placementRect, placementConstraintAdjustment, placementGravity,
+        customPopupPlacementCallback, horizontalOffset, verticalOffset, overlayInputPassThroughElement, strStyle,
+        style, baseInteraction, onOpened, onClosed)
+    );
+    
+    public static IElement<Popup> HPopup(
+        out Popup expose, 
+        Accessor<bool>? isOpen = null,
+        MutSignal<bool>? bindIsOpen = null,
+        Accessor<bool>? isLightDismissEnabled = null,
+        Accessor<bool>? isTopmost = null,
+        Accessor<bool>? shouldUseOverlayLayer = null,
+        Accessor<bool>? isInheritsTransform = null,
+        Accessor<bool>? isOverlayDismissEventPassThrough = null,
+        Accessor<bool>? isTakesFocusFromNativeControl = null,
+        Accessor<bool>? isWindowManagerAddShadowHint = null,
+        Accessor<Control>? placementTarget = null,
+        Accessor<PlacementMode>? placement = null,
+        Accessor<PopupAnchor>? placementAnchor = null,
+        Accessor<Rect>? placementRect = null,
+        Accessor<PopupPositionerConstraintAdjustment>? placementConstraintAdjustment = null,
+        Accessor<PopupGravity>? placementGravity = null,
+        Accessor<CustomPopupPlacementCallback>? customPopupPlacementCallback = null,
+        Accessor<double>? horizontalOffset = null,
+        Accessor<double>? verticalOffset = null,
+        Accessor<IInputElement>? overlayInputPassThroughElement = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null,
+        Action<EventArgs>? onOpened = null,
+        Action<EventArgs>? onClosed = null
+    ) => HPopup(out expose, _ => new(isOpen, bindIsOpen, isLightDismissEnabled, isTopmost, shouldUseOverlayLayer,
+        isInheritsTransform, isOverlayDismissEventPassThrough, isTakesFocusFromNativeControl, isWindowManagerAddShadowHint,
+        placementTarget, placement, placementAnchor, placementRect, placementConstraintAdjustment, placementGravity,
+        customPopupPlacementCallback, horizontalOffset, verticalOffset, overlayInputPassThroughElement, strStyle,
+        style, baseInteraction, onOpened, onClosed)
+    );
+
+    public static IElement<Popup> HPopup(Func<HPopupProps, HPopupArgs> fn) => HPopup(out _, fn);
+
+    public static IElement<Popup> HPopup(out Popup expose, Func<HPopupProps, HPopupArgs> fn)
     {
+        var popup = new Popup();
+        expose = popup;
+
         return Element<Popup>.WithScope(uiScope =>
         {
-            var popup = new Popup
-            {
-                Child = ElementUtil.WrapSingleContainerContent(args).Content
-            };
-            
             var border = new Border
             {
-                Background = Brushes.Transparent,
-                Child = popup
+                Background = Brushes.Transparent
             };
+            var props = new HPopupProps(uiScope, border, popup);
+            var args = fn(props);
+
+            border.Child = ElementUtil.WrapSingleContainerContent(args).Content;
+            popup.Child = border;
 
             var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
@@ -113,15 +181,15 @@ public static partial class BaseComponent
 
             state.ApplyAccessorStyle(args.StrStyle, popup, border, ApplyStyle);
             state.ApplyVariantsStyle(popup, border, ApplyStyle);
-            
-            if (args.IsHitTestVisible is not null)
-            {
-                popup.IsHitTestVisible = args.IsHitTestVisible.Value;
-                if (args.IsHitTestVisible.IsReactive)
-                    uiScope.CreateEffect(epoch => popup.IsHitTestVisible = epoch.Track(args.IsHitTestVisible));
-            }
+            if (args.Popups is not null)
+                ElementUtil.ApplyPopups(popup, args.Popups);
+            args.BaseInteraction?.ApplyInteractions(uiScope, popup);
 
-            if (args.IsOpen is not null)
+            if (args.BindIsOpen is not null)
+            {
+                BridgeAvalonia.BindPropertySignal(uiScope, args.BindIsOpen, popup, Popup.IsOpenProperty);
+            }
+            else if (args.IsOpen is not null)
             {
                 popup.IsOpen = args.IsOpen.Value;
                 if (args.IsOpen.IsReactive)
@@ -268,13 +336,13 @@ public static partial class BaseComponent
             }
 
             return (popup, popup);
-            
+
             void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
             {
                 StyleUtil.ApplyStyle(styleValue, layout, bord);
-                
-                if(styleValue.Opacity is not null) popup.Opacity = styleValue.Opacity.Value;
-                if(styleValue.OpacityMask is not null) popup.OpacityMask = styleValue.OpacityMask;
+
+                if (styleValue.Opacity is not null) popup.Opacity = styleValue.Opacity.Value;
+                if (styleValue.OpacityMask is not null) popup.OpacityMask = styleValue.OpacityMask;
             }
 
             void OnOpened(object? _, EventArgs e)

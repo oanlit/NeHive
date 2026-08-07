@@ -7,7 +7,19 @@ namespace NeHive.UI.Avalonia.Components;
 public struct SwitchProp<T>(Accessor<T> key) where T : notnull
 {
     public readonly Accessor<T> Key = key;
-    public required Dictionary<T, Func<IElement>> Cases { get; init; }
+    internal readonly Dictionary<T, Func<IElement>> Cases = new();
+
+    public Func<IElement> this[params T[] cases]
+    {
+        set
+        {
+            foreach (var item in cases)
+            {
+                Cases[item] = value;
+            }
+        }
+    }
+
     public Func<IElement>? Default { get; init; }
 }
 

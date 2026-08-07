@@ -20,7 +20,7 @@ public static class ElementUtil
                 child = elements.First();
                 break;
             default:
-                var panelProp = new HPanelArgs();
+                var panelProp = new HStackPanelArgs();
                 foreach (var el in elements)
                 {
                     panelProp.Add(el);

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Layout;
 using NeHive.Model;
 using NeHive.Reactive;
 
@@ -17,7 +18,11 @@ public static partial class ControlFlow
     {
         return Element.WithScope(uiScope =>
         {
-            var panel = new Panel();
+            var panel = new Panel
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
 
             uiScope.CreateEffect(epochScope =>
             {

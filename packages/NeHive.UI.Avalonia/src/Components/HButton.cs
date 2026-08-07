@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 using NeHive.UI.Avalonia.State;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.Utils;
@@ -33,122 +34,72 @@ public static class HButtonStyle
 
 public class HButtonProps(Scope scope, Border border, Button button) : BaseComponentProps(scope, border, button)
 {
-    public Signal<ClickMode> ClickMode
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<ClickMode>(button.ClickMode);
-            field = sig;
-
-            Content.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Button.ClickModeProperty)
-                    sig.RxValue = (ClickMode)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<KeyGesture?> HotKey
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<KeyGesture?>(button.HotKey);
-            field = sig;
-
-            Content.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Button.HotKeyProperty)
-                    sig.RxValue = (KeyGesture?)args.NewValue;
-            }
-        }
-    }
-
-    public Signal<bool> IsDefault
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<bool>(button.IsDefault);
-            field = sig;
-
-            Content.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Button.IsDefaultProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<bool> IsCancel
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<bool>(button.IsCancel);
-            field = sig;
-
-            Content.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Button.IsCancelProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
-        }
-    }
-
     public Signal<bool> IsPressed
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(button.IsPressed);
-            field = sig;
-
-            Content.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, button,
+                Button.IsPressedProperty, button.IsPressed);
             return field;
+        }
+    }
 
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Button.IsPressedProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
+    public MutSignal<bool> IsDefault
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<bool>(button.IsDefault);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, Button.IsDefaultProperty);
+            return field;
+        }
+    }
+
+    public MutSignal<bool> IsCancel
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<bool>(button.IsCancel);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, Button.IsCancelProperty);
+            return field;
+        }
+    }
+
+    public MutSignal<ClickMode> ClickMode
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<ClickMode>(button.ClickMode);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, Button.ClickModeProperty);
+            return field;
+        }
+    }
+
+    public MutSignal<KeyGesture?> HotKey
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<KeyGesture?>(button.HotKey);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, Button.HotKeyProperty);
+            return field;
         }
     }
 }
 
 public class HButtonArgs(
     Accessor<string>? text = null,
-    Accessor<ClickMode>? clickMode = null,
-    Accessor<KeyGesture>? hotKey = null,
     Accessor<bool>? isDefault = null,
     Accessor<bool>? isCancel = null,
+    Accessor<ClickMode>? clickMode = null,
+    Accessor<KeyGesture>? hotKey = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    Action<RoutedEventArgs>? onClick = null,
-    BaseComponentInteraction? baseInteraction = null
+    BaseComponentInteraction? baseInteraction = null,
+    Action<RoutedEventArgs>? onClick = null
 ) : BaseComponentArgs(strStyle, style, baseInteraction), ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
@@ -179,28 +130,30 @@ public static partial class BaseComponent
 {
     public static IElement<Button> HButton(
         Accessor<string>? text = null,
-        Accessor<ClickMode>? clickMode = null,
-        Accessor<KeyGesture>? hotKey = null,
         Accessor<bool>? isDefault = null,
         Accessor<bool>? isCancel = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null
-    ) => HButton(out _, _ =>
-        new HButtonArgs(text, clickMode, hotKey, isDefault, isCancel, strStyle, style, onClick));
+    ) => HButton(out _, _ => new(text, isDefault, isCancel, clickMode, hotKey,
+        strStyle, style, baseInteraction, onClick));
 
     public static IElement<Button> HButton(
         out Button expose,
         Accessor<string>? text = null,
-        Accessor<ClickMode>? clickMode = null,
-        Accessor<KeyGesture>? hotKey = null,
         Accessor<bool>? isDefault = null,
         Accessor<bool>? isCancel = null,
+        Accessor<ClickMode>? clickMode = null,
+        Accessor<KeyGesture>? hotKey = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null
-    ) => HButton(out expose, _ =>
-        new HButtonArgs(text, clickMode, hotKey, isDefault, isCancel, strStyle, style, onClick));
+    ) => HButton(out expose, _ => new(text, isDefault, isCancel, clickMode, hotKey,
+        strStyle, style, baseInteraction, onClick));
 
     public static IElement<Button> HButton(Func<HButtonProps, HButtonArgs> fn)
         => HButton(out _, fn);
@@ -266,6 +219,11 @@ internal static partial class InternalButtonUtil
             state.ApplyVariantsStyle(content, border, StyleUtil.ApplyStyle);
         }
 
+        if (args.Popups is not null)
+            ElementUtil.ApplyPopups(button, args.Popups);
+
+        args.BaseInteraction?.ApplyInteractions(uiScope, button);
+
         if (args.ClickMode is not null)
         {
             button.ClickMode = args.ClickMode.Value;
@@ -294,15 +252,13 @@ internal static partial class InternalButtonUtil
                 uiScope.CreateEffect(epoch => button.IsCancel = epoch.Track(args.IsCancel));
         }
 
-        if (args.Popups is not null)
-            ElementUtil.ApplyPopups(button, args.Popups);
-
-        args.BaseInteraction?.ApplyInteractions(uiScope, button);
-
         if (args.OnClick is not null)
         {
-            button.Click += ClickHandler;
-            uiScope.OnCleanup += () => button.Click -= ClickHandler;
+            uiScope.AddHandler<EventHandler<RoutedEventArgs>>(
+                add: h => button.Click += h,
+                remove: h => button.Click -= h,
+                handler: (_, e) => args.OnClick(e)
+            );
         }
 
         return;
@@ -321,11 +277,6 @@ internal static partial class InternalButtonUtil
             if (styleValue.FontWeight is not null) tb.FontWeight = styleValue.FontWeight.Value;
             if (styleValue.FontStyle is not null) tb.FontStyle = styleValue.FontStyle.Value;
             if (styleValue.Foreground is not null) tb.Foreground = styleValue.Foreground;
-        }
-
-        void ClickHandler(object? _, RoutedEventArgs e)
-        {
-            args.OnClick!(e);
         }
     }
 }

@@ -16,17 +16,14 @@ public class HLabelArgs(
     Accessor<string>? text = null,
     Accessor<Control>? target = null,
     Accessor<string>? strStyle = null,
-    HStyle? style = null) : ISingleChildrenArgs
+    HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null)
+    : BaseComponentArgs(strStyle, style, baseInteraction), ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
 
     public readonly Accessor<string>? Text = text;
     public readonly Accessor<Control>? Target = target;
-
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle, HButtonStyle.DefaultStyleSet);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
-
-    public List<IElement<Popup>>? Popups { internal get; init; }
 
     public IEnumerator<IElement> GetEnumerator()
         => _children.GetEnumerator();
@@ -46,25 +43,25 @@ public static partial class BaseComponent
         Accessor<string>? text = null,
         Accessor<Control>? target = null,
         Accessor<string>? strStyle = null,
-        HStyle? style = null
-    ) => HLabel(_ =>
-        new HLabelArgs(text, target, strStyle, style));
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HLabel(out _, _ => new(text, target, strStyle, style, baseInteraction));
 
     public static IElement<Label> HLabel(
-        out Label exp,
+        out Label expose,
         Accessor<string>? text = null,
         Accessor<Control>? target = null,
         Accessor<string>? strStyle = null,
-        HStyle? style = null
-    ) => HLabel(out exp, _ =>
-        new HLabelArgs(text, target, strStyle, style));
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HLabel(out expose, _ => new(text, target, strStyle, style, baseInteraction));
 
-    public static IElement<Label> HLabel(
-        out Label exp,
-        Func<HLabelProps, HLabelArgs> fn)
+    public static IElement<Label> HLabel(Func<HLabelProps, HLabelArgs> fn) => HLabel(out _, fn);
+
+    public static IElement<Label> HLabel(out Label expose, Func<HLabelProps, HLabelArgs> fn)
     {
         var label = new Label();
-        exp = label;
+        expose = label;
         return Element<Label>.WithScope(uiScope =>
         {
             var border = new Border();
@@ -112,7 +109,7 @@ public static partial class BaseComponent
             }
 
             label.Template = new FuncControlTemplate((_, _) => border);
-            
+
             if (args.Target is not null)
             {
                 label.Target = args.Target.Value;
@@ -121,9 +118,8 @@ public static partial class BaseComponent
             }
 
             if (args.Popups is not null)
-            {
                 ElementUtil.ApplyPopups(label, args.Popups);
-            }
+            args.BaseInteraction?.ApplyInteractions(uiScope, label);
 
             return (label, label);
 
@@ -144,7 +140,4 @@ public static partial class BaseComponent
             }
         });
     }
-
-    public static IElement<Label> HLabel(Func<HLabelProps, HLabelArgs> fn)
-        => HLabel(out _, fn);
 }

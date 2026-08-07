@@ -19,10 +19,10 @@ public struct LoadingProp<TData>(AsyncMemo<TData> dataSource)
 public static partial class ControlFlow
 {
     private static IElement DefaultLoading()
-        => HText(new("RxLoading..."));
+        => HText("RxLoading...");
 
     private static IElement DefaultError(Exception ex)
-        => HText(new($"RxError: {ex.Message}"));
+        => HText($"RxError: {ex.Message}");
 
     public static IElement Loading<T>(LoadingProp<T> prop)
     {

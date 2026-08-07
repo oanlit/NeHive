@@ -6,9 +6,12 @@ using Avalonia.Input;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
 using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 
 namespace NeHive.UI.Avalonia.Styles;
 
@@ -49,7 +52,9 @@ public class BaseStyle
 
     public RelativePoint? RenderTransformOrigin;
     public ITransform? RenderTransform;
+
     public Transitions? Transitions;
+    public IAnimation? Animation;
 
     internal TempStyle? TempStyle;
 }
@@ -156,9 +161,9 @@ public class HStyle(
     Accessor<Thickness>? padding = null,
     Accessor<HorizontalAlignment>? horizontalAlignment = null,
     Accessor<VerticalAlignment>? verticalAlignment = null,
-    Accessor<IBrush>? background = null,
-    Accessor<IBrush>? opacityMask = null,
-    Accessor<IBrush>? borderBrush = null,
+    Accessor<IBrush?>? background = null,
+    Accessor<IBrush?>? opacityMask = null,
+    Accessor<IBrush?>? borderBrush = null,
     Accessor<Thickness>? borderThickness = null,
     Accessor<BackgroundSizing>? backgroundSizing = null,
     Accessor<CornerRadius>? cornerRadius = null,
@@ -173,6 +178,7 @@ public class HStyle(
     Accessor<RelativePoint>? renderTransformOrigin = null,
     Accessor<ITransform>? renderTransform = null,
     Accessor<Transitions>? transitions = null,
+    Accessor<IAnimation>? animation = null,
     Accessor<double>? gapY = null,
     Accessor<double>? gapX = null,
     Accessor<Orientation>? orientation = null,
@@ -192,7 +198,7 @@ public class HStyle(
     Accessor<FontStretch>? fontStretch = null,
     Accessor<FontFeatureCollection>? fontFeatures = null,
     Accessor<FontStyle>? fontStyle = null,
-    Accessor<IBrush>? foreground = null
+    Accessor<IBrush?>? foreground = null
 )
 {
     public Accessor<Thickness>? Margin = margin;
@@ -210,9 +216,9 @@ public class HStyle(
     public Accessor<HorizontalAlignment>? HorizontalAlignment = horizontalAlignment;
     public Accessor<VerticalAlignment>? VerticalAlignment = verticalAlignment;
 
-    public Accessor<IBrush>? Background = background;
-    public Accessor<IBrush>? OpacityMask = opacityMask;
-    public Accessor<IBrush>? BorderBrush = borderBrush;
+    public Accessor<IBrush?>? Background = background;
+    public Accessor<IBrush?>? OpacityMask = opacityMask;
+    public Accessor<IBrush?>? BorderBrush = borderBrush;
     public Accessor<Thickness>? BorderThickness = borderThickness;
     public Accessor<BackgroundSizing>? BackgroundSizing = backgroundSizing;
     public Accessor<CornerRadius>? CornerRadius = cornerRadius;
@@ -229,7 +235,9 @@ public class HStyle(
 
     public Accessor<RelativePoint>? RenderTransformOrigin = renderTransformOrigin;
     public Accessor<ITransform>? RenderTransform = renderTransform;
+
     public Accessor<Transitions>? Transitions = transitions;
+    public Accessor<IAnimation>? Animation = animation;
 
     public Accessor<double>? GapX = gapX;
     public Accessor<double>? GapY = gapY;
@@ -256,7 +264,7 @@ public class HStyle(
     public Accessor<FontStretch>? FontStretch = fontStretch;
     public Accessor<FontFeatureCollection>? FontFeatures = fontFeatures;
     public Accessor<FontStyle>? FontStyle = fontStyle;
-    public Accessor<IBrush>? Foreground = foreground;
+    public Accessor<IBrush?>? Foreground = foreground;
 }
 
 public class StyleProps(Scope scope, Border border, Control control)
@@ -266,19 +274,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Thickness>(border.Margin);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Layoutable.MarginProperty, border.Margin);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Layoutable.MarginProperty)
-                    sig.RxValue = (Thickness)args.NewValue!;
-            }
         }
     }
 
@@ -287,19 +285,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<int>(border.ZIndex);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.ZIndexProperty, border.ZIndex);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.ZIndexProperty)
-                    sig.RxValue = (int)args.NewValue!;
-            }
         }
     }
 
@@ -308,19 +296,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double>(border.Width);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Layoutable.WidthProperty, border.Width);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Layoutable.WidthProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
         }
     }
 
@@ -329,19 +307,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double>(border.Height);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Layoutable.HeightProperty, border.Height);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Layoutable.HeightProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
         }
     }
 
@@ -350,19 +318,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double>(border.MinWidth);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Layoutable.MinWidthProperty, border.MinWidth);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Layoutable.MinWidthProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
         }
     }
 
@@ -371,19 +329,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double>(border.MaxWidth);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Layoutable.MaxWidthProperty, border.MaxWidth);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Layoutable.MaxWidthProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
         }
     }
 
@@ -392,19 +340,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double>(border.MinHeight);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Layoutable.MinHeightProperty, border.MinHeight);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Layoutable.MinHeightProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
         }
     }
 
@@ -413,19 +351,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double>(border.MaxHeight);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Layoutable.MaxHeightProperty, border.MaxHeight);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Layoutable.MaxHeightProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
         }
     }
 
@@ -434,19 +362,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Thickness>(border.Padding);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Decorator.PaddingProperty, border.Padding);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Decorator.PaddingProperty)
-                    sig.RxValue = (Thickness)args.NewValue!;
-            }
         }
     }
 
@@ -455,19 +373,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<HorizontalAlignment>(border.HorizontalAlignment);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Layoutable.HorizontalAlignmentProperty, border.HorizontalAlignment);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Layoutable.HorizontalAlignmentProperty)
-                    sig.RxValue = (HorizontalAlignment)args.NewValue!;
-            }
         }
     }
 
@@ -476,19 +384,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<VerticalAlignment>(border.VerticalAlignment);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Layoutable.VerticalAlignmentProperty, border.VerticalAlignment);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Layoutable.VerticalAlignmentProperty)
-                    sig.RxValue = (VerticalAlignment)args.NewValue!;
-            }
         }
     }
 
@@ -497,19 +395,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<IBrush?>(border.Background);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Border.BackgroundProperty, border.Background);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Border.BackgroundProperty)
-                    sig.RxValue = (IBrush?)args.NewValue;
-            }
         }
     }
 
@@ -518,19 +406,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<IBrush?>(border.OpacityMask);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.OpacityMaskProperty, border.OpacityMask);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.OpacityMaskProperty)
-                    sig.RxValue = (IBrush?)args.NewValue;
-            }
         }
     }
 
@@ -539,19 +417,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<IBrush?>(border.BorderBrush);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Border.BorderBrushProperty, border.BorderBrush);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Border.BorderBrushProperty)
-                    sig.RxValue = (IBrush?)args.NewValue;
-            }
         }
     }
 
@@ -560,19 +428,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Thickness>(border.BorderThickness);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Border.BorderThicknessProperty, border.BorderThickness);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Border.BorderThicknessProperty)
-                    sig.RxValue = (Thickness)args.NewValue!;
-            }
         }
     }
 
@@ -581,19 +439,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<BackgroundSizing>(border.BackgroundSizing);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Border.BackgroundSizingProperty, border.BackgroundSizing);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Border.BackgroundSizingProperty)
-                    sig.RxValue = (BackgroundSizing)args.NewValue!;
-            }
         }
     }
 
@@ -602,19 +450,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<CornerRadius>(border.ClipToBoundsRadius);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Border.CornerRadiusProperty, border.CornerRadius);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Border.CornerRadiusProperty)
-                    sig.RxValue = (CornerRadius)args.NewValue!;
-            }
         }
     }
 
@@ -623,19 +461,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double>(border.Opacity);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.OpacityProperty, border.Opacity);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.OpacityProperty)
-                    sig.RxValue = (double)args.NewValue!;
-            }
         }
     }
 
@@ -644,19 +472,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(border.IsVisible);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.IsVisibleProperty, border.IsVisible);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.IsVisibleProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
         }
     }
 
@@ -665,19 +483,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<bool>(border.ClipToBounds);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.ClipToBoundsProperty, border.ClipToBounds);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.ClipToBoundsProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
         }
     }
 
@@ -686,19 +494,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Geometry?>(border.Clip);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.ClipProperty, border.Clip);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.ClipProperty)
-                    sig.RxValue = (Geometry?)args.NewValue;
-            }
         }
     }
 
@@ -707,40 +505,20 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<IEffect?>(border.Effect);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.EffectProperty, border.Effect);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.EffectProperty)
-                    sig.RxValue = (IEffect?)args.NewValue;
-            }
         }
     }
 
-    public Signal<BoxShadows> BoxShadows
+    public Signal<BoxShadows> BoxShadow
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<BoxShadows>(border.BoxShadow);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Border.BoxShadowProperty, border.BoxShadow);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Border.BoxShadowProperty)
-                    sig.RxValue = (BoxShadows)args.NewValue!;
-            }
         }
     }
 
@@ -749,19 +527,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Cursor?>(border.Cursor);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                InputElement.CursorProperty, border.Cursor);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == InputElement.CursorProperty)
-                    sig.RxValue = (Cursor?)args.NewValue;
-            }
         }
     }
 
@@ -770,19 +538,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<FlowDirection>(border.FlowDirection);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.FlowDirectionProperty, border.FlowDirection);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.FlowDirectionProperty)
-                    sig.RxValue = (FlowDirection)args.NewValue!;
-            }
         }
     }
 
@@ -791,19 +549,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<RelativePoint>(border.RenderTransformOrigin);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.RenderTransformOriginProperty, border.RenderTransformOrigin);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.RenderTransformOriginProperty)
-                    sig.RxValue = (RelativePoint)args.NewValue!;
-            }
         }
     }
 
@@ -812,19 +560,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<ITransform?>(border.RenderTransform);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Visual.RenderTransformProperty, border.RenderTransform);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Visual.RenderTransformProperty)
-                    sig.RxValue = (ITransform?)args.NewValue;
-            }
         }
     }
 
@@ -833,19 +571,9 @@ public class StyleProps(Scope scope, Border border, Control control)
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Transitions?>(border.Transitions);
-            field = sig;
-
-            border.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => border.PropertyChanged -= OnPropUpdate;
-
+            field = BridgeAvalonia.CreatePropertySignal(scope, border,
+                Animatable.TransitionsProperty, border.Transitions);
             return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == Animatable.TransitionsProperty)
-                    sig.RxValue = (Transitions?)args.NewValue;
-            }
         }
     }
 
@@ -993,69 +721,71 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<Orientation?> Orientation
+    public Signal<Orientation> Orientation
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<Orientation?>(null);
-            field = sig;
-
-            if (control is StackPanel stackPanel)
+            field = control switch
             {
-                stackPanel.PropertyChanged += OnPropUpdate;
-                scope.OnCleanup += () => stackPanel.PropertyChanged -= OnPropUpdate;
-
-                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-                {
-                    if (args.Property == StackPanel.OrientationProperty)
-                        sig.RxValue = (Orientation?)args.NewValue;
-                }
-            }
-            else if (control is WrapPanel wrapPanel)
-            {
-                wrapPanel.PropertyChanged += OnPropUpdate;
-                scope.OnCleanup += () => wrapPanel.PropertyChanged -= OnPropUpdate;
-
-                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-                {
-                    if (args.Property == WrapPanel.OrientationProperty)
-                        sig.RxValue = (Orientation?)args.NewValue;
-                }
-            }
-
+                StackPanel stackPanel => BridgeAvalonia.CreatePropertySignal(scope, stackPanel,
+                    StackPanel.OrientationProperty, stackPanel.Orientation),
+                WrapPanel wrapPanel => BridgeAvalonia.CreatePropertySignal(scope, wrapPanel,
+                    WrapPanel.OrientationProperty, wrapPanel.Orientation),
+                ScrollBar scrollBar => BridgeAvalonia.CreatePropertySignal(scope, scrollBar,
+                    ScrollBar.OrientationProperty, scrollBar.Orientation),
+                Slider slider => BridgeAvalonia.CreatePropertySignal(scope, slider,
+                    Slider.OrientationProperty, slider.Orientation),
+                TickBar tickBar => BridgeAvalonia.CreatePropertySignal(scope, tickBar,
+                    TickBar.OrientationProperty, tickBar.Orientation),
+                _ => new MutSignal<Orientation>(global::Avalonia.Layout.Orientation.Vertical)
+            };
             return field;
         }
     }
 
-    public Signal<double?> LetterSpacing
+    public Signal<double> LetterSpacing
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double?>(null);
+            var sig = new MutSignal<double>(0d);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.LetterSpacing;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.LetterSpacingProperty)
-                        sig.RxValue = (double?)args.NewValue;
+                        sig.RxValue = (double)args.NewValue!;
                 }
             }
             else if (control is TemplatedControl templatedControl)
             {
+                sig.RxValue = templatedControl.LetterSpacing;
                 templatedControl.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => templatedControl.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TemplatedControl.LetterSpacingProperty)
-                        sig.RxValue = (double?)args.NewValue;
+                        sig.RxValue = (double)args.NewValue!;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.LetterSpacing;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextPresenter.LetterSpacingProperty)
+                        sig.RxValue = (double)args.NewValue!;
                 }
             }
 
@@ -1063,34 +793,48 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<double?> LineHeight
+    public Signal<double> LineHeight
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double?>(null);
+            var sig = new MutSignal<double>(0d);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.LineHeight;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.LineHeightProperty)
-                        sig.RxValue = (double?)args.NewValue;
+                        sig.RxValue = (double)args.NewValue!;
                 }
             }
             else if (control is TextBox textBox)
             {
+                sig.RxValue = textBox.LineHeight;
                 textBox.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBox.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBox.LineHeightProperty)
-                        sig.RxValue = (double?)args.NewValue;
+                        sig.RxValue = (double)args.NewValue!;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.LineHeight;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextPresenter.LineHeightProperty)
+                        sig.RxValue = (double)args.NewValue!;
                 }
             }
 
@@ -1098,23 +842,24 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<double?> LineSpacing
+    public Signal<double> LineSpacing
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double?>(null);
+            var sig = new MutSignal<double>(0d);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.LineSpacing;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.LineSpacingProperty)
-                        sig.RxValue = (double?)args.NewValue;
+                        sig.RxValue = (double)args.NewValue!;
                 }
             }
 
@@ -1122,34 +867,36 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<int?> MaxLines
+    public Signal<int> MaxLines
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<int?>(null);
+            var sig = new MutSignal<int>(0);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.MaxLines;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.MaxLinesProperty)
-                        sig.RxValue = (int?)args.NewValue;
+                        sig.RxValue = (int)args.NewValue!;
                 }
             }
             else if (control is TextBox textBox)
             {
+                sig.RxValue = textBox.MaxLines;
                 textBox.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBox.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBox.MaxLinesProperty)
-                        sig.RxValue = (int?)args.NewValue;
+                        sig.RxValue = (int)args.NewValue!;
                 }
             }
 
@@ -1157,23 +904,24 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<TextTrimming?> TextTrimming
+    public Signal<TextTrimming> TextTrimming
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<TextTrimming?>(null);
+            var sig = new MutSignal<TextTrimming>(global::Avalonia.Media.TextTrimming.None);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.TextTrimming;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.TextTrimmingProperty)
-                        sig.RxValue = (TextTrimming?)args.NewValue;
+                        sig.RxValue = (TextTrimming)args.NewValue!;
                 }
             }
 
@@ -1181,34 +929,48 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<TextAlignment?> TextAlignment
+    public Signal<TextAlignment> TextAlignment
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<TextAlignment?>(null);
+            var sig = new MutSignal<TextAlignment>(global::Avalonia.Media.TextAlignment.Start);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.TextAlignment;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.TextAlignmentProperty)
-                        sig.RxValue = (TextAlignment?)args.NewValue;
+                        sig.RxValue = (TextAlignment)args.NewValue!;
                 }
             }
             else if (control is TextBox textBox)
             {
+                sig.RxValue = textBox.TextAlignment;
                 textBox.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBox.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBox.TextAlignmentProperty)
-                        sig.RxValue = (TextAlignment?)args.NewValue;
+                        sig.RxValue = (TextAlignment)args.NewValue!;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.TextAlignment;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextPresenter.TextAlignmentProperty)
+                        sig.RxValue = (TextAlignment)args.NewValue!;
                 }
             }
 
@@ -1251,34 +1013,48 @@ public class StyleProps(Scope scope, Border border, Control control)
     //     }
     // }
 
-    public Signal<TextWrapping?> TextWrapping
+    public Signal<TextWrapping> TextWrapping
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<TextWrapping?>(null);
+            var sig = new MutSignal<TextWrapping>(global::Avalonia.Media.TextWrapping.NoWrap);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.TextWrapping;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.TextWrappingProperty)
-                        sig.RxValue = (TextWrapping?)args.NewValue;
+                        sig.RxValue = (TextWrapping)args.NewValue!;
                 }
             }
             else if (control is TextBox textBox)
             {
+                sig.RxValue = textBox.TextWrapping;
                 textBox.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBox.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBox.TextWrappingProperty)
-                        sig.RxValue = (TextWrapping?)args.NewValue;
+                        sig.RxValue = (TextWrapping)args.NewValue!;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.TextWrapping;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextPresenter.TextWrappingProperty)
+                        sig.RxValue = (TextWrapping)args.NewValue!;
                 }
             }
 
@@ -1296,6 +1072,7 @@ public class StyleProps(Scope scope, Border border, Control control)
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.TextDecorations;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
@@ -1320,6 +1097,7 @@ public class StyleProps(Scope scope, Border border, Control control)
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.Inlines;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
@@ -1334,34 +1112,48 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<double?> FontSize
+    public Signal<double> FontSize
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<double?>(null);
+            var sig = new MutSignal<double>(14d);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.FontSize;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.FontSizeProperty)
-                        sig.RxValue = (double?)args.NewValue;
+                        sig.RxValue = (double)args.NewValue!;
                 }
             }
             else if (control is TemplatedControl templatedControl)
             {
+                sig.RxValue = templatedControl.FontSize;
                 templatedControl.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => templatedControl.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TemplatedControl.FontSizeProperty)
-                        sig.RxValue = (double?)args.NewValue;
+                        sig.RxValue = (double)args.NewValue!;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.FontSize;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextElement.FontSizeProperty)
+                        sig.RxValue = (double)args.NewValue!;
                 }
             }
 
@@ -1369,34 +1161,48 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<FontWeight?> FontWeight
+    public Signal<FontWeight> FontWeight
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<FontWeight?>(null);
+            var sig = new MutSignal<FontWeight>(global::Avalonia.Media.FontWeight.Normal);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.FontWeight;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.FontWeightProperty)
-                        sig.RxValue = (FontWeight?)args.NewValue;
+                        sig.RxValue = (FontWeight)args.NewValue!;
                 }
             }
             else if (control is TemplatedControl templatedControl)
             {
+                sig.RxValue = templatedControl.FontWeight;
                 templatedControl.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => templatedControl.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TemplatedControl.FontWeightProperty)
-                        sig.RxValue = (FontWeight?)args.NewValue;
+                        sig.RxValue = (FontWeight)args.NewValue!;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.FontWeight;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextElement.FontWeightProperty)
+                        sig.RxValue = (FontWeight)args.NewValue!;
                 }
             }
 
@@ -1404,34 +1210,48 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<FontFamily?> FontFamily
+    public Signal<FontFamily> FontFamily
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<FontFamily?>(null);
+            var sig = new MutSignal<FontFamily>(default!);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.FontFamily;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.FontFamilyProperty)
-                        sig.RxValue = (FontFamily?)args.NewValue;
+                        sig.RxValue = (FontFamily)args.NewValue!;
                 }
             }
             else if (control is TemplatedControl templatedControl)
             {
+                sig.RxValue = templatedControl.FontFamily;
                 templatedControl.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => templatedControl.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TemplatedControl.FontFamilyProperty)
-                        sig.RxValue = (FontFamily?)args.NewValue;
+                        sig.RxValue = (FontFamily)args.NewValue!;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.FontFamily;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextElement.FontFamilyProperty)
+                        sig.RxValue = (FontFamily)args.NewValue!;
                 }
             }
 
@@ -1439,34 +1259,48 @@ public class StyleProps(Scope scope, Border border, Control control)
         }
     }
 
-    public Signal<FontStretch?> FontStretch
+    public Signal<FontStretch> FontStretch
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<FontStretch?>(null);
+            var sig = new MutSignal<FontStretch>(global::Avalonia.Media.FontStretch.Normal);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.FontStretch;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.FontStretchProperty)
-                        sig.RxValue = (FontStretch?)args.NewValue;
+                        sig.RxValue = (FontStretch)args.NewValue!;
                 }
             }
             else if (control is TemplatedControl templatedControl)
             {
+                sig.RxValue = templatedControl.FontStretch;
                 templatedControl.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => templatedControl.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TemplatedControl.FontStretchProperty)
-                        sig.RxValue = (FontStretch?)args.NewValue;
+                        sig.RxValue = (FontStretch)args.NewValue!;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.FontStretch;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextElement.FontStretchProperty)
+                        sig.RxValue = (FontStretch)args.NewValue!;
                 }
             }
 
@@ -1484,6 +1318,7 @@ public class StyleProps(Scope scope, Border border, Control control)
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.FontFeatures;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
@@ -1495,6 +1330,7 @@ public class StyleProps(Scope scope, Border border, Control control)
             }
             else if (control is TemplatedControl templatedControl)
             {
+                sig.RxValue = templatedControl.FontFeatures;
                 templatedControl.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => templatedControl.PropertyChanged -= OnPropUpdate;
 
@@ -1504,39 +1340,65 @@ public class StyleProps(Scope scope, Border border, Control control)
                         sig.RxValue = (FontFeatureCollection?)args.NewValue;
                 }
             }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.FontFeatures;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextElement.FontFeaturesProperty)
+                        sig.RxValue = (FontFeatureCollection?)args.NewValue;
+                }
+            }
 
             return field;
         }
     }
 
-    public Signal<FontStyle?> FontStyle
+    public Signal<FontStyle> FontStyle
     {
         get
         {
             if (field is not null) return field;
-            var sig = new MutSignal<FontStyle?>(null);
+            var sig = new MutSignal<FontStyle>(global::Avalonia.Media.FontStyle.Normal);
             field = sig;
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.FontStyle;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TextBlock.FontStyleProperty)
-                        sig.RxValue = (FontStyle?)args.NewValue;
+                        sig.RxValue = (FontStyle)args.NewValue!;
                 }
             }
             else if (control is TemplatedControl templatedControl)
             {
+                sig.RxValue = templatedControl.FontStyle;
                 templatedControl.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => templatedControl.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TemplatedControl.FontStyleProperty)
-                        sig.RxValue = (FontStyle?)args.NewValue;
+                        sig.RxValue = (FontStyle)args.NewValue!;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.FontStyle;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextElement.FontFeaturesProperty)
+                        sig.RxValue = (FontStyle)args.NewValue!;
                 }
             }
 
@@ -1554,6 +1416,7 @@ public class StyleProps(Scope scope, Border border, Control control)
 
             if (control is TextBlock textBlock)
             {
+                sig.RxValue = textBlock.Foreground;
                 textBlock.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => textBlock.PropertyChanged -= OnPropUpdate;
 
@@ -1565,12 +1428,49 @@ public class StyleProps(Scope scope, Border border, Control control)
             }
             else if (control is TemplatedControl templatedControl)
             {
+                sig.RxValue = templatedControl.Foreground;
                 templatedControl.PropertyChanged += OnPropUpdate;
                 scope.OnCleanup += () => templatedControl.PropertyChanged -= OnPropUpdate;
 
                 void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
                 {
                     if (args.Property == TemplatedControl.ForegroundProperty)
+                        sig.RxValue = (IBrush?)args.NewValue;
+                }
+            }
+            else if (control is TextPresenter presenter)
+            {
+                sig.RxValue = presenter.Foreground;
+                presenter.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => presenter.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TextElement.FontFeaturesProperty)
+                        sig.RxValue = (IBrush?)args.NewValue;
+                }
+            }
+            else if (control is Shape shape)
+            {
+                sig.RxValue = shape.Fill;
+                shape.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => shape.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == Shape.FillProperty)
+                        sig.RxValue = (IBrush?)args.NewValue;
+                }
+            }
+            else if (control is TickBar tickBar)
+            {
+                sig.RxValue = tickBar.Fill;
+                tickBar.PropertyChanged += OnPropUpdate;
+                scope.OnCleanup += () => tickBar.PropertyChanged -= OnPropUpdate;
+
+                void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+                {
+                    if (args.Property == TickBar.FillProperty)
                         sig.RxValue = (IBrush?)args.NewValue;
                 }
             }

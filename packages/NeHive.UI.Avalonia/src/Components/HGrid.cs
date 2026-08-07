@@ -9,7 +9,6 @@ using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
-
 public readonly struct HgLen
 {
     public readonly GridLength Value;
@@ -27,9 +26,9 @@ public readonly struct HgLen
 
 public record GridPosition(
     Accessor<int>? Row = null,
-    Accessor<int>? Column= null,
-    Accessor<int>? RowSpan= null,
-    Accessor<int>? ColSpan= null
+    Accessor<int>? Column = null,
+    Accessor<int>? RowSpan = null,
+    Accessor<int>? ColSpan = null
 );
 
 public class HGridProps(Scope scope, Border border, Grid grid) : BaseComponentProps(scope, border, grid);
@@ -40,16 +39,16 @@ public class HGridArgs(
     Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
-    BaseComponentInteraction? events = null
-) : BaseComponentArgs(strStyle, style, events), IEnumerable<(GridPosition, IElement)>
+    BaseComponentInteraction? baseInteraction = null
+) : BaseComponentArgs(strStyle, style, baseInteraction), IEnumerable<(GridPosition?, IElement)>
 {
-    private readonly List<(GridPosition GridPos, IElement Element)> _children = [];
+    private readonly List<(GridPosition? GridPos, IElement Element)> _children = [];
 
     public readonly Accessor<bool>? ShowGridLines = showGridLines;
     public readonly Accessor<IReadOnlyList<HgLen>>? RowDefinitions = rowDefinitions;
     public readonly Accessor<IReadOnlyList<HgLen>>? ColumnDefinitions = columnDefinitions;
 
-    public IElement this[GridPosition key]
+    public IElement this[GridPosition? key]
     {
         set => _children.Add((key, value));
     }
@@ -71,7 +70,7 @@ public class HGridArgs(
         _children.Add((new(), element));
     }
 
-    public IEnumerator<(GridPosition, IElement)> GetEnumerator()
+    public IEnumerator<(GridPosition?, IElement)> GetEnumerator()
         => _children.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -79,12 +78,35 @@ public class HGridArgs(
 
 public static partial class BaseComponent
 {
-    public static IElement<Grid> HGrid(Func<HGridProps, HGridArgs> fn)
+    public static IElement<Grid> HGrid(
+        Accessor<bool>? showGridLines = null,
+        Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
+        Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HGrid(out _, _ => new(showGridLines, rowDefinitions, columnDefinitions,
+        strStyle, style, baseInteraction));
+    
+    public static IElement<Grid> HGrid(
+        out Grid expose, 
+        Accessor<bool>? showGridLines = null,
+        Accessor<IReadOnlyList<HgLen>>? rowDefinitions = null,
+        Accessor<IReadOnlyList<HgLen>>? columnDefinitions = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HGrid(out expose, _ => new(showGridLines, rowDefinitions, columnDefinitions,
+        strStyle, style, baseInteraction));
+
+    public static IElement<Grid> HGrid(Func<HGridProps, HGridArgs> fn) => HGrid(out _, fn);
+
+    public static IElement<Grid> HGrid(out Grid expose, Func<HGridProps, HGridArgs> fn)
     {
+        var grid = new Grid();
+        expose = grid;
         return Element<Grid>.WithScope(uiScope =>
         {
-            var grid = new Grid();
-
             var border = new Border
             {
                 Child = grid
@@ -102,8 +124,7 @@ public static partial class BaseComponent
             state.ApplyAccessorStyle(args.StrStyle, grid, border, ApplyStyle);
             state.ApplyVariantsStyle(grid, border, ApplyStyle);
 
-            if (args.BaseInteraction is not null)
-                args.BaseInteraction.ApplyInteractions(uiScope, grid);
+            args.BaseInteraction?.ApplyInteractions(uiScope, grid);
             if (args.Popups is not null)
                 ElementUtil.ApplyPopups(border, args.Popups);
 
@@ -134,17 +155,20 @@ public static partial class BaseComponent
             foreach (var (pos, childElement) in args)
             {
                 var child = childElement.Content;
-                SetPos(child, pos.Row?.Value, pos.Column?.Value, pos.RowSpan?.Value, pos.ColSpan?.Value);
-                if (pos.Row?.IsReactive is true ||
-                    pos.Column?.IsReactive is true ||
-                    pos.RowSpan?.IsReactive is true ||
-                    pos.ColSpan?.IsReactive is true
-                   )
-                    uiScope.CreateEffect(() =>
-                    {
-                        SetPos(child, pos.Row?.RxValue, pos.Column?.RxValue, pos.RowSpan?.RxValue,
-                            pos.ColSpan?.RxValue);
-                    });
+                if (pos is not null)
+                {
+                    SetPos(child, pos.Row?.Value, pos.Column?.Value, pos.RowSpan?.Value, pos.ColSpan?.Value);
+                    if (pos.Row?.IsReactive is true ||
+                        pos.Column?.IsReactive is true ||
+                        pos.RowSpan?.IsReactive is true ||
+                        pos.ColSpan?.IsReactive is true
+                       )
+                        uiScope.CreateEffect(() =>
+                        {
+                            SetPos(child, pos.Row?.RxValue, pos.Column?.RxValue, pos.RowSpan?.RxValue,
+                                pos.ColSpan?.RxValue);
+                        });
+                }
 
                 grid.Children.Add(child);
             }

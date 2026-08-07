@@ -2,55 +2,180 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
+public class HSelectableTextProps(
+    Scope scope,
+    Border border,
+    SelectableTextBlock textBlock
+) : HTextProps(scope, border, textBlock)
+{
+    public Signal<string> SelectedText
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, textBlock,
+                SelectableTextBlock.SelectedTextProperty, textBlock.SelectedText);
+            return field;
+        }
+    }
+
+    public Signal<bool> CanCopy
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, textBlock,
+                SelectableTextBlock.CanCopyProperty, textBlock.CanCopy);
+            return field;
+        }
+    }
+
+    public MutSignal<int> SelectionStart
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<int>(textBlock.SelectionStart);
+            BridgeAvalonia.BindPropertySignal(scope, field, textBlock, SelectableTextBlock.SelectionStartProperty);
+            return field;
+        }
+    }
+
+    public MutSignal<int> SelectionEnd
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<int>(textBlock.SelectionEnd);
+            BridgeAvalonia.BindPropertySignal(scope, field, textBlock, SelectableTextBlock.SelectionEndProperty);
+            return field;
+        }
+    }
+
+    public MutSignal<IBrush?> SelectionBrush
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<IBrush?>(textBlock.SelectionBrush);
+            BridgeAvalonia.BindPropertySignal(scope, field, textBlock, SelectableTextBlock.SelectionBrushProperty);
+            return field;
+        }
+    }
+
+    public MutSignal<IBrush?> SelectionForegroundBrush
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<IBrush?>(textBlock.SelectionForegroundBrush);
+            BridgeAvalonia.BindPropertySignal(scope, field, textBlock,
+                SelectableTextBlock.SelectionForegroundBrushProperty);
+            return field;
+        }
+    }
+}
+
+public class HSelectableTextArgs(
+    Accessor<string>? text,
+    MutSignal<string>? fromSelectedText = null,
+    Accessor<int>? selectionStart = null,
+    Accessor<int>? selectionEnd = null,
+    Accessor<IBrush?>? selectionBrush = null,
+    Accessor<IBrush?>? selectionForegroundBrush = null,
+    Accessor<string>? strStyle = null,
+    HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null,
+    Action<RoutedEventArgs>? onCopyingToClipboard = null
+) : HTextArgs(text, strStyle, style, baseInteraction)
+{
+    public readonly MutSignal<string>? FromSelectedText = fromSelectedText;
+    public readonly Accessor<int>? SelectionStart = selectionStart;
+    public readonly Accessor<int>? SelectionEnd = selectionEnd;
+    public readonly Accessor<IBrush?>? SelectionBrush = selectionBrush;
+    public readonly Accessor<IBrush?>? SelectionForegroundBrush = selectionForegroundBrush;
+    public readonly Action<RoutedEventArgs>? OnCopyingToClipboard = onCopyingToClipboard;
+}
+
 public static partial class BaseComponent
 {
-    public static IElement HSelectableText(
-        Accessor<string>? text = null,
+    public static IElement<SelectableTextBlock> HSelectableText(
+        Accessor<string>? text,
+        MutSignal<string>? fromSelectedText = null,
         Accessor<int>? selectionStart = null,
         Accessor<int>? selectionEnd = null,
-        Accessor<IBrush>? selectionBrush = null,
-        Accessor<IBrush>? selectionForegroundBrush = null,
+        Accessor<IBrush?>? selectionBrush = null,
+        Accessor<IBrush?>? selectionForegroundBrush = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
-        Action<RoutedEventArgs>? copyingToClipboard = null)
+        BaseComponentInteraction? baseInteraction = null,
+        Action<RoutedEventArgs>? onCopyingToClipboard = null
+    ) => HSelectableText(out _, _ => new(text, fromSelectedText,
+        selectionStart, selectionEnd, selectionBrush, selectionForegroundBrush,
+        strStyle, style, baseInteraction, onCopyingToClipboard));
+
+    public static IElement<SelectableTextBlock> HSelectableText(
+        out SelectableTextBlock expose,
+        Accessor<string>? text,
+        MutSignal<string>? fromSelectedText = null,
+        Accessor<int>? selectionStart = null,
+        Accessor<int>? selectionEnd = null,
+        Accessor<IBrush?>? selectionBrush = null,
+        Accessor<IBrush?>? selectionForegroundBrush = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null,
+        Action<RoutedEventArgs>? onCopyingToClipboard = null
+    ) => HSelectableText(out expose, _ => new(text, fromSelectedText,
+        selectionStart, selectionEnd, selectionBrush, selectionForegroundBrush,
+        strStyle, style, baseInteraction, onCopyingToClipboard));
+
+    public static IElement<SelectableTextBlock> HSelectableText(Func<HSelectableTextProps, HSelectableTextArgs> fn
+    ) => HSelectableText(out _, fn);
+
+    public static IElement<SelectableTextBlock> HSelectableText(
+        out SelectableTextBlock expose,
+        Func<HSelectableTextProps, HSelectableTextArgs> fn)
     {
-        return Element.WithScope(uiScope =>
+        var textBlock = new SelectableTextBlock
         {
-            text ??= "";
-            var styleAccessor = StyleParser.ParseFull(strStyle);
-            var priorityStyle = style is null ? null : StyleUtil.HStyle2Signal(style);
-
-            var textBlock = new SelectableTextBlock
-            {
-                TextDecorations = null
-            };
-
+            TextDecorations = null
+        };
+        expose = textBlock;
+        return Element<SelectableTextBlock>.WithScope(uiScope =>
+        {
             var border = new Border
             {
                 Child = textBlock
             };
 
-            var state = new CommonState(uiScope, styleAccessor.Value.Normal)
-            {
-                PriorityStyle = priorityStyle,
-                StrVariants = styleAccessor.Value.Variants
-            };
+            var props = new HSelectableTextProps(uiScope, border, textBlock);
+            var args = fn(props);
 
-            state.ApplyAccessorStyle(styleAccessor, textBlock, border, ApplyStyle);
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
+            {
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
+            };
+            state.ApplyAccessorStyle(args.StrStyle, textBlock, border, ApplyStyle);
             state.ApplyVariantsStyle(textBlock, border, ApplyStyle);
-            ApplySelectionStyle(styleAccessor.Value);
-            if (styleAccessor.IsReactive)
+
+            ApplySelectionStyle(args.StrStyle.Value);
+            if (args.StrStyle.IsReactive)
             {
                 var firstApply = true;
                 uiScope.CreateEffect(epoch =>
                 {
-                    var fullStyle = epoch.Track(styleAccessor);
+                    var fullStyle = epoch.Track(args.StrStyle);
                     if (firstApply)
                     {
                         firstApply = false;
@@ -61,43 +186,54 @@ public static partial class BaseComponent
                 });
             }
 
-            if (selectionBrush is not null)
+            if (args.Popups is not null)
+                ElementUtil.ApplyPopups(textBlock, args.Popups);
+
+            args.BaseInteraction?.ApplyInteractions(uiScope, textBlock);
+
+            if (args.Text is not null)
             {
-                textBlock.SelectionBrush = selectionBrush.Value;
-                if (selectionBrush.IsReactive)
-                    uiScope.CreateEffect(epoch => textBlock.SelectionBrush = epoch.Track(selectionBrush));
+                textBlock.Text = args.Text.Value;
+                if (args.Text.IsReactive)
+                    uiScope.CreateEffect(epoch => textBlock.Text = epoch.Track(args.Text));
             }
 
-            if (selectionForegroundBrush is not null)
+            if (args.SelectionBrush is not null)
             {
-                textBlock.SelectionForegroundBrush = selectionForegroundBrush.Value;
-                if (selectionForegroundBrush.IsReactive)
+                textBlock.SelectionBrush = args.SelectionBrush.Value;
+                if (args.SelectionBrush.IsReactive)
+                    uiScope.CreateEffect(epoch => textBlock.SelectionBrush = epoch.Track(args.SelectionBrush));
+            }
+
+            if (args.SelectionForegroundBrush is not null)
+            {
+                textBlock.SelectionForegroundBrush = args.SelectionForegroundBrush.Value;
+                if (args.SelectionForegroundBrush.IsReactive)
                     uiScope.CreateEffect(epoch =>
-                        textBlock.SelectionForegroundBrush = epoch.Track(selectionForegroundBrush));
+                        textBlock.SelectionForegroundBrush = epoch.Track(args.SelectionForegroundBrush));
             }
 
-            textBlock.Text = text.Value;
-            if (text.IsReactive)
-                uiScope.CreateEffect(epoch => textBlock.Text = epoch.Track(text));
-
-            if (selectionStart is not null)
+            if (args.SelectionStart is not null)
             {
-                textBlock.SelectionStart = selectionStart.Value;
-                if (selectionStart.IsReactive)
-                    uiScope.CreateEffect(epoch => textBlock.SelectionStart = epoch.Track(selectionStart));
+                textBlock.SelectionStart = args.SelectionStart.Value;
+                if (args.SelectionStart.IsReactive)
+                    uiScope.CreateEffect(epoch => textBlock.SelectionStart = epoch.Track(args.SelectionStart));
             }
 
-            if (selectionEnd is not null)
+            if (args.SelectionEnd is not null)
             {
-                textBlock.SelectionEnd = selectionEnd.Value;
-                if (selectionEnd.IsReactive)
-                    uiScope.CreateEffect(epoch => textBlock.SelectionEnd = epoch.Track(selectionEnd));
+                textBlock.SelectionEnd = args.SelectionEnd.Value;
+                if (args.SelectionEnd.IsReactive)
+                    uiScope.CreateEffect(epoch => textBlock.SelectionEnd = epoch.Track(args.SelectionEnd));
             }
 
-            if (copyingToClipboard is not null)
-                textBlock.CopyingToClipboard += (_, e) => copyingToClipboard(e);
+            if (args.FromSelectedText is not null)
+                uiScope.CreateEffect(epoch => args.FromSelectedText.RxValue = epoch.Pull(props.SelectedText));
 
-            return border;
+            if (args.OnCopyingToClipboard is not null)
+                textBlock.CopyingToClipboard += (_, e) => args.OnCopyingToClipboard(e);
+
+            return (textBlock, border);
 
             void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
             {
@@ -153,9 +289,9 @@ public static partial class BaseComponent
                 }
 
                 if (!hasSelectionStyle) return;
-                if (selectionStyle.Background is not null && selectionBrush is null)
+                if (selectionStyle.Background is not null && args.SelectionBrush is null)
                     textBlock.SelectionBrush = selectionStyle.Background;
-                if (selectionStyle.Foreground is not null && selectionForegroundBrush is null)
+                if (selectionStyle.Foreground is not null && args.SelectionForegroundBrush is null)
                     textBlock.SelectionForegroundBrush = selectionStyle.Foreground;
             }
         });

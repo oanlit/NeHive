@@ -7,10 +7,137 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using NeHive.Model;
 using NeHive.Reactive;
+using NeHive.UI.Avalonia.Objects;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
+
+public class HScrollViewerProps(Scope scope, Border border, ScrollViewer scrollViewer)
+    : BaseComponentProps(scope, border, scrollViewer)
+{
+    public Signal<bool> IsAllowAutoHide
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.AllowAutoHideProperty, scrollViewer.AllowAutoHide);
+            return field;
+        }
+    }
+
+    public Signal<bool> IsBringIntoViewOnFocusChange
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.BringIntoViewOnFocusChangeProperty, scrollViewer.BringIntoViewOnFocusChange);
+            return field;
+        }
+    }
+
+    public Signal<bool> IsDeferredScrollingEnabled
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.IsDeferredScrollingEnabledProperty, scrollViewer.IsDeferredScrollingEnabled);
+            return field;
+        }
+    }
+
+    public Signal<bool> IsScrollChainingEnabled
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.IsScrollChainingEnabledProperty, scrollViewer.IsScrollChainingEnabled);
+            return field;
+        }
+    }
+
+    public Signal<bool> IsScrollInertiaEnabled
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.IsScrollInertiaEnabledProperty, scrollViewer.IsScrollInertiaEnabled);
+            return field;
+        }
+    }
+
+    public Signal<ScrollBarVisibility> HorizontalScrollBarVisibility
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.HorizontalScrollBarVisibilityProperty, scrollViewer.HorizontalScrollBarVisibility);
+            return field;
+        }
+    }
+
+    public Signal<ScrollBarVisibility> VerticalScrollBarVisibility
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.VerticalScrollBarVisibilityProperty, scrollViewer.VerticalScrollBarVisibility);
+            return field;
+        }
+    }
+
+    public Signal<SnapPointsType> HorizontalSnapPointsType
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.HorizontalSnapPointsTypeProperty, scrollViewer.HorizontalSnapPointsType);
+            return field;
+        }
+    }
+
+    public Signal<SnapPointsType> VerticalSnapPointsType
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.VerticalSnapPointsTypeProperty, scrollViewer.VerticalSnapPointsType);
+            return field;
+        }
+    }
+
+    public Signal<SnapPointsAlignment> HorizontalSnapPointsAlignment
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.HorizontalSnapPointsAlignmentProperty, scrollViewer.HorizontalSnapPointsAlignment);
+            return field;
+        }
+    }
+
+    public Signal<SnapPointsAlignment> VerticalSnapPointsAlignment
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = BridgeAvalonia.CreatePropertySignal(scope, scrollViewer,
+                ScrollViewer.VerticalSnapPointsAlignmentProperty, scrollViewer.VerticalSnapPointsAlignment);
+            return field;
+        }
+    }
+}
 
 public class HScrollPart
 {
@@ -23,241 +150,6 @@ public class HScrollPart
 
     public IElement<ScrollContentPresenter> ContentPresenter(IElement<ScrollContentPresenter> element) =>
         ContentPresenterElement = element;
-}
-
-public class HScrollProps(Scope scope, Border border, ScrollViewer scrollViewer)
-    : BaseComponentProps(scope, border, scrollViewer)
-{
-    public Signal<bool> IsAllowAutoHide
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<bool>(scrollViewer.AllowAutoHide);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.AllowAutoHideProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<bool> IsBringIntoViewOnFocusChange
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<bool>(scrollViewer.BringIntoViewOnFocusChange);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.BringIntoViewOnFocusChangeProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<bool> IsDeferredScrollingEnabled
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<bool>(scrollViewer.IsDeferredScrollingEnabled);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.IsDeferredScrollingEnabledProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<bool> IsScrollChainingEnabled
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<bool>(scrollViewer.IsScrollChainingEnabled);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.IsScrollChainingEnabledProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<bool> IsScrollInertiaEnabled
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<bool>(scrollViewer.IsScrollInertiaEnabled);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.IsScrollInertiaEnabledProperty)
-                    sig.RxValue = (bool)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<ScrollBarVisibility> HorizontalScrollBarVisibility
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<ScrollBarVisibility>(scrollViewer.HorizontalScrollBarVisibility);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.HorizontalScrollBarVisibilityProperty)
-                    sig.RxValue = (ScrollBarVisibility)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<ScrollBarVisibility> VerticalScrollBarVisibility
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<ScrollBarVisibility>(scrollViewer.VerticalScrollBarVisibility);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.VerticalScrollBarVisibilityProperty)
-                    sig.RxValue = (ScrollBarVisibility)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<SnapPointsType> HorizontalSnapPointsType
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<SnapPointsType>(scrollViewer.HorizontalSnapPointsType);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.HorizontalSnapPointsAlignmentProperty)
-                    sig.RxValue = (SnapPointsType)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<SnapPointsType> VerticalSnapPointsType
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<SnapPointsType>(scrollViewer.VerticalSnapPointsType);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.VerticalSnapPointsTypeProperty)
-                    sig.RxValue = (SnapPointsType)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<SnapPointsAlignment> HorizontalSnapPointsAlignment
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<SnapPointsAlignment>(scrollViewer.HorizontalSnapPointsAlignment);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.HorizontalSnapPointsAlignmentProperty)
-                    sig.RxValue = (SnapPointsAlignment)args.NewValue!;
-            }
-        }
-    }
-
-    public Signal<SnapPointsAlignment> VerticalSnapPointsAlignment
-    {
-        get
-        {
-            if (field is not null) return field;
-            var sig = new MutSignal<SnapPointsAlignment>(scrollViewer.VerticalSnapPointsAlignment);
-            field = sig;
-
-            scrollViewer.PropertyChanged += OnPropUpdate;
-            scope.OnCleanup += () => scrollViewer.PropertyChanged -= OnPropUpdate;
-
-            return field;
-
-            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
-            {
-                if (args.Property == ScrollViewer.VerticalSnapPointsAlignmentProperty)
-                    sig.RxValue = (SnapPointsAlignment)args.NewValue!;
-            }
-        }
-    }
 }
 
 public class HScrollViewerArgs(
@@ -273,7 +165,9 @@ public class HScrollViewerArgs(
     Accessor<SnapPointsAlignment>? horizontalSnapPointsAlignment = null,
     Accessor<SnapPointsAlignment>? verticalSnapPointsAlignment = null,
     Accessor<string>? strStyle = null,
-    HStyle? style = null) : ISingleChildrenArgs
+    HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null
+) : BaseComponentArgs(strStyle, style, baseInteraction), ISingleChildrenArgs
 {
     private readonly List<IElement> _children = [];
 
@@ -290,15 +184,12 @@ public class HScrollViewerArgs(
     public readonly Accessor<SnapPointsAlignment>? HorizontalSnapPointsAlignment = horizontalSnapPointsAlignment;
     public readonly Accessor<SnapPointsAlignment>? VerticalSnapPointsAlignment = verticalSnapPointsAlignment;
 
-    public readonly Accessor<FullStyle> StrStyle = StyleParser.ParseFull(strStyle);
-    public readonly Signal<StyleSet>? Style = style is null ? null : StyleUtil.HStyle2Signal(style);
-
     public IElement Content
     {
         init => _children.Add(value);
     }
 
-    public Func<HScrollProps, HScrollPart, IElement>? Template { get; init; }
+    public Func<HScrollPart, IElement>? Template { get; init; }
 
     public IEnumerator<IElement> GetEnumerator()
         => _children.GetEnumerator();
@@ -310,62 +201,72 @@ public class HScrollViewerArgs(
         => _children.Add(element);
 }
 
-public class HScrollExpose(ScrollViewer scroll)
-{
-    public Size Extent => scroll.Extent;
-    public Size Viewport => scroll.Viewport;
-
-    public Vector Offset
-    {
-        get => scroll.Offset;
-        set => scroll.Offset = value;
-    }
-
-    public void LineUp()
-        => scroll.LineUp();
-
-    public void LineDown()
-        => scroll.LineDown();
-
-    public void LineLeft()
-        => scroll.LineLeft();
-
-    public void LineRight()
-        => scroll.LineRight();
-
-    public void PageUp()
-        => scroll.PageUp();
-
-    public void PageDown()
-        => scroll.PageDown();
-
-    public void PageLeft()
-        => scroll.PageLeft();
-
-    public void PageRight()
-        => scroll.PageRight();
-
-    public void ScrollToHome()
-        => scroll.ScrollToHome();
-
-    public void ScrollToEnd()
-        => scroll.ScrollToEnd();
-}
-
 public static partial class BaseComponent
 {
-    public static IElement<StackPanel> HScrollViewer(out HScrollExpose expose, HScrollViewerArgs args)
+    public static IElement<ScrollViewer> HScrollViewer(
+        Accessor<bool>? isAllowAutoHide = null,
+        Accessor<bool>? isBringIntoViewOnFocusChange = null,
+        Accessor<bool>? isDeferredScrollingEnabled = null,
+        Accessor<bool>? isScrollChainingEnabled = null,
+        Accessor<bool>? isScrollInertiaEnabled = null,
+        Accessor<ScrollBarVisibility>? horizontalScrollBarVisibility = null,
+        Accessor<ScrollBarVisibility>? verticalScrollBarVisibility = null,
+        Accessor<SnapPointsType>? horizontalSnapPointsType = null,
+        Accessor<SnapPointsType>? verticalSnapPointsType = null,
+        Accessor<SnapPointsAlignment>? horizontalSnapPointsAlignment = null,
+        Accessor<SnapPointsAlignment>? verticalSnapPointsAlignment = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HScrollViewer(out _, _ => new(isAllowAutoHide, isBringIntoViewOnFocusChange,
+        isDeferredScrollingEnabled, isScrollChainingEnabled, isScrollInertiaEnabled,
+        horizontalScrollBarVisibility, verticalScrollBarVisibility,
+        horizontalSnapPointsType, verticalSnapPointsType, horizontalSnapPointsAlignment,
+        verticalSnapPointsAlignment, strStyle, style, baseInteraction)
+    );
+    
+    public static IElement<ScrollViewer> HScrollViewer(
+        out ScrollViewer expose,
+        Accessor<bool>? isAllowAutoHide = null,
+        Accessor<bool>? isBringIntoViewOnFocusChange = null,
+        Accessor<bool>? isDeferredScrollingEnabled = null,
+        Accessor<bool>? isScrollChainingEnabled = null,
+        Accessor<bool>? isScrollInertiaEnabled = null,
+        Accessor<ScrollBarVisibility>? horizontalScrollBarVisibility = null,
+        Accessor<ScrollBarVisibility>? verticalScrollBarVisibility = null,
+        Accessor<SnapPointsType>? horizontalSnapPointsType = null,
+        Accessor<SnapPointsType>? verticalSnapPointsType = null,
+        Accessor<SnapPointsAlignment>? horizontalSnapPointsAlignment = null,
+        Accessor<SnapPointsAlignment>? verticalSnapPointsAlignment = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HScrollViewer(out expose, _ => new(isAllowAutoHide, isBringIntoViewOnFocusChange,
+        isDeferredScrollingEnabled, isScrollChainingEnabled, isScrollInertiaEnabled,
+        horizontalScrollBarVisibility, verticalScrollBarVisibility,
+        horizontalSnapPointsType, verticalSnapPointsType, horizontalSnapPointsAlignment,
+        verticalSnapPointsAlignment, strStyle, style, baseInteraction)
+    );
+
+    public static IElement<ScrollViewer> HScrollViewer(Func<HScrollViewerProps, HScrollViewerArgs> fn)
+        => HScrollViewer(out _, fn);
+
+    public static IElement<ScrollViewer> HScrollViewer(out ScrollViewer expose,
+        Func<HScrollViewerProps, HScrollViewerArgs> fn)
     {
         var scroll = new ScrollViewer();
-        expose = new HScrollExpose(scroll);
-        return Element<StackPanel>.WithScope(uiScope =>
+        expose = scroll;
+        return Element<ScrollViewer>.WithScope(uiScope =>
         {
-            var stack = new StackPanel();
-
             var border = new Border
             {
                 Child = scroll
             };
+
+            var props = new HScrollViewerProps(uiScope, border, scroll);
+            var args = fn(props);
+
+            var control = ElementUtil.WrapSingleContainerContent(args).Content;
 
             var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
             {
@@ -373,11 +274,11 @@ public static partial class BaseComponent
                 StrVariants = args.StrStyle.Value.Variants
             };
 
-            state.ApplyAccessorStyle(args.StrStyle, stack, border, ApplyStyle);
-            state.ApplyVariantsStyle(stack, border, ApplyStyle);
-
-            foreach (var child in args)
-                stack.Children.Add(child.Content);
+            state.ApplyAccessorStyle(args.StrStyle, control, border, ApplyStyle);
+            state.ApplyVariantsStyle(control, border, ApplyStyle);
+            args.BaseInteraction?.ApplyInteractions(uiScope, scroll);
+            if (args.Popups is not null)
+                ElementUtil.ApplyPopups(border, args.Popups);
 
             if (args.IsAllowAutoHide is not null)
             {
@@ -468,9 +369,8 @@ public static partial class BaseComponent
 
             if (args.Template is not null)
             {
-                var props = new HScrollProps(uiScope, border, scroll);
                 var part = new HScrollPart();
-                var content = args.Template(props, part).Content;
+                var content = args.Template(part).Content;
 
                 ScrollBar? horizontalScrollBarElement = null;
                 ScrollBar? verticalScrollBarElement = null;
@@ -534,41 +434,23 @@ public static partial class BaseComponent
                 });
             }
 
-            scroll.Content = stack;
+            // scroll.Content = stack;
+            scroll.Content = control;
 
-            uiScope.OnMount += () => { scroll.ScrollToHome(); };
+            uiScope.OnMount += scroll.ScrollToHome;
 
-            return (stack, border);
+            // return (stack, border);
+            return (scroll, border);
 
             void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
             {
                 StyleUtil.ApplyStyle(styleValue, layout, bord);
-
                 if (styleValue.Padding is not null)
                 {
                     border.Padding = new Thickness(0);
-                    stack.Margin = styleValue.Padding.Value;
-                }
-
-                var orientation = styleValue.Orientation ?? Orientation.Vertical;
-                stack.Orientation = orientation;
-
-                switch (orientation)
-                {
-                    case Orientation.Horizontal:
-                        if (styleValue.GapX is not null) stack.Spacing = styleValue.GapX.Value;
-                        break;
-
-                    case Orientation.Vertical:
-                        if (styleValue.GapY is not null) stack.Spacing = styleValue.GapY.Value;
-                        break;
+                    // stack.Margin = styleValue.Padding.Value;
                 }
             }
         });
-    }
-
-    public static IElement<StackPanel> HScrollViewer(HScrollViewerArgs args)
-    {
-        return HScrollViewer(out _, args);
     }
 }

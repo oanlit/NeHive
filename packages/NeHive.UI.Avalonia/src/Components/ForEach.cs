@@ -6,8 +6,8 @@ namespace NeHive.UI.Avalonia.Components;
 public struct ForEachProp<T>(Accessor<IReadOnlyList<T>> each)
 {
     public readonly Accessor<IReadOnlyList<T>> Each = each;
-    public IElement<Panel>? ItemsPanel;
-    public required Func<T, ISignal<int>, IElement> ItemTemplate;
+    public IElement<Panel>? ItemsPanel { get; init; }
+    public required Func<T, ISignal<int>, IElement> ItemTemplate { get; init; }
 }
 
 public static partial class ControlFlow
@@ -21,6 +21,7 @@ public static partial class ControlFlow
             {
                 panel.Children.Add(prop.ItemsPanel.Content);
             }
+
             var container = prop.ItemsPanel?.Expose ?? panel;
 
             // 用 ArrayMapMemo 做“数据层 diff + 生命周期管理”

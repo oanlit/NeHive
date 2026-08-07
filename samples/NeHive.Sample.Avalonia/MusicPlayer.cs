@@ -140,7 +140,7 @@ public static class MusicPlayerDemo
                 }), // HStackPanel
 
                 // 列表
-                HScrollViewer(new(strStyle: "w-full h-48 bg-white rounded-lg border border-gray-200 p-2")
+                HScrollViewer(_ => new(strStyle: "w-full h-48 bg-white rounded-lg border border-gray-200 p-2")
                 {
                     ForEach<TrackInfo>(new(playlist)
                     {
@@ -241,13 +241,10 @@ public static class MusicPlayerDemo
             {
                 Match<int>(new(volume)
                 {
-                    Cases = new()
-                    {
-                        [v => v == 0] = () =>
-                            HSvgImage("~/Assets/volume.svg", strStyle: "my-auto w-4 h-4 fw-extralight"),
-                        [v => v < 75] = () =>
-                            HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 fw-extralight")
-                    },
+                    [v => v == 0] = () =>
+                        HSvgImage("~/Assets/volume.svg", strStyle: "my-auto w-4 h-4 fw-extralight"),
+                    [v => v < 75] = () =>
+                        HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 fw-extralight"),
                     Default = () => HSvgImage("~/Assets/volume-2.svg", strStyle: "my-auto w-4 h-4 fw-extralight")
                 }), // Match<int>
                 HSlider(value: new(() => volume.RxValue),
@@ -360,11 +357,7 @@ public static class MusicPlayerDemo
             IfTrue = () => Loading<bool>(new(asyncMemo)
             {
                 Success = _ => CorePlayer(),
-                Error = ex =>
-                {
-                    Console.WriteLine(ex.StackTrace);
-                    return HText(new($"RxError: {ex.Message}"));
-                }
+                Error = ex => HText($"RxError: {ex.Message}")
             }),
             IfFalse = () => HStackPanel(_ => new()
             {
@@ -385,7 +378,7 @@ public static class MusicPlayerDemo
             Show(new(song?.CoverPath is not null)
             {
                 IfFalse = () => HButton(strStyle: "w-32 h-32 bg-gray-200 rounded-xl"),
-                IfTrue = () => HUriImage(song?.CoverPath,
+                IfTrue = () => HImage(uri: song?.CoverPath,
                     stretch: Stretch.UniformToFill,
                     strStyle: "w-32 h-32 rounded-xl transition-transform duration-200 hover:scale-110")
             }),

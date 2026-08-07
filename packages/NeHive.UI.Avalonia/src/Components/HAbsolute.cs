@@ -62,7 +62,7 @@ public static partial class BaseComponent
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null) =>
         HAbsolute(out _, _ => new(strStyle, style, baseInteraction));
-    
+
     public static IElement<Canvas> HAbsolute(out Canvas expose,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
