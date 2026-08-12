@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
@@ -42,11 +43,14 @@ public class HRepeatButtonArgs(
     Accessor<bool>? isCancel = null,
     Accessor<ClickMode>? clickMode = null,
     Accessor<KeyGesture>? hotKey = null,
+    Accessor<ICommand>? command = null,
+    Accessor<object>? commandParameter = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
     BaseComponentInteraction? baseInteraction = null,
     Action<RoutedEventArgs>? onClick = null
-) : HButtonArgs(text, isDefault, isCancel, clickMode, hotKey, strStyle, style, baseInteraction, onClick)
+) : HButtonArgs(text, isDefault, isCancel, clickMode, hotKey, command, commandParameter,
+    strStyle, style, baseInteraction, onClick)
 {
     public readonly Accessor<int>? Interval = interval;
     public readonly Accessor<int>? Delay = delay;
@@ -62,12 +66,14 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null
     ) => HRepeatButton(out _, _ => new(text, interval, delay, isDefault, isCancel,
-        clickMode, hotKey, strStyle, style, baseInteraction, onClick));
+        clickMode, hotKey, command, commandParameter, strStyle, style, baseInteraction, onClick));
 
     public static IElement<RepeatButton> HRadioButton(
         out RepeatButton expose,
@@ -78,12 +84,14 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null
     ) => HRepeatButton(out expose, _ => new(text, interval, delay, isDefault, isCancel,
-        clickMode, hotKey, strStyle, style, baseInteraction, onClick));
+        clickMode, hotKey, command, commandParameter, strStyle, style, baseInteraction, onClick));
 
     public static IElement<RepeatButton> HRepeatButton(Func<HRepeatButtonProps, HRepeatButtonArgs> fn) =>
         HRepeatButton(out _, fn);

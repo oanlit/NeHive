@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -43,12 +44,15 @@ public class HToggleButtonArgs(
     Accessor<bool>? isCancel = null,
     Accessor<ClickMode>? clickMode = null,
     Accessor<KeyGesture>? hotKey = null,
+    Accessor<ICommand>? command = null,
+    Accessor<object>? commandParameter = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
     BaseComponentInteraction? baseInteraction = null,
     Action<RoutedEventArgs>? onClick = null,
     Action<RoutedEventArgs>? onIsCheckedChanged = null
-) : HButtonArgs(text, isDefault, isCancel, clickMode, hotKey, strStyle, style, baseInteraction, onClick)
+) : HButtonArgs(text, isDefault, isCancel, clickMode, hotKey, command, commandParameter,
+    strStyle, style, baseInteraction, onClick)
 {
     public readonly MutSignal<bool?>? BindIsChecked = bindIsChecked;
     public readonly Accessor<bool?>? IsChecked = bindIsChecked ?? isChecked;
@@ -67,13 +71,15 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null,
         Action<RoutedEventArgs>? onIsCheckedChanged = null
     ) => HToggleButton(out _, _ => new(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel,
-        clickMode, hotKey, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
+        clickMode, hotKey, command, commandParameter, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
 
     public static IElement<ToggleButton> HToggleButton(
         out ToggleButton expose,
@@ -85,13 +91,15 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null,
         Action<RoutedEventArgs>? onIsCheckedChanged = null
     ) => HToggleButton(out expose, _ => new(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel,
-        clickMode, hotKey, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
+        clickMode, hotKey, command, commandParameter, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
 
     public static IElement<ToggleButton> HToggleButton(Func<HToggleButtonProps, HToggleButtonArgs> fn) =>
         HToggleButton(out _, fn);

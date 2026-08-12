@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -19,13 +20,15 @@ public class HCheckBoxArgs(
     Accessor<bool>? isCancel = null,
     Accessor<ClickMode>? clickMode = null,
     Accessor<KeyGesture>? hotKey = null,
+    Accessor<ICommand>? command = null,
+    Accessor<object>? commandParameter = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
     BaseComponentInteraction? baseInteraction = null,
     Action<RoutedEventArgs>? onClick = null,
     Action<RoutedEventArgs>? onIsCheckedChanged = null
 ) : HToggleButtonArgs(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel,
-    clickMode, hotKey, strStyle, style, baseInteraction, onClick, onIsCheckedChanged);
+    clickMode, hotKey, command, commandParameter, strStyle, style, baseInteraction, onClick, onIsCheckedChanged);
 
 public static partial class BaseComponent
 {
@@ -38,13 +41,15 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null,
         Action<RoutedEventArgs>? onIsCheckedChanged = null
     ) => HCheckBox(out _, _ => new(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel,
-        clickMode, hotKey, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
+        clickMode, hotKey, command, commandParameter, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
 
     public static IElement<CheckBox> HCheckBox(
         out CheckBox expose,
@@ -56,13 +61,15 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null,
         Action<RoutedEventArgs>? onIsCheckedChanged = null
     ) => HCheckBox(out expose, _ => new(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel,
-        clickMode, hotKey, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
+        clickMode, hotKey, command, commandParameter, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
 
     public static IElement<CheckBox> HCheckBox(Func<HCheckBoxProps, HCheckBoxArgs> fn) =>
         HCheckBox(out _, fn);

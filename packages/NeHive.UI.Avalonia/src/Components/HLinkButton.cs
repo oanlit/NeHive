@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
@@ -44,11 +45,14 @@ public class HLinkButtonArgs(
     Accessor<bool>? isCancel = null,
     Accessor<ClickMode>? clickMode = null,
     Accessor<KeyGesture>? hotKey = null,
+    Accessor<ICommand>? command = null,
+    Accessor<object>? commandParameter = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
     BaseComponentInteraction? baseInteraction = null,
     Action<RoutedEventArgs>? onClick = null
-) : HButtonArgs(text, isDefault, isCancel, clickMode, hotKey, strStyle, style, baseInteraction, onClick)
+) : HButtonArgs(text, isDefault, isCancel, clickMode, hotKey, command, commandParameter,
+    strStyle, style, baseInteraction, onClick)
 {
     public readonly MutSignal<bool>? BindIsVisited = bindIsVisited;
     public readonly Accessor<bool>? IsVisited = bindIsVisited ?? isVisited;
@@ -66,12 +70,15 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null
-    ) => HLinkButton(out _, _ => new(text, isVisited, bindIsVisited, navigateUri, isDefault, 
-        isCancel, clickMode, hotKey, strStyle, style, baseInteraction, onClick));
+    ) => HLinkButton(out _, _ => new(text, isVisited, bindIsVisited, navigateUri,
+        isDefault, isCancel, clickMode, hotKey, command, commandParameter,
+        strStyle, style, baseInteraction, onClick));
 
     public static IElement<HyperlinkButton> HLinkButton(
         out HyperlinkButton expose,
@@ -83,12 +90,15 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null
-    ) => HLinkButton(out expose, _ => new(text, isVisited, bindIsVisited, navigateUri, isDefault, 
-        isCancel, clickMode, hotKey, strStyle, style, baseInteraction, onClick));
+    ) => HLinkButton(out expose, _ => new(text, isVisited, bindIsVisited, navigateUri,
+        isDefault, isCancel, clickMode, hotKey, command, commandParameter,
+        strStyle, style, baseInteraction, onClick));
 
     public static IElement<HyperlinkButton> HLinkButton(Func<HLinkButtonProps, HLinkButtonArgs> fn) =>
         HLinkButton(out _, fn);

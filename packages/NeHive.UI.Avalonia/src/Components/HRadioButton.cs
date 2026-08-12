@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -33,12 +34,15 @@ public class HRadioButtonArgs(
     Accessor<bool>? isCancel = null,
     Accessor<ClickMode>? clickMode = null,
     Accessor<KeyGesture>? hotKey = null,
+    Accessor<ICommand>? command = null,
+    Accessor<object>? commandParameter = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
     BaseComponentInteraction? baseInteraction = null,
     Action<RoutedEventArgs>? onClick = null,
     Action<RoutedEventArgs>? onIsCheckedChanged = null
-) : HToggleButtonArgs(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel, clickMode, hotKey,
+) : HToggleButtonArgs(text, isChecked, bindIsChecked, isThreeState, isDefault, isCancel,
+    clickMode, hotKey, command, commandParameter,
     strStyle, style, baseInteraction, onClick, onIsCheckedChanged)
 {
     public readonly Accessor<string>? GroupName = groupName;
@@ -56,13 +60,15 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null,
         Action<RoutedEventArgs>? onIsCheckedChanged = null
     ) => HRadioButton(out _, _ => new(text, groupName, isChecked, bindIsChecked, isThreeState, isDefault, isCancel,
-            clickMode, hotKey, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
+        clickMode, hotKey, command, commandParameter, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
 
     public static IElement<RadioButton> HRadioButton(
         out RadioButton expose,
@@ -75,13 +81,15 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null,
         Action<RoutedEventArgs>? onIsCheckedChanged = null
     ) => HRadioButton(out expose, _ => new(text, groupName, isChecked, bindIsChecked, isThreeState, isDefault, isCancel,
-        clickMode, hotKey, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
+        clickMode, hotKey, command, commandParameter, strStyle, style, baseInteraction, onClick, onIsCheckedChanged));
 
     public static IElement<RadioButton> HRadioButton(Func<HRadioButtonProps, HRadioButtonArgs> fn) =>
         HRadioButton(out _, fn);
