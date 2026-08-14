@@ -175,7 +175,7 @@ public static partial class BaseComponent
     {
         return Element<ComboBox>.WithScope(uiScope =>
         {
-            var comboBox = new ComboBox()
+            var comboBox = new ComboBox
             {
                 Styles =
                 {

@@ -732,6 +732,8 @@ public class StyleProps(Scope scope, Border border, Control control)
                     StackPanel.OrientationProperty, stackPanel.Orientation),
                 WrapPanel wrapPanel => BridgeAvalonia.CreatePropertySignal(scope, wrapPanel,
                     WrapPanel.OrientationProperty, wrapPanel.Orientation),
+                ProgressBar progressBar => BridgeAvalonia.CreatePropertySignal(scope, progressBar,
+                    ProgressBar.OrientationProperty, progressBar.Orientation),
                 ScrollBar scrollBar => BridgeAvalonia.CreatePropertySignal(scope, scrollBar,
                     ScrollBar.OrientationProperty, scrollBar.Orientation),
                 Slider slider => BridgeAvalonia.CreatePropertySignal(scope, slider,

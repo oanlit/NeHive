@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
@@ -88,6 +89,28 @@ public class HButtonProps(Scope scope, Border border, Button button) : BaseCompo
             return field;
         }
     }
+
+    public MutSignal<ICommand?> Command
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<ICommand?>(button.Command);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, Button.CommandProperty);
+            return field;
+        }
+    }
+
+    public MutSignal<object?> CommandParameter
+    {
+        get
+        {
+            if (field is not null) return field;
+            field = new MutSignal<object?>(button.Command);
+            BridgeAvalonia.BindPropertySignal(scope, field, button, Button.CommandParameterProperty);
+            return field;
+        }
+    }
 }
 
 public class HButtonArgs(
@@ -96,6 +119,8 @@ public class HButtonArgs(
     Accessor<bool>? isCancel = null,
     Accessor<ClickMode>? clickMode = null,
     Accessor<KeyGesture>? hotKey = null,
+    Accessor<ICommand>? command = null,
+    Accessor<object>? commandParameter = null,
     Accessor<string>? strStyle = null,
     HStyle? style = null,
     BaseComponentInteraction? baseInteraction = null,
@@ -106,11 +131,14 @@ public class HButtonArgs(
 
     public readonly Accessor<string>? Text = text;
 
+    public readonly Accessor<bool>? IsDefault = isDefault;
+    public readonly Accessor<bool>? IsCancel = isCancel;
+
     public readonly Accessor<ClickMode>? ClickMode = clickMode;
     public readonly Accessor<KeyGesture>? HotKey = hotKey;
 
-    public readonly Accessor<bool>? IsDefault = isDefault;
-    public readonly Accessor<bool>? IsCancel = isCancel;
+    public readonly Accessor<ICommand>? Command = command;
+    public readonly Accessor<object>? CommandParameter = commandParameter;
 
     public readonly Action<RoutedEventArgs>? OnClick = onClick;
 
@@ -134,11 +162,13 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null
-    ) => HButton(out _, _ => new(text, isDefault, isCancel, clickMode, hotKey,
+    ) => HButton(out _, _ => new(text, isDefault, isCancel, clickMode, hotKey, command, commandParameter,
         strStyle, style, baseInteraction, onClick));
 
     public static IElement<Button> HButton(
@@ -148,11 +178,13 @@ public static partial class BaseComponent
         Accessor<bool>? isCancel = null,
         Accessor<ClickMode>? clickMode = null,
         Accessor<KeyGesture>? hotKey = null,
+        Accessor<ICommand>? command = null,
+        Accessor<object>? commandParameter = null,
         Accessor<string>? strStyle = null,
         HStyle? style = null,
         BaseComponentInteraction? baseInteraction = null,
         Action<RoutedEventArgs>? onClick = null
-    ) => HButton(out expose, _ => new(text, isDefault, isCancel, clickMode, hotKey,
+    ) => HButton(out expose, _ => new(text, isDefault, isCancel, clickMode, hotKey, command, commandParameter,
         strStyle, style, baseInteraction, onClick));
 
     public static IElement<Button> HButton(Func<HButtonProps, HButtonArgs> fn)
@@ -224,6 +256,20 @@ internal static partial class InternalButtonUtil
 
         args.BaseInteraction?.ApplyInteractions(uiScope, button);
 
+        if (args.IsDefault is not null)
+        {
+            button.IsDefault = args.IsDefault.Value;
+            if (args.IsDefault.IsReactive)
+                uiScope.CreateEffect(epoch => button.IsDefault = epoch.Track(args.IsDefault));
+        }
+
+        if (args.IsCancel is not null)
+        {
+            button.IsCancel = args.IsCancel.Value;
+            if (args.IsCancel.IsReactive)
+                uiScope.CreateEffect(epoch => button.IsCancel = epoch.Track(args.IsCancel));
+        }
+
         if (args.ClickMode is not null)
         {
             button.ClickMode = args.ClickMode.Value;
@@ -238,18 +284,35 @@ internal static partial class InternalButtonUtil
                 uiScope.CreateEffect(epoch => button.HotKey = epoch.Track(args.HotKey));
         }
 
-        if (args.IsDefault is not null)
+        if (args.Command is not null)
         {
-            button.IsDefault = args.IsDefault.Value;
-            if (args.IsDefault.IsReactive)
-                uiScope.CreateEffect(epoch => button.IsDefault = epoch.Track(args.IsDefault));
+            ICommand command;
+
+            if (args.Command.IsReactive)
+            {
+                uiScope.CreateEffect(epoch =>
+                {
+                    command = epoch.Track(args.Command);
+                    if (command is INeHiveCommand neHiveCommand && !neHiveCommand.IsPrototype)
+                        epoch.OnCleanup += neHiveCommand.Dispose;
+
+                    button.Command = command;
+                });
+            }
+            else
+            {
+                command = args.Command.Value;
+                button.Command = command;
+                if (command is INeHiveCommand neHiveCommand && !neHiveCommand.IsPrototype)
+                    uiScope.OnCleanup += neHiveCommand.Dispose;
+            }
         }
 
-        if (args.IsCancel is not null)
+        if (args.CommandParameter is not null)
         {
-            button.IsCancel = args.IsCancel.Value;
-            if (args.IsCancel.IsReactive)
-                uiScope.CreateEffect(epoch => button.IsCancel = epoch.Track(args.IsCancel));
+            button.CommandParameter = args.CommandParameter.Value;
+            if (args.CommandParameter.IsReactive)
+                uiScope.CreateEffect(epoch => button.CommandParameter = epoch.Track(args.CommandParameter));
         }
 
         if (args.OnClick is not null)

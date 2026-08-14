@@ -425,7 +425,7 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
     private static IElement TextBoxDemo()
     {
         var textSignal = new MutSignal<string?>("Default input text value");
-        var log = new MutSignal<string>("");
+        var log = new MutSignal<string?>("");
 
         return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
         {
@@ -445,6 +445,113 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             HText(new(() => $"Realtime Bound Value: {textSignal.RxValue}"),
                 strStyle: "mt-2 text-base fw-medium fg-gray-800"),
             HText(log, strStyle: "text-sm fg-gray-500 mt-1 italic")
+        }); // HStackPanel
+    }
+
+    #endregion
+
+    #region Command Demo
+
+    private static IElement CommandDemo()
+    {
+        var count1 = new MutSignal<int>(0);
+        var count2 = new MutSignal<int>(0);
+        var count3 = new MutSignal<int>(0);
+        var total = () => count1.RxValue + count2.RxValue + count3.RxValue;
+
+        var increaseCommand = new NeHiveCommand<MutSignal<int>>(parameter: count1,
+            canExecute: p => p.RxValue < 10 && total() < 15,
+            execute: p => p.RxValue++
+        );
+        var decreaseCommand = new NeHiveCommand<MutSignal<int>>(parameter: count1,
+            canExecute: p => p.RxValue > -10 && total() > -15,
+            execute: p => p.RxValue--
+        );
+
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
+        {
+            HText("Command Demo", strStyle: SectionTitleStyle),
+            HText(new(() => $"Total Count {total()}"), strStyle: SectionTitleStyle),
+            HStackPanel(_ => new(strStyle: VerticalStackBase)
+            {
+                Counter2(count1),
+                Counter2(count2),
+                Counter2(count3),
+                HButton("Dispose Command", strStyle: PrimaryBtnBase, onClick: _ => DisposeCommand())
+            }) // HStackPanel
+        }); // HStackPanel;
+
+        void DisposeCommand()
+        {
+            increaseCommand.Dispose();
+            decreaseCommand.Dispose();
+        }
+
+        IElement Counter2(MutSignal<int> count)
+        {
+            return HStackPanel(_ => new(strStyle: HorizontalRowBase)
+            {
+                HButton("-1",
+                    strStyle: SecondaryBtnBase + "disabled:bg-coffee-50 disabled:fg-coffee-400",
+                    // onClick: _ => count.RxValue--,
+                    command: new(decreaseCommand.WithParameter(count))
+                ), // HButton
+                HText(new(() => $"{count.RxValue}"), strStyle: "text-xl fw-bold fg-matcha-600"),
+                HButton("+1",
+                    strStyle: PrimaryBtnBase + "disabled:bg-coffee-50 disabled:fg-coffee-400",
+                    // onClick: _ => count.RxValue++,
+                    command: new(increaseCommand.WithParameter(count))
+                ) // HButton
+            }); // HStackPanel
+        }
+    }
+
+    #endregion
+
+    #region Async Command Progress Demo
+
+    private static IElement AsyncCommandProgressDemo()
+    {
+        // var progress = new MutSignal<double>(0);
+        var progress = new MutSignal<double>(0,
+            onSet: (_, newValue, setter) => Dispatcher.UIThread.Post(() => setter(newValue)));
+        var isIndeterminate = new MutSignal<bool>(false);
+
+        var loadingCommand = new AsyncNeHiveCommand(
+            canExecute: () => !isIndeterminate.RxValue,
+            executeAsync: async () =>
+            {
+                for (var i = 0; i <= 100; i++)
+                {
+                    progress.RxValue = i;
+                    await Task.Delay(50);
+                }
+            }
+        );
+
+        var resetCommand = new NeHiveCommand(
+            canExecute: () => !isIndeterminate.RxValue && progress.RxValue != 0 && !loadingCommand.IsRunning.RxValue,
+            execute: () => progress.RxValue = 0);
+
+        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
+        {
+            HText("AsyncNeHiveCommand & Progress Task Indicator Demo", strStyle: SectionTitleStyle),
+            HProgressBar(value: progress, minimum: 0, maximum: 100, isIndeterminate: isIndeterminate,
+                strStyle:
+                "w-full h-4 overflow-hidden horizontal bg-coffee-200 fg-matcha-500 border-w-2 border-coffee-700 rounded-full"),
+            HStackPanel(_ => new(strStyle: HorizontalRowBase + "mt-2")
+            {
+                HButton("Start Load", strStyle: PrimaryBtnBase + "disabled:bg-coffee-50 disabled:fg-coffee-400",
+                    hotKey: new KeyGesture(Key.L, KeyModifiers.Control),
+                    command: loadingCommand),
+                HButton("Reset Progress",
+                    strStyle: PrimaryBtnBase + "bg-matcha-300 disabled:bg-coffee-50 disabled:fg-coffee-400",
+                    command: resetCommand),
+                HButton("Switch Model", strStyle: SecondaryBtnBase,
+                    onClick: _ => isIndeterminate.RxValue = !isIndeterminate.Value)
+            }), // HStackPanel
+            HText(new(() => $"Current Completion Rate: {progress.RxValue:F0}%"),
+                strStyle: "mt-1 fw-medium fg-gray-700")
         }); // HStackPanel
     }
 
@@ -623,34 +730,6 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
             imgPath.RxValue = files?.Path.LocalPath;
             e.Handled = true;
         }
-    }
-
-    #endregion
-
-    #region ProgressBar Progress Indicator Demo
-
-    private static IElement ProgressBarDemo()
-    {
-        var progress = new MutSignal<double>(0);
-        var isIndeterminate = new MutSignal<bool>(false);
-
-        return HStackPanel(_ => new(strStyle: DemoCardBase + VerticalStackBase)
-        {
-            HText("ProgressBar Task Progress Indicator Demo", strStyle: SectionTitleStyle),
-            HProgressBar(value: progress, minimum: 0, maximum: 100, isIndeterminate: isIndeterminate,
-                strStyle:
-                "w-full h-4 overflow-hidden horizontal bg-coffee-200 fg-matcha-500 border-w-2 border-coffee-700 rounded-full"),
-            HStackPanel(_ => new(strStyle: HorizontalRowBase + "mt-2")
-            {
-                HButton("Add 10% Progress", strStyle: PrimaryBtnBase,
-                    onClick: _ => progress.RxValue = Math.Min(100, progress.RxValue + 10)),
-                HButton("Reset Progress To Zero", strStyle: SecondaryBtnBase, onClick: _ => progress.RxValue = 0),
-                HButton("Switch Model", strStyle: PrimaryBtnBase,
-                    onClick: _ => isIndeterminate.RxValue = !isIndeterminate.Value)
-            }), // HStackPanel
-            HText(new(() => $"Current Completion Rate: {progress.RxValue:F0}%"),
-                strStyle: "mt-1 fw-medium fg-gray-700")
-        }); // HStackPanel
     }
 
     #endregion
@@ -2316,8 +2395,10 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                 DemoView.SplitPanelDemo, DemoView.DockPanelDemo, DemoView.WrapPanelDemo,
                 DemoView.UniformGridDemo, DemoView.GridSplitterDemo, DemoView.ScrollDemo),
 
-            new("🔘 Basic Input Controls", DemoView.TextBoxDemo, DemoView.CheckBoxDemo, DemoView.RadioButtonDemo,
-                DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.DragFileDemo, DemoView.ProgressBarDemo,
+            new("🔘 Basic Input Controls", DemoView.TextBoxDemo, DemoView.CommandDemo,
+                DemoView.AsyncCommandProgressDemo,
+                DemoView.CheckBoxDemo, DemoView.RadioButtonDemo,
+                DemoView.ToggleSwitchDemo, DemoView.FilePickerDemo, DemoView.DragFileDemo,
                 DemoView.SliderDemo, DemoView.PopupDemo, DemoView.FlyoutDemo, DemoView.WindowDemo),
 
             new("📋 Data Selection & Lists", DemoView.TreeViewDemo, DemoView.ComboBoxDemo),
@@ -2422,12 +2503,13 @@ hover:bg-coffee-500 click:bg-coffee-700 transition-transform duration-100 click:
                             [DemoView.ScrollDemo] = ScrollDemo,
 
                             [DemoView.TextBoxDemo] = TextBoxDemo,
+                            [DemoView.CommandDemo] = CommandDemo,
+                            [DemoView.AsyncCommandProgressDemo] = AsyncCommandProgressDemo,
                             [DemoView.CheckBoxDemo] = CheckBoxDemo,
                             [DemoView.RadioButtonDemo] = RadioButtonDemo,
                             [DemoView.ToggleSwitchDemo] = ToggleSwitchDemo,
                             [DemoView.FilePickerDemo] = FilePickerDemo,
                             [DemoView.DragFileDemo] = DragFileDemo,
-                            [DemoView.ProgressBarDemo] = ProgressBarDemo,
                             [DemoView.SliderDemo] = SliderDemo,
                             [DemoView.PopupDemo] = PopupDemo,
                             [DemoView.FlyoutDemo] = FlyoutDemo,
@@ -2522,12 +2604,13 @@ public enum DemoView
     ScrollDemo,
 
     TextBoxDemo,
+    CommandDemo,
+    AsyncCommandProgressDemo,
     CheckBoxDemo,
     RadioButtonDemo,
     ToggleSwitchDemo,
     FilePickerDemo,
     DragFileDemo,
-    ProgressBarDemo,
     SliderDemo,
     PopupDemo,
     FlyoutDemo,
