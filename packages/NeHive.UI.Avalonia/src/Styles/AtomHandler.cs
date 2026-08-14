@@ -25,7 +25,6 @@ public class AtomHandler
         ["mx-auto"] = (_, _, set) => set.HorizontalAlignment = HorizontalAlignment.Center,
         ["my-auto"] = (_, _, set) => set.VerticalAlignment = VerticalAlignment.Center,
 
-        // 尺寸
         ["w-"] = ApplyWidth,
         ["w-full"] = (_, _, set) => set.HorizontalAlignment = HorizontalAlignment.Stretch,
         ["h-"] = ApplyHeight,
@@ -84,11 +83,9 @@ public class AtomHandler
         ["items-end"] = (_, _, set) => set.VerticalAlignment = VerticalAlignment.Bottom,
         ["items-stretch"] = (_, _, set) => set.VerticalAlignment = VerticalAlignment.Stretch,
 
-        // 行与字间距
         ["tracking-"] = ApplyLetterSpacing,
         ["leading-"] = ApplyLineHeight,
 
-        // 文本布局与对齐
         ["text-clip-char"] = (_, _, set) => set.TextTrimming = TextTrimming.CharacterEllipsis,
         ["text-clip-start"] = (_, _, set) => set.TextTrimming = TextTrimming.LeadingCharacterEllipsis,
         ["text-clip-prefix"] = (_, _, set) => set.TextTrimming = TextTrimming.PrefixCharacterEllipsis,
@@ -97,7 +94,7 @@ public class AtomHandler
         ["text-clip-none"] = (_, _, set) => set.TextTrimming = TextTrimming.None,
         ["truncate"] = (_, _, set) => set.TextTrimming = TextTrimming.WordEllipsis,
         ["line-clamp-"] = ApplyMaxLine,
-        
+
         ["text-left"] = (_, _, set) => set.TextAlignment = TextAlignment.Left,
         ["text-x-center"] = (_, _, set) => set.TextAlignment = TextAlignment.Center,
         ["text-right"] = (_, _, set) => set.TextAlignment = TextAlignment.Right,
@@ -126,7 +123,6 @@ public class AtomHandler
         ["decoration-dashed"] = (_, _, set) => EnsureDecoration(set).StrokeDashArray = [4, 2],
         ["decoration-dotted"] = (_, _, set) => EnsureDecoration(set).StrokeDashArray = [1, 2],
 
-        // 文本样式
         ["text-"] = ApplyText,
         ["text-xs"] = (_, _, set) => set.FontSize = 12,
         ["text-sm"] = (_, _, set) => set.FontSize = 14,
@@ -158,7 +154,6 @@ public class AtomHandler
         ["fg-from-"] = (vals, _, set) => EnsureTemp(set).FgFromColor = ParseColor(vals),
         ["fg-to-"] = (vals, _, set) => EnsureTemp(set).FgToColor = ParseColor(vals),
 
-        // 背景
         ["bg-"] = ApplyBackground,
         ["bg-gradient-"] = (vals, _, set) => EnsureTemp(set).BgGradientDir = TryGetDir(vals),
         ["bg-from-"] = (vals, _, set) => EnsureTemp(set).BgFromColor = ParseColor(vals),
@@ -169,13 +164,12 @@ public class AtomHandler
         ["bg-center"] = (_, _, set) => set.BackgroundSizing = BackgroundSizing.CenterBorder,
         ["bg-inner"] = (_, _, set) => set.BackgroundSizing = BackgroundSizing.InnerBorderEdge,
         ["bg-outer"] = (_, _, set) => set.BackgroundSizing = BackgroundSizing.OuterBorderEdge,
-        
+
         ["mask-"] = ApplyMask,
         ["mask-gradient-"] = (vals, _, set) => EnsureTemp(set).MaskGradientDir = TryGetDir(vals),
         ["mask-from-"] = (vals, _, set) => EnsureTemp(set).MaskFromColor = TryParseValue(vals[0]),
         ["mask-to-"] = (vals, _, set) => EnsureTemp(set).MaskToColor = TryParseValue(vals[0]),
 
-        // 边框
         ["border"] = (_, _, set) => set.BorderThickness = new Thickness(1),
         ["border-"] = ApplyBorderBrush,
         ["border-gradient-"] = (vals, _, set) => EnsureTemp(set).BorderGradientDir = TryGetDir(vals),
@@ -186,8 +180,7 @@ public class AtomHandler
         ["border-r-"] = ApplyBorderRightWidth,
         ["border-b-"] = ApplyBorderBottomWidth,
         ["border-l-"] = ApplyBorderLeftWidth,
-        
-        // 圆角
+
         ["rounded"] = (_, _, set) => set.CornerRadius = new CornerRadius(4),
         ["rounded-"] = ApplyCornerRadius,
         ["rounded-sm"] = (_, _, set) => set.CornerRadius = new CornerRadius(2),
@@ -197,12 +190,10 @@ public class AtomHandler
         ["rounded-2xl"] = (_, _, set) => set.CornerRadius = new CornerRadius(16),
         ["rounded-full"] = (_, _, set) => set.CornerRadius = new CornerRadius(9999),
 
-        // 透明度 & 可见性
         ["opacity-"] = ApplyOpacity,
         ["visible"] = (_, _, set) => set.IsVisible = true,
         ["hidden"] = (_, _, set) => set.IsVisible = false,
 
-        // 模糊
         ["blur-sm"] = (_, _, set) => set.Effect = new BlurEffect { Radius = 4 },
         ["blur"] = (_, _, set) => set.Effect = new BlurEffect { Radius = 8 },
         ["blur-md"] = (_, _, set) => set.Effect = new BlurEffect { Radius = 8 },
@@ -210,7 +201,6 @@ public class AtomHandler
         ["blur-xl"] = (_, _, set) => set.Effect = new BlurEffect { Radius = 32 },
         ["blur-none"] = (_, _, set) => set.Effect = null,
 
-        // 阴影
         ["shadow-sm"] = (_, _, set) => ApplyShadow(set, 2, new Vector(0, 1)),
         ["shadow"] = (_, _, set) => ApplyShadow(set, 4, new Vector(0, 2)),
         ["shadow-md"] = (_, _, set) => ApplyShadow(set, 6, new Vector(0, 3)),
@@ -222,7 +212,6 @@ public class AtomHandler
         ["ring-w-"] = ApplyRingWidth,
         ["ring-offset-"] = ApplyRingOffset,
 
-        // 光标
         ["cursor-default"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Arrow),
         ["cursor-text"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Ibeam),
         ["cursor-wait"] = (_, _, set) => set.Cursor = new Cursor(StandardCursorType.Wait),
@@ -251,7 +240,6 @@ public class AtomHandler
         ["ltr"] = (_, _, set) => set.FlowDirection = FlowDirection.LeftToRight,
         ["rtl"] = (_, _, set) => set.FlowDirection = FlowDirection.RightToLeft,
 
-        // 过渡
         ["transition-none"] = (_, _, set) => EnsureTemp(set).TransitionScope = TransitionScope.None,
         ["transition-all"] = (_, _, set) => EnsureTemp(set).TransitionScope = TransitionScope.All,
         ["transition-opacity"] = (_, _, set) => EnsureTemp(set).TransitionScope = TransitionScope.Opacity,
@@ -265,7 +253,6 @@ public class AtomHandler
         ["ease-out"] = (_, _, set) => EnsureTemp(set).Easing = new QuadraticEaseOut(),
         ["ease-in-out"] = (_, _, set) => EnsureTemp(set).Easing = new QuadraticEaseInOut(),
 
-        // 几何变换
         ["origin-top-left"] = (_, _, set) => SetRelativePoint(0, 0, set),
         ["origin-left"] = (_, _, set) => SetRelativePoint(0, 0.5, set),
         ["origin-bottom-left"] = (_, _, set) => SetRelativePoint(0, 1, set),
@@ -417,8 +404,8 @@ public class AtomHandler
         if (val is null) return;
         val *= UnitScale;
         if (isNegative) val = -val;
-        set.RowSpacing = val.Value;
-        set.ColumnSpacing = val.Value;
+        set.GapY = val.Value;
+        set.GapX = val.Value;
     }
 
     private static void ApplyGapX(string[] v, bool isNegative, StyleSet set)
@@ -428,7 +415,7 @@ public class AtomHandler
         if (val is null) return;
         val *= UnitScale;
         if (isNegative) val = -val;
-        set.ColumnSpacing = val.Value;
+        set.GapX = val.Value;
     }
 
     private static void ApplyGapY(string[] v, bool isNegative, StyleSet set)
@@ -438,7 +425,7 @@ public class AtomHandler
         if (val is null) return;
         val *= UnitScale;
         if (isNegative) val = -val;
-        set.RowSpacing = val.Value;
+        set.GapY = val.Value;
     }
 
     private static void ApplyPadding(string[] v, bool isNegative, StyleSet set)
@@ -620,13 +607,13 @@ public class AtomHandler
         if (c is null) return;
         set.Background = new SolidColorBrush(c.Value);
     }
-    
-    private static void ApplyMask(string[] color, bool isNegative, StyleSet set)
+
+    private static void ApplyMask(string[] values, bool isNegative, StyleSet set)
     {
         if (isNegative) return;
-        var c = ParseColor(color);
-        if (c is null) return;
-        set.OpacityMask = new SolidColorBrush(c.Value);
+        var value = TryParseValue(values[0]);
+        if (value is null) return;
+        set.OpacityMask = new SolidColorBrush(new Color((byte)(value * 255 / 100), 0, 0, 0));
     }
 
     private static void ApplyBorderBrush(string[] color, bool isNegative, StyleSet set)
@@ -1024,6 +1011,7 @@ public class AtomHandler
                 {
                     result = Color.FromArgb((byte)(255 * a / 100), result.R, result.G, result.B);
                 }
+
                 resultAssign = true;
             }
 

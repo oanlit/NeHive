@@ -94,25 +94,30 @@ public static class MusicPlayerDemo
         });
 
         // ---------- UI ----------
-        var rootElement = uiScope.RootElement(new(strStyle: "m-6 w-full gap-5 vertical bg-gray-50 rounded-2xl p-6")
+        var rootElement = HStackPanel(_ => new(strStyle: "m-6 w-full gap-5 vertical bg-gray-50 rounded-2xl p-6")
         {
-            HTextBlock("🎵 NeHive Music Player", strStyle: "text-xl fw-bold fg-sky-800 mb-2"),
+            HText("🎵 NeHive Music Player", strStyle: "text-xl fw-bold fg-sky-800 mb-2"),
 
             // 播放控制区
-            HStackPanel(new(strStyle: "p-4 horizontal items-center justify-between bg-white rounded-xl shadow-sm")
+            HStackPanel(_ => new(strStyle: "p-4 horizontal items-center justify-between bg-white rounded-xl shadow-sm")
             {
                 Loading<SongInfo?>(new(songInfo)
                 {
-                    Success = user => HContext(Theme, "light", () => Audio(user)),
+                    Success = user =>
+                        HContext(new(ctx => ctx.SetContext(Theme, "light"))
+                        {
+                            Audio(user)
+                        }), // HContext
+                    // // Loading<SongInfo?>.Success
                     Loading = Audio,
                     Error = _ => Audio(null),
                 }) // Loading<SongInfo?>
             }), // HStackPanel
 
             // 播放列表操作
-            HStackPanel(new(strStyle: "w-full gap-3 vertical")
+            HStackPanel(_ => new(strStyle: "w-full gap-3 vertical")
             {
-                HStackPanel(new(strStyle: "gap-3 horizontal")
+                HStackPanel(_ => new(strStyle: "gap-3 horizontal")
                 {
                     HFilePicker(
                         bindSelectedPath: selectedPath,
@@ -135,11 +140,11 @@ public static class MusicPlayerDemo
                 }), // HStackPanel
 
                 // 列表
-                HScrollViewer(new(strStyle: "w-full h-48 bg-white rounded-lg border border-gray-200 p-2")
+                HScrollViewer(_ => new(strStyle: "w-full h-48 bg-white rounded-lg border border-gray-200 p-2")
                 {
                     ForEach<TrackInfo>(new(playlist)
                     {
-                        ItemsPanel = HStackPanel(new(strStyle: "gap-1 vertical")),
+                        ItemsPanel = HStackPanel(_ => new(strStyle: "gap-1 vertical")),
                         ItemTemplate = (track, index) =>
                             HButton(track.Title,
                                 strStyle: new(() =>
@@ -156,19 +161,19 @@ public static class MusicPlayerDemo
             }), // HStackPanel
 
             // 中间：按钮 + 进度
-            HStackPanel(new(strStyle: "gap-3 vertical center")
+            HStackPanel(_ => new(strStyle: "gap-3 vertical center")
             {
                 // 播放按钮组
-                HStackPanel(new(strStyle: "gap-5 horizontal center")
+                HStackPanel(_ => new(strStyle: "gap-5 horizontal center")
                 {
-                    HContentButton(new(
+                    HButton(_ => new(
                         strStyle: "my-auto w-4 h-4 hover:opacity-50",
                         onClick: _ => PlayLast())
                     {
-                        Content = HSvgImage("~/Assets/skip-back.svg",
+                        HSvgImage("~/Assets/skip-back.svg",
                             strStyle: "w-4 h-4 fw-extralight fg-black bg-black/0")
-                    }), // HContentButton
-                    HContentButton(new(strStyle:
+                    }), // HButton
+                    HButton(_ => new(strStyle:
                         """
                         w-11 h-11 center fg-white 
                         bg-gradient-br bg-from-blue-200 bg-to-violet-800
@@ -177,7 +182,7 @@ public static class MusicPlayerDemo
                         """,
                         onClick: _ => isPlaying.RxValue = !isPlaying.Value)
                     {
-                        Content = Show(new(isPlaying)
+                        Show(new(isPlaying)
                         {
                             IfFalse = () => HSvgImage("~/Assets/play.svg",
                                 strStyle: """
@@ -192,23 +197,23 @@ public static class MusicPlayerDemo
                                           """
                             ) // IfTrue
                         }) // Show
-                    }), // HContentButton
-                    HContentButton(new(
+                    }), // HButton
+                    HButton(_ => new(
                         strStyle: "center bg-black/0 hover:opacity-50",
                         onClick: _ => PlayNext())
                     {
-                        Content = HSvgImage("~/Assets/skip-forward.svg",
+                        HSvgImage("~/Assets/skip-forward.svg",
                             strStyle: "w-4 h-4 fw-extralight fg-black bg-black/0")
-                    }) // HContentButton
+                    }) // HButton
                 }), // HStackPanel
 
                 // 进度条
-                HStackPanel(new(strStyle: "gap-2 horizontal items-center")
+                HStackPanel(_ => new(strStyle: "gap-2 horizontal items-center")
                 {
-                    HTextBlock(
+                    HText(
                         new(() => position.RxValue.ToString(@"mm\:ss")),
                         strStyle: "text-xs fg-gray-500 w-12 text-right"
-                    ), // HTextBlock
+                    ), // HText
                     HCustomSlider(new(value: new(() => position.RxValue.TotalMilliseconds),
                         minimum: 0,
                         maximum: new(() => duration.RxValue.TotalMilliseconds),
@@ -224,38 +229,35 @@ public static class MusicPlayerDemo
                                 $"w-4 h-4 fw-extralight fg-yellow-500 bg-yellow-200 rounded-full {(state.IsHover.RxValue ? "opacity-100" : "opacity-0")}")
                         ) // HCustomSlider.Thumb
                     }), // HCustomSlider
-                    HTextBlock(
+                    HText(
                         new(() => duration.RxValue.ToString(@"mm\:ss")),
                         strStyle: "text-xs fg-gray-500 w-12"
-                    ) // HTextBlock
+                    ) // HText
                 }) // HStackPanel
             }), // HStackPanel
 
             // 音量
-            HStackPanel(new(strStyle: "gap-x-2 horizontal")
+            HStackPanel(_ => new(strStyle: "gap-x-2 horizontal")
             {
                 Match<int>(new(volume)
                 {
-                    Cases = new()
-                    {
-                        [v => v == 0] = () =>
-                            HSvgImage("~/Assets/volume.svg", strStyle: "my-auto w-4 h-4 fw-extralight"),
-                        [v => v < 75] = () =>
-                            HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 fw-extralight")
-                    },
+                    [v => v == 0] = () =>
+                        HSvgImage("~/Assets/volume.svg", strStyle: "my-auto w-4 h-4 fw-extralight"),
+                    [v => v < 75] = () =>
+                        HSvgImage("~/Assets/volume-1.svg", strStyle: "my-auto w-4 h-4 fw-extralight"),
                     Default = () => HSvgImage("~/Assets/volume-2.svg", strStyle: "my-auto w-4 h-4 fw-extralight")
                 }), // Match<int>
                 HSlider(value: new(() => volume.RxValue),
                     minimum: 0,
                     maximum: 100,
                     strStyle: "my-auto w-24",
-                    onValueChanged: val =>
+                    onValueChanged: e =>
                     {
-                        var v = (int)val;
+                        var v = (int)e.NewValue;
                         volume.RxValue = v;
                         mediaPlayer.Volume = v;
                     }), // HSlider
-                HTextBlock(new(() => $"{volume.RxValue}%"), strStyle: "text-xs fg-gray-500 w-10")
+                HText(new(() => $"{volume.RxValue}%"), strStyle: "text-xs fg-gray-500 w-10")
             }) // HStackPanel
         }); // rootElement
 
@@ -355,15 +357,11 @@ public static class MusicPlayerDemo
             IfTrue = () => Loading<bool>(new(asyncMemo)
             {
                 Success = _ => CorePlayer(),
-                Error = ex =>
-                {
-                    Console.WriteLine(ex.StackTrace);
-                    return HTextBlock(new($"RxError: {ex.Message}"));
-                }
+                Error = ex => HText($"RxError: {ex.Message}")
             }),
-            IfFalse = () => HStackPanel(new()
+            IfFalse = () => HStackPanel(_ => new()
             {
-                HTextBlock("请选择LibVLC路径"),
+                HText("请选择LibVLC路径"),
                 HFolderPicker(
                     bindSelectedPath: LibVlcPath,
                     title: "LibVLC路径"
@@ -375,21 +373,21 @@ public static class MusicPlayerDemo
     // 专辑封面 + 曲目信息
     private static IElement Audio(SongInfo? song)
     {
-        return HStackPanel(new(strStyle: "w-110 gap-4 horizontal items-center")
+        return HStackPanel(_ => new(strStyle: "w-110 gap-4 horizontal items-center")
         {
             Show(new(song?.CoverPath is not null)
             {
                 IfFalse = () => HButton(strStyle: "w-32 h-32 bg-gray-200 rounded-xl"),
-                IfTrue = () => HUriImage(song?.CoverPath,
+                IfTrue = () => HImage(uri: song?.CoverPath,
                     stretch: Stretch.UniformToFill,
                     strStyle: "w-32 h-32 rounded-xl transition-transform duration-200 hover:scale-110")
             }),
 
-            HStackPanel(new(strStyle: "gap-1 vertical")
+            HStackPanel(_ => new(strStyle: "gap-1 vertical")
             {
-                HTextBlock(song?.Title ?? "未知标题", strStyle: "max-w-100 text-base fw-semibold fg-gray-800"),
-                HTextBlock(song?.Artist ?? "未知歌手", strStyle: "max-w-75 text-sm fg-gray-500"),
-                HTextBlock(song?.Album ?? "未知专辑", strStyle: "max-w-50 text-xs fg-gray-500")
+                HText(song?.Title ?? "未知标题", strStyle: "max-w-100 text-base fw-semibold fg-gray-800"),
+                HText(song?.Artist ?? "未知歌手", strStyle: "max-w-75 text-sm fg-gray-500"),
+                HText(song?.Album ?? "未知专辑", strStyle: "max-w-50 text-xs fg-gray-500")
             }) // HStackPanel
         }); // HStackPanel
     }

@@ -6,43 +6,52 @@ namespace NeHive.UI.Avalonia;
 
 public interface IElement
 {
-    public IScope Scope { get; }
+    public UiScope? Scope { get; }
     public Control Content { get; }
     public void Dispose();
 }
 
 public interface IElement<out TExpose> : IElement
 {
-    public TExpose Expose { get; }
+    public TExpose? Expose { get; }
 }
 
 public class Element : IElement
 {
-    public IScope Scope { get; }
-    public Control Content { get; }
+    private readonly Func<UiScope, Control> _builder;
+    public UiScope? Scope { get; private set; }
 
-    public Element(UiScope scope, Control content)
+    protected virtual Control Build(UiScope scope) => _builder(scope);
+
+    public Control Content
     {
-        Scope = scope;
-        Content = content;
-        content.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(scope.RunMount);
-        OnDisposeContent(content);
+        get
+        {
+            if (field is not null) return field;
+            var scope = new UiScope();
+            Scope = scope;
+            using (new ScopeFrame(scope))
+            {
+                field = Build(scope);
+            }
+
+            field.AttachedToVisualTree += (_, _) => Dispatcher.UIThread.Post(scope.RunMount);
+            OnDisposeContent();
+            return field;
+        }
     }
 
-    public Element(UiScope scope, IElement element) : this(scope, element.Content)
+    protected static Control ToControl(UiScope scope, IElement element)
     {
+        var content = element.Content;
+        if (element.Scope == scope) return content;
+        return new Border { Child = content };
     }
 
-    public static Element Empty => new(new UiScope(), new Control());
-
-    public void Dispose()
+    private void OnDisposeContent()
     {
-        Scope.Dispose();
-    }
-
-    private void OnDisposeContent(Control control)
-    {
-        Scope.OnCleanup += () =>
+        var control = Content;
+        Scope?.OnCleanup += () =>
         {
             var parent = control.Parent;
             switch (parent)
@@ -56,7 +65,7 @@ public class Element : IElement
                         contentControl.Content = null;
                     break;
 
-                case Decorator decorator: // 比如 Border
+                case Decorator decorator:
                     if (decorator.Child == control)
                         decorator.Child = null;
                     break;
@@ -64,188 +73,53 @@ public class Element : IElement
         };
     }
 
+    protected Element(Func<UiScope, Control> builder)
+    {
+        _builder = builder;
+    }
+
+    public static Element Empty => new(_ => new Control());
+
+    public void Dispose() => Scope?.Dispose();
+
+    public static IElement WithScope(Func<UiScope, Control> builder)
+        => new Element(builder);
+
     public static IElement WithScope(Func<UiScope, IElement> builder)
     {
-        var uiScope = new UiScope();
-
-        IElement element;
-        using (new ScopeFrame(uiScope))
+        return new Element(scope =>
         {
-            element = builder(uiScope);
-        }
-
-        return element.Scope == uiScope
-            ? element
-            : throw new InvalidOperationException("Cross-scope element");
-    }
-
-    public static IElement WithScope(Func<IElement> builder)
-    {
-        return WithScope(_ => builder());
-    }
-
-    public static IElement WithScope<TProp>(Func<TProp, UiScope, IElement> builder, TProp props)
-    {
-        var uiScope = new UiScope();
-        var element = uiScope.RunInScope(() => builder(props, uiScope));
-        return element.Scope == uiScope
-            ? element
-            : throw new InvalidOperationException("Cross-scope element");
+            var el = builder(scope);
+            return ToControl(scope, el);
+        });
     }
 }
 
 public class Element<TExpose> : Element, IElement<TExpose>
 {
-    public TExpose Expose { get; }
+    public TExpose? Expose { get; private set; }
 
-    public Element(UiScope scope, Control content, TExpose expose) : base(scope, content)
-        => Expose = expose;
+    private readonly Func<UiScope, (TExpose, Control)> _builder;
 
-    public Element(UiScope scope, Element element, TExpose expose) : base(scope, element)
-        => Expose = expose;
-
-    public static IElement<TExpose> Create<TProp>(
-        Func<TProp, UiScope, IElement<TExpose>> builder,
-        TProp props
-    )
+    protected override Control Build(UiScope scope)
     {
-        var uiScope = new UiScope();
-        var element = uiScope.RunInScope(() =>
-            builder(props, uiScope));
-
-        return element.Scope == uiScope
-            ? element
-            : throw new InvalidOperationException("Cross-scope element");
+        var (expose, control) = _builder(scope);
+        Expose = expose;
+        return control;
     }
 
-    public static IElement<TExpose> Create<TProp>(
-        Func<TProp, IElement<TExpose>> builder,
-        TProp props
-    )
+    internal Element(Func<UiScope, (TExpose, Control)> builder) : base(scope => builder(scope).Item2)
+        => _builder = builder;
+
+    public static IElement<TExpose> WithScope(Func<UiScope, (TExpose, Control)> builder)
+        => new Element<TExpose>(builder);
+
+    public static IElement<TExpose> WithScope(Func<UiScope, (TExpose, IElement)> builder)
     {
-        var uiScope = new UiScope();
-        var element = uiScope.RunInScope(() =>
+        return new Element<TExpose>(scope =>
         {
-            var el = builder(props);
-            return el;
+            var (expose, element) = builder(scope);
+            return (expose, ToControl(scope, element));
         });
-
-        return element.Scope == uiScope
-            ? element
-            : new Element<TExpose>(uiScope, element.Content, element.Expose);
-    }
-}
-
-public class Component
-{
-    private readonly Func<IElement> _create;
-
-    public Component(Func<UiScope, IElement> builder)
-        => _create = () => Element.WithScope(builder);
-
-    public Component(Func<IElement> builder)
-        => _create = () => Element.WithScope(builder);
-
-    public IElement Create()
-        => _create();
-
-    public IElement Create(out IElement expose)
-    {
-        expose = _create();
-        return expose;
-    }
-
-    public IElement Create(Action<IElement> fn)
-    {
-        var element = _create();
-        fn(element);
-        return element;
-    }
-
-    public static implicit operator Component(Func<UiScope, IElement> builder)
-    {
-        return new Component(builder);
-    }
-
-    public static implicit operator Component(Func<IElement> builder)
-    {
-        return new Component(builder);
-    }
-}
-
-public class Component<TProp>
-{
-    private readonly Func<TProp, IElement> _create;
-
-    public Component(Func<TProp, UiScope, IElement> builder)
-    {
-        _create = props => Element.WithScope(builder, props);
-    }
-
-    public Component(Func<TProp, IElement> builder) : this((prop, _) => builder(prop))
-    {
-    }
-
-    public IElement Create(TProp props)
-    {
-        return _create(props);
-    }
-
-    public IElement Create(TProp props, out IElement expose)
-    {
-        expose = _create(props);
-        return expose;
-    }
-
-    public IElement Create(TProp props, Action<IElement> fn)
-    {
-        var element = _create(props);
-        fn(element);
-        return element;
-    }
-
-    public static implicit operator Component<TProp>(Func<TProp, UiScope, IElement> builder)
-    {
-        return new Component<TProp>(builder);
-    }
-
-    public static implicit operator Component<TProp>(Func<TProp, IElement> builder)
-    {
-        return new Component<TProp>(builder);
-    }
-}
-
-public class Component<TProp, TExpose>
-{
-    private readonly Func<TProp, IElement<TExpose>> _create;
-
-    public Component(Func<TProp, IElement<TExpose>> builder)
-    {
-        _create = props =>
-            Element<TExpose>.Create(builder, props);
-    }
-
-    public Component(Func<TProp, UiScope, IElement<TExpose>> builder)
-    {
-        _create = props =>
-            Element<TExpose>.Create(builder, props);
-    }
-
-    public IElement<TExpose> Create(TProp props)
-    {
-        return _create(props);
-    }
-
-    public IElement<TExpose> Create(TProp props, out IElement<TExpose> expose)
-    {
-        expose = _create(props);
-        return expose;
-    }
-
-    public IElement<TExpose> Create(TProp props, Action<IElement<TExpose>> fn)
-    {
-        var element = _create(props);
-        fn(element);
-        return element;
     }
 }

@@ -1,29 +1,96 @@
-using System.Collections;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-public class HUniformGridProp(
+public class HUniformGridProps(Scope scope, Border border, UniformGrid uniformGrid)
+    : BaseComponentProps(scope, border, uniformGrid)
+{
+    public Signal<int> Rows
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<int>(uniformGrid.Rows);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == UniformGrid.RowsProperty)
+                    sig.RxValue = (int)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<int> Columns
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<int>(uniformGrid.Columns);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == UniformGrid.ColumnsProperty)
+                    sig.RxValue = (int)args.NewValue!;
+            }
+        }
+    }
+
+    public Signal<int> FirstColumn
+    {
+        get
+        {
+            if (field is not null) return field;
+            var sig = new MutSignal<int>(uniformGrid.FirstColumn);
+            field = sig;
+
+            Content.PropertyChanged += OnPropUpdate;
+            scope.OnCleanup += () => Content.PropertyChanged -= OnPropUpdate;
+
+            return field;
+
+            void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+            {
+                if (args.Property == UniformGrid.FirstColumnProperty)
+                    sig.RxValue = (int)args.NewValue!;
+            }
+        }
+    }
+}
+
+public class HUniformGridArgs(
     Accessor<int>? rows = null,
     Accessor<int>? columns = null,
+    Accessor<int>? firstColumn = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null
-) : IEnumerable<IElement>
+    HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null
+) : HPanelArgs(strStyle, style, baseInteraction)
 {
     private readonly List<IElement> _children = [];
 
     public readonly Accessor<int>? Rows = rows;
     public readonly Accessor<int>? Columns = columns;
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
+    public readonly Accessor<int>? FirstColumn = firstColumn;
 
-    // 索引器（可按整数位置添加，但通常用集合初始化器）
     public IElement this[int index]
     {
         set
@@ -33,66 +100,91 @@ public class HUniformGridProp(
             _children[index] = value;
         }
     }
-
-    // 集合初始化器
-    public void Add(IElement element) => _children.Add(element);
-
-    public IEnumerator<IElement> GetEnumerator() => _children.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
 public static partial class BaseComponent
 {
-    /// <summary>
-    /// 创建 UniformGrid 控件
-    /// </summary>
-    public static IElement<UniformGrid> HUniformGrid(HUniformGridProp prop)
+    public static IElement<UniformGrid> HUniformGrid(
+        Accessor<int>? rows = null,
+        Accessor<int>? columns = null,
+        Accessor<int>? firstColumn = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HUniformGrid(out _, _ => new(rows, columns, firstColumn, strStyle, style, baseInteraction));
+    
+    public static IElement<UniformGrid> HUniformGrid(
+        out UniformGrid expose,
+        Accessor<int>? rows = null,
+        Accessor<int>? columns = null,
+        Accessor<int>? firstColumn = null,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null
+    ) => HUniformGrid(out expose, _ => new(rows, columns, firstColumn, strStyle, style, baseInteraction));
+
+    public static IElement<UniformGrid> HUniformGrid(Func<HUniformGridProps, HUniformGridArgs> fn
+    ) => HUniformGrid(out _, fn);
+
+    public static IElement<UniformGrid> HUniformGrid(out UniformGrid expose,
+        Func<HUniformGridProps, HUniformGridArgs> fn)
     {
-        var uiScope = new UiScope();
         var grid = new UniformGrid();
-        var border = new Border
+        expose = grid;
+        return Element<UniformGrid>.WithScope(uiScope =>
         {
-            Child = grid
-        };
+            var border = new Border
+            {
+                Child = grid
+            };
 
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
+            var props = new HUniformGridProps(uiScope, border, grid);
+            var args = fn(props);
 
-        state.ApplyAccessorStyle(prop.Style, grid, border, ApplyStyle);
-        state.ApplyVariantsStyle(grid, border, ApplyStyle);
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
+            {
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
+            };
 
-        // 绑定行数和列数
-        if (prop.Rows is not null)
-        {
-            grid.Rows = prop.Rows.Value;
-            if (prop.Rows.IsReactive)
-                uiScope.CreateEffect(epochScope => grid.Rows = epochScope.Track(prop.Rows));
-        }
+            state.ApplyAccessorStyle(args.StrStyle, grid, border, ApplyStyle);
+            state.ApplyVariantsStyle(grid, border, ApplyStyle);
 
-        if (prop.Columns is not null)
-        {
-            grid.Columns = prop.Columns.Value;
-            if (prop.Columns.IsReactive)
-                uiScope.CreateEffect(epochScope => grid.Columns = epochScope.Track(prop.Columns));
-        }
+            if (args.Rows is not null)
+            {
+                grid.Rows = args.Rows.Value;
+                if (args.Rows.IsReactive)
+                    uiScope.CreateEffect(epochScope => grid.Rows = epochScope.Track(args.Rows));
+            }
 
-        // 添加子元素
-        foreach (var childElement in prop)
-        {
-            grid.Children.Add(childElement.Content);
-        }
+            if (args.Columns is not null)
+            {
+                grid.Columns = args.Columns.Value;
+                if (args.Columns.IsReactive)
+                    uiScope.CreateEffect(epochScope => grid.Columns = epochScope.Track(args.Columns));
+            }
 
-        return new Element<UniformGrid>(uiScope, border, grid);
+            if (args.FirstColumn is not null)
+            {
+                grid.Columns = args.FirstColumn.Value;
+                if (args.FirstColumn.IsReactive)
+                    uiScope.CreateEffect(epochScope => grid.FirstColumn = epochScope.Track(args.FirstColumn));
+            }
 
-        void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
-        {
-            StyleUtil.ApplyStyle(styleValue, grid, border);
+            foreach (var childElement in args)
+            {
+                grid.Children.Add(childElement.Content);
+            }
 
-            if (styleValue.ColumnSpacing is not null) grid.ColumnSpacing = styleValue.ColumnSpacing.Value;
-            if (styleValue.RowSpacing is not null) grid.RowSpacing = styleValue.RowSpacing.Value;
-        }
+            return (grid, border);
+
+            void ApplyStyle(StyleSet styleValue, Layoutable layout, Border bord)
+            {
+                StyleUtil.ApplyStyle(styleValue, grid, border);
+
+                if (styleValue.GapX is not null) grid.ColumnSpacing = styleValue.GapX.Value;
+                if (styleValue.GapY is not null) grid.RowSpacing = styleValue.GapY.Value;
+            }
+        });
     }
 }

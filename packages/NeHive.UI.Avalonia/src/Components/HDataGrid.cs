@@ -24,7 +24,7 @@
 // // 模板列（允许自定义显示内容，接收行数据对象）
 // public class HDataGridTemplateColumn : HDataGridColumn
 // {
-//     public Func<object, IElement> CellTemplate { get; set; } = _ => HTextBlock("");
+//     public Func<object, IElement> CellTemplate { get; set; } = _ => HText("");
 // }
 //
 // /// <summary>

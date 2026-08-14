@@ -1,22 +1,34 @@
+using System.Collections;
 using NeHive.Model;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
+public class HContextArgs(Action<IContextSetter> contextSetter) : ISingleChildrenArgs
+{
+    private readonly List<IElement> _children = [];
+    internal readonly Action<IContextSetter> ContextSetter = contextSetter;
+
+    public IEnumerator<IElement> GetEnumerator()
+        => _children.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator()
+        => GetEnumerator();
+
+    public void Add(IElement element)
+    {
+        _children.Add(element);
+    }
+}
+
 public static partial class BaseComponent
 {
-    public static IElement HContext<T>(ContextKey<T> contextKey, T value, Func<IElement> child) where T : notnull
+    public static IElement HContext(HContextArgs args)
     {
-        var uiScope = new UiScope();
-        uiScope.SetContext(contextKey, value);
-        var element = uiScope.RunInScope(child);
-        return new Element(uiScope, element);
-    }
-
-    public static IElement HContext(Action<IContextSetter> buildContext, Func<IElement> child)
-    {
-        var uiScope = new UiScope();
-        buildContext(uiScope);
-        var element = uiScope.RunInScope(child);
-        return new Element(uiScope, element);
+        return Element.WithScope(uiScope =>
+        {
+            args.ContextSetter(uiScope);
+            return ElementUtil.WrapSingleContainerContent(args);
+        });
     }
 }

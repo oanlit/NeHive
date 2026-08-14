@@ -1,8 +1,10 @@
 using System.Collections;
 using Avalonia.Controls;
+using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 using NeHive.UI.Avalonia.State;
+using NeHive.UI.Avalonia.Utils;
 
 namespace NeHive.UI.Avalonia.Components;
 
@@ -19,22 +21,33 @@ public class AbsPosition(
     public readonly Accessor<double>? Bottom = bottom;
 }
 
-public class HAbsoluteProp(
+public class HAbsoluteProps(Scope scope, Border border, Canvas canvas)
+    : BaseComponentProps(scope, border, canvas);
+
+public class HAbsoluteArgs(
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null
-)
-    : IEnumerable<KeyValuePair<AbsPosition, IElement>>
+    HStyle? style = null,
+    BaseComponentInteraction? baseInteraction = null
+) : BaseComponentArgs(strStyle, style, baseInteraction), IEnumerable<KeyValuePair<AbsPosition, IElement>>
 {
     private readonly Dictionary<AbsPosition, IElement> _children = new();
 
-    public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
-    public readonly Dictionary<string, StyleSet>? Variants = variants;
-
-    // 添加子元素的便捷方法
     public IElement this[AbsPosition key]
     {
         set => _children[key] = value;
+    }
+
+    public IElement this[
+        Accessor<double>? left = null,
+        Accessor<double>? top = null,
+        Accessor<double>? right = null,
+        Accessor<double>? bottom = null]
+    {
+        set
+        {
+            var key = new AbsPosition(left, top, right, bottom);
+            _children[key] = value;
+        }
     }
 
     public IEnumerator<KeyValuePair<AbsPosition, IElement>> GetEnumerator()
@@ -45,52 +58,75 @@ public class HAbsoluteProp(
 
 public static partial class BaseComponent
 {
-    private static readonly Component<HAbsoluteProp> CompAbsolute = new((prop, uiScope) =>
+    public static IElement<Canvas> HAbsolute(Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null) =>
+        HAbsolute(out _, _ => new(strStyle, style, baseInteraction));
+
+    public static IElement<Canvas> HAbsolute(out Canvas expose,
+        Accessor<string>? strStyle = null,
+        HStyle? style = null,
+        BaseComponentInteraction? baseInteraction = null) =>
+        HAbsolute(out expose, _ => new(strStyle, style, baseInteraction));
+
+    public static IElement<Canvas> HAbsolute(Func<HAbsoluteProps, HAbsoluteArgs> fn) => HAbsolute(out _, fn);
+
+    public static IElement<Canvas> HAbsolute(out Canvas expose, Func<HAbsoluteProps, HAbsoluteArgs> fn)
     {
         var canvas = new Canvas();
-
-        var border = new Border
+        expose = canvas;
+        return Element<Canvas>.WithScope(uiScope =>
         {
-            Child = canvas
-        };
+            var border = new Border
+            {
+                Child = canvas
+            };
 
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
+            var props = new HAbsoluteProps(uiScope, border, canvas);
+            var args = fn(props);
 
-        state.ApplyAccessorStyle(prop.Style, canvas, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(canvas, border, StyleUtil.ApplyStyle);
+            var state = new CommonState(uiScope, args.StrStyle.Value.Normal)
+            {
+                PriorityStyle = args.Style,
+                StrVariants = args.StrStyle.Value.Variants
+            };
 
-        foreach (var (pos, element) in prop)
-        {
-            var control = element.Content;
-            SetPos(control, pos.Left?.Value, pos.Top?.Value, pos.Right?.Value, pos.Bottom?.Value);
+            state.ApplyAccessorStyle(args.StrStyle, canvas, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(canvas, border, StyleUtil.ApplyStyle);
 
-            if (pos.Left?.IsReactive is true ||
-                pos.Top?.IsReactive is true ||
-                pos.Right?.IsReactive is true ||
-                pos.Bottom?.IsReactive is true
-               )
-                uiScope.CreateEffect(() =>
-                {
-                    SetPos(control, pos.Left?.RxValue, pos.Top?.RxValue, pos.Right?.RxValue, pos.Bottom?.RxValue);
-                });
+            args.BaseInteraction?.ApplyInteractions(uiScope, canvas);
 
-            canvas.Children.Add(control);
-        }
+            if (args.Popups is not null)
+                ElementUtil.ApplyPopups(border, args.Popups);
 
-        return new Element(uiScope, border);
+            foreach (var (pos, element) in args)
+            {
+                var control = element.Content;
+                SetPos(control, pos.Left?.Value, pos.Top?.Value, pos.Right?.Value, pos.Bottom?.Value);
 
-        void SetPos(Control control, double? left, double? top, double? right, double? bottom)
-        {
-            if (left is not null) Canvas.SetLeft(control, left.Value);
-            if (top is not null) Canvas.SetTop(control, top.Value);
-            if (right is not null) Canvas.SetRight(control, right.Value);
-            if (bottom is not null) Canvas.SetBottom(control, bottom.Value);
-        }
-    });
+                if (pos.Left?.IsReactive is true ||
+                    pos.Top?.IsReactive is true ||
+                    pos.Right?.IsReactive is true ||
+                    pos.Bottom?.IsReactive is true
+                   )
+                    uiScope.CreateEffect(() =>
+                    {
+                        SetPos(control, pos.Left?.RxValue, pos.Top?.RxValue, pos.Right?.RxValue,
+                            pos.Bottom?.RxValue);
+                    });
 
-    public static IElement HAbsolute(HAbsoluteProp prop) => CompAbsolute.Create(prop);
+                canvas.Children.Add(control);
+            }
+
+            return (canvas, border);
+
+            void SetPos(Control control, double? left, double? top, double? right, double? bottom)
+            {
+                if (left is not null) Canvas.SetLeft(control, left.Value);
+                if (top is not null) Canvas.SetTop(control, top.Value);
+                if (right is not null) Canvas.SetRight(control, right.Value);
+                if (bottom is not null) Canvas.SetBottom(control, bottom.Value);
+            }
+        });
+    }
 }

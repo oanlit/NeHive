@@ -14,39 +14,41 @@ public static partial class BaseComponent
         Accessor<string>? text = null,
         string? startDirectory = null,
         Accessor<string>? strStyle = null,
-        Accessor<StyleSet>? style = null,
-        Dictionary<string, StyleSet>? variants = null)
+        HStyle? style = null)
     {
-        text ??= "Select File";
-        
-        var uiScope = new UiScope();
-        IElement button;
-
-        using (new ScopeFrame(uiScope))
+        return Element.WithScope(uiScope =>
         {
-            button = HButton(text, strStyle, style, variants);
-        }
-        button.Content.PointerPressed += async (_, _) =>
-        {
-            var topLevel = TopLevel.GetTopLevel(button.Content);
-            if (topLevel == null) return;
+            text ??= "Select File";
 
-            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = title ?? "请选择文件夹",
-                SuggestedStartLocation = startDirectory != null 
-                    ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(startDirectory) 
-                    : null,
-                AllowMultiple = false
-            });
+            IElement button;
 
-            var folder = folders.FirstOrDefault();
-            if (folder != null)
+            using (new ScopeFrame(uiScope))
             {
-                bindSelectedPath.RxValue = folder.Path.AbsolutePath;
+                button = HButton(text,strStyle: strStyle,style: style);
             }
-        };
 
-        return new Element(uiScope, button);
+            button.Content.PointerPressed += async (_, _) =>
+            {
+                var topLevel = TopLevel.GetTopLevel(button.Content);
+                if (topLevel == null) return;
+
+                var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+                {
+                    Title = title ?? "请选择文件夹",
+                    SuggestedStartLocation = startDirectory != null
+                        ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(startDirectory)
+                        : null,
+                    AllowMultiple = false
+                });
+
+                var folder = folders.FirstOrDefault();
+                if (folder != null)
+                {
+                    bindSelectedPath.RxValue = folder.Path.AbsolutePath;
+                }
+            };
+
+            return button;
+        });
     }
 }

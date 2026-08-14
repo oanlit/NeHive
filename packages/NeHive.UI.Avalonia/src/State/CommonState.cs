@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Input;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia.Styles;
 
@@ -9,15 +11,16 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
 {
     public StyleSet BaseStyle = baseStyle;
     public StyleSet CurrentStyle = baseStyle.Copy();
+    public Signal<StyleSet>? PriorityStyle { get; init; }
     public bool CurrentIsBase { get; private set; } = true;
     public Dictionary<string, List<string>>? StrVariants;
 
-    public Dictionary<string, StyleSet>? Variants;
-
-    // 鼠标交互状态（悬停、按下等）
     public bool IsHover;
     public bool IsClicked;
-    public bool IsFocused; // 新增：焦点状态
+    public bool IsFocused;
+    public bool IsFocusWithin;
+    public bool IsDisabled;
+    public bool IsDragOver;
 
     public void ResetSetStyle()
     {
@@ -28,10 +31,15 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
 
     public void SetCurrentStyle()
     {
-        if (StrVariants is null && Variants is null) return;
+        if (StrVariants is null) return;
+        SetDisableStyle();
         SetHoverStyle();
         SetFocusStyle();
+        SetKeyboardFocusWithinStyle();
         SetClickStyle();
+        SetDragOverStyle();
+        if (PriorityStyle is null) return;
+        CurrentStyle.Merge(PriorityStyle.Value);
     }
 
     public void SetHoverStyle()
@@ -44,24 +52,12 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
                 StyleParser.Parse(strs, ref CurrentStyle);
                 CurrentIsBase = false;
             }
-
-            if (Variants is not null && Variants.TryGetValue("focus:hover", out var styleSet))
-            {
-                CurrentStyle.Merge(styleSet);
-                CurrentIsBase = false;
-            }
         }
         else
         {
             if (StrVariants is not null && StrVariants.TryGetValue("hover", out var strs))
             {
                 StyleParser.Parse(strs, ref CurrentStyle);
-                CurrentIsBase = false;
-            }
-
-            if (Variants is not null && Variants.TryGetValue("hover", out var styleSet))
-            {
-                CurrentStyle.Merge(styleSet);
                 CurrentIsBase = false;
             }
         }
@@ -75,15 +71,8 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             StyleParser.Parse(strs, ref CurrentStyle);
             CurrentIsBase = false;
         }
-
-        if (Variants is not null && Variants.TryGetValue("click", out var styleSet))
-        {
-            CurrentStyle.Merge(styleSet);
-            CurrentIsBase = false;
-        }
     }
 
-    // 新增：焦点样式设置
     public void SetFocusStyle()
     {
         if (!IsFocused) return;
@@ -92,56 +81,138 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             StyleParser.Parse(strs, ref CurrentStyle);
             CurrentIsBase = false;
         }
-
-        if (Variants is not null && Variants.TryGetValue("focus", out var styleSet))
+    }
+    
+    public void SetKeyboardFocusWithinStyle()
+    {
+        if (!IsFocusWithin) return;
+        if (StrVariants is not null && StrVariants.TryGetValue("focus-within", out var strs))
         {
-            CurrentStyle.Merge(styleSet);
+            StyleParser.Parse(strs, ref CurrentStyle);
+            CurrentIsBase = false;
+        }
+    }
+    
+    public void SetDisableStyle()
+    {
+        if (!IsDisabled) return;
+        if (StrVariants is not null && StrVariants.TryGetValue("disabled", out var strs))
+        {
+            StyleParser.Parse(strs, ref CurrentStyle);
+            CurrentIsBase = false;
+        }
+    }
+
+    public void SetDragOverStyle()
+    {
+        if (!IsDragOver) return;
+        if (StrVariants is not null && StrVariants.TryGetValue("dragover", out var strs))
+        {
+            StyleParser.Parse(strs, ref CurrentStyle);
             CurrentIsBase = false;
         }
     }
 
     public void ApplyAccessorStyle(
-        Accessor<FullStyle> accessorStyle,
+        Accessor<FullStyle> strStyle,
         Layoutable layout, Border border,
         Action<StyleSet, Layoutable, Border> applyStyle)
     {
-        applyStyle(CurrentStyle, layout, border);
-        if (!accessorStyle.IsReactive) return;
-        var firstApply = true;
-        uiScope.CreateEffect(epochScope =>
+        if (PriorityStyle is null)
         {
-            var styleValue = epochScope.Track(accessorStyle);
-            BaseStyle = styleValue.Normal;
-            StrVariants = styleValue.Variants;
-            CurrentStyle = BaseStyle.Copy();
-            if (firstApply)
-            {
-                firstApply = false;
-                return;
-            }
-
             applyStyle(CurrentStyle, layout, border);
-        });
+            if (!strStyle.IsReactive) return;
+            var firstApply = true;
+            uiScope.CreateEffect(epoch =>
+            {
+                var srtStyleValue = epoch.Track(strStyle);
+                BaseStyle = srtStyleValue.Normal;
+                StrVariants = srtStyleValue.Variants;
+                CurrentStyle = BaseStyle.Copy();
+                if (firstApply)
+                {
+                    firstApply = false;
+                    return;
+                }
+
+                applyStyle(CurrentStyle, layout, border);
+            });
+        }
+        else
+        {
+            CurrentStyle.Merge(PriorityStyle.Value);
+            applyStyle(CurrentStyle, layout, border);
+            var firstApply = true;
+            uiScope.CreateEffect(epoch =>
+            {
+                var srtStyleValue = epoch.Track(strStyle);
+                var styleValue = epoch.Pull(PriorityStyle);
+                if (firstApply)
+                {
+                    firstApply = false;
+                    return;
+                }
+                BaseStyle = srtStyleValue.Normal;
+                BaseStyle.Merge(styleValue);
+                StrVariants = srtStyleValue.Variants;
+                CurrentStyle = BaseStyle.Copy();
+
+                applyStyle(CurrentStyle, layout, border);
+            });
+        }
     }
 
-    public void ApplyVariantsStyle(Layoutable layout, Border border,
+    public void ApplyVariantsStyle(InputElement layout, Border border,
         Action<StyleSet, Layoutable, Border> applyStyle)
     {
-        // 焦点事件绑定
-        border.GotFocus += (_, _) =>
+        var hover = BindPointerOver(border, uiScope);
+        uiScope.CreateEffect(epoch =>
         {
-            IsFocused = true;
+            var newHover = epoch.Pull(hover);
+            if (IsHover == newHover) return;
+
+            IsHover = newHover;
             ResetSetStyle();
             SetCurrentStyle();
             applyStyle(CurrentStyle, layout, border);
-        };
-        border.LostFocus += (_, _) =>
+        });
+
+        var focus = BindFocused(layout, uiScope);
+        uiScope.CreateEffect(epoch =>
         {
-            IsFocused = false;
+            var newFocus = epoch.Pull(focus);
+            if (IsFocused == newFocus) return;
+
+            IsFocused = newFocus;
             ResetSetStyle();
             SetCurrentStyle();
             applyStyle(CurrentStyle, layout, border);
-        };
+        });
+        
+        var focusWithin = BindFocusWithin(layout, uiScope);
+        uiScope.CreateEffect(epoch =>
+        {
+            var newFocusWithin = epoch.Pull(focusWithin);
+            if (IsFocusWithin == newFocusWithin) return;
+
+            IsFocusWithin = newFocusWithin;
+            ResetSetStyle();
+            SetCurrentStyle();
+            applyStyle(CurrentStyle, layout, border);
+        });
+
+        var disabled = BindDisabled(layout, uiScope);
+        uiScope.CreateEffect(epoch =>
+        {
+            var newDisabled = epoch.Pull(disabled);
+            if (IsDisabled == newDisabled) return;
+
+            IsDisabled = newDisabled;
+            ResetSetStyle();
+            SetCurrentStyle();
+            applyStyle(CurrentStyle, layout, border);
+        });
+
         border.PointerPressed += (_, e) =>
         {
             if (!e.GetCurrentPoint(border).Properties.IsLeftButtonPressed)
@@ -157,19 +228,89 @@ public class CommonState(UiScope uiScope, StyleSet baseStyle)
             SetCurrentStyle();
             applyStyle(CurrentStyle, layout, border);
         };
-        border.PointerExited += (_, _) =>
+
+        DragDrop.AddDragEnterHandler(border, (_, _) =>
         {
-            IsHover = false;
-            IsClicked = false;
+            IsDragOver = true;
+            SetDragOverStyle();
+            applyStyle(CurrentStyle, layout, border);
+        });
+
+        DragDrop.AddDragLeaveHandler(border, (_, _) => LoseDragState());
+        DragDrop.AddDropHandler(border, (_, _) => LoseDragState());
+
+        return;
+
+        void LoseDragState()
+        {
+            IsDragOver = false;
             ResetSetStyle();
             SetCurrentStyle();
             applyStyle(CurrentStyle, layout, border);
-        };
-        border.PointerEntered += (_, _) =>
+        }
+    }
+
+    public static Signal<bool> BindPointerOver(InputElement target, UiScope scope)
+    {
+        var sig = new MutSignal<bool>(target.IsPointerOver);
+
+        target.PropertyChanged += OnPropUpdate;
+        scope.OnCleanup += () => target.PropertyChanged -= OnPropUpdate;
+
+        return sig;
+
+        void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
         {
-            IsHover = true;
-            SetHoverStyle();
-            applyStyle(CurrentStyle, layout, border);
-        };
+            if (args.Property == InputElement.IsPointerOverProperty)
+                sig.RxValue = (bool)args.NewValue!;
+        }
+    }
+
+    public static Signal<bool> BindFocused(InputElement target, UiScope scope)
+    {
+        var sig = new MutSignal<bool>(target.IsFocused);
+
+        target.PropertyChanged += OnPropUpdate;
+        scope.OnCleanup += () => target.PropertyChanged -= OnPropUpdate;
+
+        return sig;
+
+        void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+        {
+            if (args.Property == InputElement.IsFocusedProperty)
+                sig.RxValue = (bool)args.NewValue!;
+        }
+    }
+    
+    public static Signal<bool> BindFocusWithin(InputElement target, UiScope scope)
+    {
+        var sig = new MutSignal<bool>(target.IsKeyboardFocusWithin);
+
+        target.PropertyChanged += OnPropUpdate;
+        scope.OnCleanup += () => target.PropertyChanged -= OnPropUpdate;
+
+        return sig;
+
+        void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+        {
+            if (args.Property == InputElement.IsKeyboardFocusWithinProperty)
+                sig.RxValue = (bool)args.NewValue!;
+        }
+    }
+    
+    public static Signal<bool> BindDisabled(InputElement target, UiScope scope)
+    {
+        var sig = new MutSignal<bool>(!target.IsEffectivelyEnabled);
+
+        target.PropertyChanged += OnPropUpdate;
+        scope.OnCleanup += () => target.PropertyChanged -= OnPropUpdate;
+
+        return sig;
+
+        void OnPropUpdate(object? _, AvaloniaPropertyChangedEventArgs args)
+        {
+            if (args.Property == InputElement.IsEffectivelyEnabledProperty)
+                sig.RxValue = !(bool)args.NewValue!;
+        }
     }
 }

@@ -3,6 +3,8 @@ using Avalonia.Layout;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
+using Avalonia.Styling;
+using NeHive.Reactive;
 
 namespace NeHive.UI.Avalonia.Styles;
 
@@ -19,12 +21,84 @@ public static class StyleUtil
 
         FontWeight = FontWeight.Normal,
         BorderThickness = new Thickness(0),
+        Background = Brushes.Transparent,
 
         CornerRadius = new CornerRadius(0),
 
         Opacity = 1.0,
         IsVisible = true
     };
+
+    public static Signal<StyleSet> HStyle2Signal(HStyle style)
+    {
+        return new Computed<StyleSet>(() => new StyleSet
+        {
+            Margin = style.Margin?.RxValue,
+            ZIndex = style.ZIndex?.RxValue,
+
+            Width = style.Width?.RxValue,
+            Height = style.Height?.RxValue,
+            MinWidth = style.MinWidth?.RxValue,
+            MaxWidth = style.MaxWidth?.RxValue,
+            MinHeight = style.MinHeight?.RxValue,
+            MaxHeight = style.MaxHeight?.RxValue,
+
+            Padding = style.Padding?.RxValue,
+
+            HorizontalAlignment = style.HorizontalAlignment?.RxValue,
+            VerticalAlignment = style.VerticalAlignment?.RxValue,
+
+            Background = style.Background?.RxValue,
+            OpacityMask = style.OpacityMask?.RxValue,
+            BorderBrush = style.BorderBrush?.RxValue,
+            BorderThickness = style.BorderThickness?.RxValue,
+            BackgroundSizing = style.BackgroundSizing?.RxValue,
+            CornerRadius = style.CornerRadius?.RxValue,
+
+            Opacity = style.Opacity?.RxValue,
+            IsVisible = style.IsVisible?.RxValue,
+
+            ClipToBounds = style.ClipToBounds?.RxValue,
+            Clip = style.Clip?.RxValue,
+            Effect = style.Effect?.RxValue,
+            BoxShadows = style.BoxShadows?.RxValue,
+            Cursor = style.Cursor?.RxValue,
+            FlowDirection = style.FlowDirection?.RxValue,
+
+            RenderTransformOrigin = style.RenderTransformOrigin?.RxValue,
+            RenderTransform = style.RenderTransform?.RxValue,
+            
+            Transitions = style.Transitions?.RxValue,
+            Animation = style.Animation?.RxValue,
+
+            GapY = style.GapY?.RxValue,
+            GapX = style.GapX?.RxValue,
+
+            Orientation = style.Orientation?.RxValue,
+
+            LetterSpacing = style.LetterSpacing?.RxValue,
+            LineHeight = style.LineHeight?.RxValue,
+            LineSpacing = style.LineSpacing?.RxValue,
+
+            MaxLines = style.MaxLines?.RxValue,
+            TextTrimming = style.TextTrimming?.RxValue,
+
+            TextAlignment = style.TextAlignment?.RxValue,
+            VerticalTextAlignment = style.VerticalTextAlignment?.RxValue,
+
+            TextWrapping = style.TextWrapping?.RxValue,
+            TextDecorations = style.TextDecorations?.RxValue,
+            Inlines = style.Inlines?.RxValue,
+
+            FontSize = style.FontSize?.RxValue,
+            FontWeight = style.FontWeight?.RxValue,
+            FontFamily = style.FontFamily?.RxValue,
+            FontStretch = style.FontStretch?.RxValue,
+            FontFeatures = style.FontFeatures?.RxValue,
+            FontStyle = style.FontStyle?.RxValue,
+            Foreground = style.Foreground?.RxValue
+        });
+    }
 
     public static void ApplyStyle(BaseStyle style, Layoutable layout, Border border)
     {
@@ -105,7 +179,13 @@ public static class StyleUtil
 
         border.RenderTransformOrigin = style.RenderTransformOrigin ?? RelativePoint.Center;
         border.RenderTransform = style.RenderTransform;
+
         border.Transitions ??= style.Transitions;
+        border.Styles.Clear();
+        var s = new Style();
+        if(style.Animation is not null)
+            s.Animations.Add(style.Animation);
+        border.Styles.Add(s);
     }
 
     extension(BaseStyle target)
@@ -170,7 +250,9 @@ public static class StyleUtil
 
                 target.RenderTransformOrigin = source.RenderTransformOrigin;
                 target.RenderTransform = source.RenderTransform;
+                
                 target.Transitions = source.Transitions;
+                target.Animation = source.Animation;
                 return;
             }
 
@@ -207,7 +289,9 @@ public static class StyleUtil
 
             if (source.RenderTransformOrigin is not null) target.RenderTransformOrigin = source.RenderTransformOrigin;
             if (source.RenderTransform is not null) target.RenderTransform = source.RenderTransform;
+            
             if (source.Transitions is not null) target.Transitions = source.Transitions;
+            if (source.Animation is not null) target.Animation = source.Animation;
         }
 
         public void MergeMany(params BaseStyle[] styles)
@@ -234,8 +318,8 @@ public static class StyleUtil
             target.Merge((BaseStyle)source, mergeNull);
             if (mergeNull)
             {
-                target.RowSpacing = source.RowSpacing;
-                target.ColumnSpacing = source.ColumnSpacing;
+                target.GapY = source.GapY;
+                target.GapX = source.GapX;
 
                 target.Orientation = source.Orientation;
 
@@ -260,8 +344,8 @@ public static class StyleUtil
                 return;
             }
 
-            if (source.RowSpacing is not null) target.RowSpacing = source.RowSpacing;
-            if (source.ColumnSpacing is not null) target.ColumnSpacing = source.ColumnSpacing;
+            if (source.GapY is not null) target.GapY = source.GapY;
+            if (source.GapX is not null) target.GapX = source.GapX;
 
             if (source.Orientation is not null) target.Orientation = source.Orientation;
 

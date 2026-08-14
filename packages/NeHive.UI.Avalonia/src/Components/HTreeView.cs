@@ -7,39 +7,33 @@ using NeHive.UI.Avalonia.State;
 
 namespace NeHive.UI.Avalonia.Components;
 
-/// <summary>
-/// 树节点配置
-/// </summary>
-public class HTreeViewItemProp(
+public class HTreeViewItemArgs(
     Accessor<string> header,
     Accessor<bool>? isExpanded = null,
     Accessor<string>? strStyle = null,
-    Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null
+    HStyle? style = null
 )
 {
     public readonly Accessor<string> Header = header;
     public readonly Accessor<bool> IsExpanded = isExpanded ?? false;
-    public readonly List<HTreeViewItemProp> Children = new();
+    public readonly List<HTreeViewItemArgs> Children = new();
 
-    // 添加子节点方法（方便集合初始化器）
-    public void Add(HTreeViewItemProp child) => Children.Add(child);
+    public void Add(HTreeViewItemArgs child) => Children.Add(child);
 }
 
 public class HTreeViewProp(
     Accessor<string>? strStyle = null,
     Accessor<StyleSet>? style = null,
-    Dictionary<string, StyleSet>? variants = null) : IEnumerable<HTreeViewItemProp>
+    Dictionary<string, StyleSet>? variants = null) : IEnumerable<HTreeViewItemArgs>
 {
-    private readonly List<HTreeViewItemProp> _roots = new();
+    private readonly List<HTreeViewItemArgs> _roots = new();
 
     public readonly Accessor<FullStyle> Style = StyleParser.ParseFull(strStyle, null, style);
     public readonly Dictionary<string, StyleSet>? Variants = variants;
 
-    // 集合初始化器支持
-    public void Add(HTreeViewItemProp root) => _roots.Add(root);
+    public void Add(HTreeViewItemArgs root) => _roots.Add(root);
 
-    public IEnumerator<HTreeViewItemProp> GetEnumerator() => _roots.GetEnumerator();
+    public IEnumerator<HTreeViewItemArgs> GetEnumerator() => _roots.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
@@ -47,48 +41,49 @@ public static partial class BaseComponent
 {
     public static IElement<TreeView> HTreeView(HTreeViewProp prop)
     {
-        var uiScope = new UiScope();
-        var treeView = new TreeView();
-        var border = new Border
+        return Element<TreeView>.WithScope(uiScope =>
         {
-            Child = treeView
-        };
-
-        var state = new CommonState(uiScope, prop.Style.Value.Normal)
-        {
-            StrVariants = prop.Style.Value.Variants,
-            Variants = prop.Variants
-        };
-
-        state.ApplyAccessorStyle(prop.Style, treeView, border, StyleUtil.ApplyStyle);
-        state.ApplyVariantsStyle(treeView, border, StyleUtil.ApplyStyle);
-
-        // 递归构建 TreeViewItem
-        TreeViewItem BuildItem(HTreeViewItemProp itemProp)
-        {
-            var tvi = new TreeViewItem();
-
-            tvi.Header = itemProp.Header.Value;
-            if(itemProp.Header.IsReactive)
-                uiScope.CreateEffect(epochScope => tvi.Header = epochScope.Track(itemProp.Header));
-
-            tvi.IsExpanded = itemProp.IsExpanded.Value;
-            if(itemProp.IsExpanded.IsReactive)
-                uiScope.CreateEffect(epochScope => tvi.IsExpanded = epochScope.Track(itemProp.IsExpanded));
-            
-            foreach (var childProp in itemProp.Children)
+            var treeView = new TreeView();
+            var border = new Border
             {
-                tvi.Items.Add(BuildItem(childProp));
+                Child = treeView
+            };
+
+            var state = new CommonState(uiScope, prop.Style.Value.Normal)
+            {
+                StrVariants = prop.Style.Value.Variants
+            };
+
+            state.ApplyAccessorStyle(prop.Style, treeView, border, StyleUtil.ApplyStyle);
+            state.ApplyVariantsStyle(treeView, border, StyleUtil.ApplyStyle);
+
+            // 递归构建 TreeViewItem
+            TreeViewItem BuildItem(HTreeViewItemArgs itemArgs)
+            {
+                var tvi = new TreeViewItem();
+
+                tvi.Header = itemArgs.Header.Value;
+                if (itemArgs.Header.IsReactive)
+                    uiScope.CreateEffect(epochScope => tvi.Header = epochScope.Track(itemArgs.Header));
+
+                tvi.IsExpanded = itemArgs.IsExpanded.Value;
+                if (itemArgs.IsExpanded.IsReactive)
+                    uiScope.CreateEffect(epochScope => tvi.IsExpanded = epochScope.Track(itemArgs.IsExpanded));
+
+                foreach (var childProp in itemArgs.Children)
+                {
+                    tvi.Items.Add(BuildItem(childProp));
+                }
+
+                return tvi;
             }
 
-            return tvi;
-        }
+            foreach (var item in prop)
+            {
+                treeView.Items.Add(BuildItem(item));
+            }
 
-        foreach (var item in prop)
-        {
-            treeView.Items.Add(BuildItem(item));
-        }
-
-        return new Element<TreeView>(uiScope, border, treeView);
+            return (treeView, border);
+        });
     }
 }

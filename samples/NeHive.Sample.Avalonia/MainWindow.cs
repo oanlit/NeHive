@@ -1,8 +1,13 @@
 using Avalonia;
+using Avalonia.Styling;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Media;
 using NeHive.Model;
 using NeHive.Reactive;
 using NeHive.UI.Avalonia;
+using Colors = NeHive.UI.Avalonia.Styles.Colors;
 
 namespace NeHive.Sample.Avalonia;
 
