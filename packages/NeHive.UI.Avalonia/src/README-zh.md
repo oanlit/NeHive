@@ -139,6 +139,8 @@ return Loading<User>(new(userInfo))
 };
 ```
 
+完成快速入门后，也可以继续阅读 [NeHive UI 组件 API 与书写规范](https://github.com/oanlit/NeHive/blob/develop/docs/UI-CONVENTIONS-zh.md)。其中记录的是作者当前对组件结构的个人理解与实践建议，并非宣称这是唯一正确的写法。如果你有不同见解，也非常欢迎讨论与分享。
+
 # 控制流组件一览
 
 | 组件 | 用途 |

@@ -153,6 +153,8 @@ return Loading<User>(new(userInfo))
 
 ```
 
+After completing the quick start, you may also read the [UI Component API and Writing Conventions](https://github.com/oanlit/NeHive/blob/develop/docs/UI-CONVENTIONS.md). They collect the author's current preferences and practical opinions on component structure, rather than claiming to be the only correct style. Different perspectives, discussion, and shared practices are very welcome.
+
 # Control Flow Components Overview
 
 | Component | Purpose |

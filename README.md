@@ -169,6 +169,8 @@ dotnet run
 * ⚡ **Control Flow Components**: Native support for reactive control flow UIs such as `Switch` / `ForEach` / `Match`.
 * 🌳 **Scope Tree Lifecycle**: Experience the elegance of states and side effects (Effects) being automatically and safely released when their scope is destroyed.
 
+After completing the quick start, you may also read the [UI Component API and Writing Conventions](docs/UI-CONVENTIONS.md). They collect the author's current preferences and practical opinions on component structure, rather than claiming to be the only correct style. Different perspectives, discussion, and shared practices are very welcome.
+
 ![img](/docs/img/Sample.gif)
 
 ---

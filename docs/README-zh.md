@@ -164,6 +164,8 @@ dotnet run
 * ⚡ **控制流组件**：原生支持 `Switch` / `ForEach` / `Match` 等响应式控制流 UI。
 * 🌳 **Scope 树生命周期**：体验状态、副作用（Effect）随作用域销毁而自动释放的优雅。
 
+完成快速入门后，也可以继续阅读 [NeHive UI 组件 API 与书写规范](UI-CONVENTIONS-zh.md)。其中记录的是作者当前对组件结构的个人理解与实践建议，并非宣称这是唯一正确的写法。如果你有不同见解，也非常欢迎讨论与分享。
+
 ![img](/docs/img/Sample.gif)
 
 ---
