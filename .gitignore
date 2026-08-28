@@ -8,3 +8,9 @@ obj/
 
 NeHive.sln.DotSettings.user
 .claudiaideconfig
+
+# Local-only notes, drafts and working records
+.local/
+
+# Local Codex/agent instructions
+AGENTS.md
